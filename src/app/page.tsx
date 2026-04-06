@@ -1,0 +1,107 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { findExistingSaves, type SavedFormData } from '@/lib/autosave';
+
+export default function Home() {
+  const router = useRouter();
+  const [previousSubmissions, setPreviousSubmissions] = useState(false);
+  const [savedForms, setSavedForms] = useState<SavedFormData[]>([]);
+  const [showChoice, setShowChoice] = useState(false);
+
+  useEffect(() => {
+    const saves = findExistingSaves();
+    if (saves.length > 0) {
+      setSavedForms(saves);
+    }
+    // 로컬스토리지에서 제출 완료 기록 확인
+    try {
+      const submitted = localStorage.getItem('mediandmedi-last-submission');
+      if (submitted) setPreviousSubmissions(true);
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleNewClinic = () => {
+    if (savedForms.length > 0) {
+      // 기존 저장 데이터가 있으면 new-clinic에서 복원 다이얼로그 처리
+      router.push('/new-clinic');
+    } else {
+      router.push('/new-clinic');
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC] px-6">
+      <div className="w-full max-w-sm">
+        {/* 로고 영역 */}
+        <div className="text-center mb-12">
+          <div className="w-16 h-16 bg-[#1E3A5F] rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <span className="text-white text-2xl font-bold">M</span>
+          </div>
+          <h1 className="text-2xl font-bold text-[#1E3A5F]">메디앤메디</h1>
+          <p className="text-sm text-[#6B7280] mt-2">거래처 미팅 데이터 수집</p>
+        </div>
+
+        {/* 제출 후 재접속 시 선택지 */}
+        {previousSubmissions && !showChoice ? (
+          <div className="space-y-3 mb-8">
+            <button
+              onClick={() => {
+                setShowChoice(true);
+                setPreviousSubmissions(false);
+              }}
+              className="w-full h-14 bg-[#2563EB] text-white rounded-xl font-semibold text-base
+                         hover:bg-[#1d4ed8] active:scale-[0.98] transition-all"
+            >
+              새 미팅 시작
+            </button>
+            <button
+              onClick={() => {
+                const lastId = localStorage.getItem('mediandmedi-last-submission');
+                if (lastId) {
+                  router.push(`/summary/${lastId}`);
+                }
+              }}
+              className="w-full h-14 bg-white text-[#374151] border border-[#D1D5DB] rounded-xl
+                         font-medium text-base hover:border-[#2563EB] hover:text-[#2563EB]
+                         active:scale-[0.98] transition-all"
+            >
+              이전 제출 내역 보기
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <button
+              onClick={handleNewClinic}
+              className="w-full h-14 bg-[#2563EB] text-white rounded-xl font-semibold text-base
+                         hover:bg-[#1d4ed8] active:scale-[0.98] transition-all
+                         flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              신규개원
+            </button>
+            <button
+              onClick={() => router.push('/contract-change')}
+              className="w-full h-14 bg-white text-[#374151] border border-[#D1D5DB] rounded-xl
+                         font-medium text-base hover:border-[#2563EB] hover:text-[#2563EB]
+                         active:scale-[0.98] transition-all
+                         flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              계약변경
+            </button>
+          </div>
+        )}
+
+        <p className="text-center text-xs text-[#9CA3AF] mt-8">
+          &copy; 메디앤메디 전략기획팀
+        </p>
+      </div>
+    </div>
+  );
+}
