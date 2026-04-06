@@ -1,53 +1,54 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function SummaryPage({ params }: { params: Promise<{ id: string }> }) {
+function SummaryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [pageId, setPageId] = useState('');
   const [pin, setPin] = useState('');
   const [pinInput, setPinInput] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pageId, setPageId] = useState('');
 
   useEffect(() => {
-    params.then(({ id }) => {
-      setPageId(id);
+    const id = searchParams.get('id') || '';
+    setPageId(id);
 
-      // PIN 확인
-      const urlPin = searchParams.get('pin');
-      const storedPin = localStorage.getItem(`mediandmedi-pin-${id}`);
+    if (!id) {
+      setLoading(false);
+      setError('ID가 없습니다');
+      return;
+    }
 
-      if (urlPin) {
-        setPin(urlPin);
-        setAuthenticated(true);
-        localStorage.setItem(`mediandmedi-pin-${id}`, urlPin);
-        fetchData(id);
-      } else if (storedPin) {
-        setPin(storedPin);
-        setAuthenticated(true);
-        fetchData(id);
-      } else {
-        setLoading(false);
-      }
-    });
-  }, [params, searchParams]);
+    const urlPin = searchParams.get('pin');
+    const storedPin = localStorage.getItem(`mediandmedi-pin-${id}`);
 
-  const fetchData = async (id: string) => {
+    if (urlPin) {
+      setPin(urlPin);
+      setAuthenticated(true);
+      localStorage.setItem(`mediandmedi-pin-${id}`, urlPin);
+      loadData(id);
+    } else if (storedPin) {
+      setPin(storedPin);
+      setAuthenticated(true);
+      loadData(id);
+    } else {
+      setLoading(false);
+    }
+  }, [searchParams]);
+
+  const loadData = (id: string) => {
     try {
-      const res = await fetch(`/api/summary/${id}`);
-      if (res.ok) {
-        const result = await res.json();
-        setData(result.data);
-      } else {
-        setError('데이터를 불러올 수 없습니다');
+      const stored = localStorage.getItem(`mediandmedi-submitted-${id}`);
+      if (stored) {
+        setData(JSON.parse(stored));
       }
     } catch {
-      setError('네트워크 오류');
+      setError('데이터를 불러올 수 없습니다');
     } finally {
       setLoading(false);
     }
@@ -58,14 +59,14 @@ export default function SummaryPage({ params }: { params: Promise<{ id: string }
     if (pinInput === storedPin || pinInput === pin) {
       setAuthenticated(true);
       setLoading(true);
-      fetchData(pageId);
+      loadData(pageId);
     } else {
       setError('PIN이 일치하지 않습니다');
     }
   };
 
   const copyLink = () => {
-    const url = `${window.location.origin}/summary/${pageId}`;
+    const url = `${window.location.origin}/summary?id=${pageId}`;
     navigator.clipboard.writeText(url).then(() => {
       alert('공유 링크가 복사되었습니다!');
     });
@@ -119,26 +120,12 @@ export default function SummaryPage({ params }: { params: Promise<{ id: string }
     );
   }
 
-  // 노션 properties에서 데이터 추출
-  const props = (data as { properties?: Record<string, unknown> })?.properties as Record<string, unknown> || {};
-  const getTitle = (prop: unknown): string => {
-    const p = prop as { title?: { plain_text: string }[] };
-    return p?.title?.[0]?.plain_text || '';
-  };
-  const getRichText = (prop: unknown): string => {
-    const p = prop as { rich_text?: { plain_text: string }[] };
-    return p?.rich_text?.[0]?.plain_text || '';
-  };
-  const getMultiSelect = (prop: unknown): string[] => {
-    const p = prop as { multi_select?: { name: string }[] };
-    return p?.multi_select?.map((s) => s.name) || [];
-  };
-  const getSelect = (prop: unknown): string => {
-    const p = prop as { select?: { name: string } };
-    return p?.select?.name || '';
-  };
-
-  const clinicName = getTitle(props['title']) || getTitle(props['치과명']);
+  const formData = data as Record<string, Record<string, unknown>> | null;
+  const step1 = (formData?.step1 || {}) as Record<string, unknown>;
+  const step2 = (formData?.step2 || {}) as Record<string, unknown>;
+  const step5 = (formData?.step5 || {}) as Record<string, unknown>;
+  const region = (step1.region || {}) as Record<string, string>;
+  const clinicName = (step1.clinicName as string) || '거래처';
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -158,7 +145,6 @@ export default function SummaryPage({ params }: { params: Promise<{ id: string }
       </header>
 
       <main className="max-w-lg mx-auto px-6 py-6 space-y-6">
-        {/* 성공 카드 */}
         <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-[#16A34A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -166,36 +152,34 @@ export default function SummaryPage({ params }: { params: Promise<{ id: string }
             </svg>
           </div>
           <h2 className="text-xl font-bold text-[#374151] mb-1">
-            {clinicName || '거래처'} 정보가 저장되었습니다
+            {clinicName} 정보가 저장되었습니다
           </h2>
           <p className="text-sm text-[#6B7280]">
             팀별 업무가 자동으로 생성되었습니다
           </p>
         </div>
 
-        {/* 요약 정보 */}
         {data && (
           <div className="bg-white rounded-xl border border-[#E5E7EB] p-4 space-y-3">
             <h3 className="text-sm font-semibold text-[#374151]">요약</h3>
-            {getRichText(props['원장명']) && (
-              <InfoRow label="원장명" value={getRichText(props['원장명'])} />
+            {(step1.doctorName as string) && (
+              <InfoRow label="원장명" value={step1.doctorName as string} />
             )}
-            {getSelect(props['지역(시도)']) && (
-              <InfoRow label="지역" value={`${getSelect(props['지역(시도)'])} ${getSelect(props['지역(구군)'])}`} />
+            {region.city && (
+              <InfoRow label="지역" value={`${region.city} ${region.district || ''}`} />
             )}
-            {getMultiSelect(props['진료과목']).length > 0 && (
-              <InfoRow label="진료과목" value={getMultiSelect(props['진료과목']).join(', ')} />
+            {((step2.dentalSubjects as string[]) || []).length > 0 && (
+              <InfoRow label="진료과목" value={(step2.dentalSubjects as string[]).join(', ')} />
             )}
-            {getMultiSelect(props['주력진료']).length > 0 && (
-              <InfoRow label="주력진료" value={getMultiSelect(props['주력진료']).join(', ')} />
+            {((step2.topSubjects as string[]) || []).length > 0 && (
+              <InfoRow label="주력진료" value={(step2.topSubjects as string[]).join(', ')} />
             )}
-            {getSelect(props['예산범위']) && (
-              <InfoRow label="예산" value={getSelect(props['예산범위'])} />
+            {(step5.budgetRange as string) && (
+              <InfoRow label="예산" value={step5.budgetRange as string} />
             )}
           </div>
         )}
 
-        {/* 액션 버튼 */}
         <div className="space-y-3">
           <button
             onClick={copyLink}
@@ -221,6 +205,18 @@ export default function SummaryPage({ params }: { params: Promise<{ id: string }
         </p>
       </main>
     </div>
+  );
+}
+
+export default function SummaryPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-4 border-[#E5E7EB] border-t-[#2563EB] animate-spin" />
+      </div>
+    }>
+      <SummaryContent />
+    </Suspense>
   );
 }
 

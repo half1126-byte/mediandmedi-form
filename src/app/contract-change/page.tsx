@@ -31,27 +31,13 @@ export default function ContractChangePage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/change', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clinicName,
-          doctorName,
-          currentServices,
-          addServices,
-          removeServices,
-          reason,
-        }),
-      });
-
+      // 데모 모드: 로컬 저장
       setSubmitStep(1);
-
-      if (!response.ok) throw new Error('제출 실패');
+      await new Promise((r) => setTimeout(r, 1000));
 
       setSubmitStep(2);
       await new Promise((r) => setTimeout(r, 1500));
 
-      // 완료 알림 후 메인으로
       alert(`${clinicName} 계약변경이 저장되었습니다.`);
       router.push('/');
     } catch (err) {

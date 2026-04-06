@@ -196,7 +196,6 @@ export default function NewClinicPage() {
     setSubmitError(null);
 
     try {
-      // PIN 생성
       const pin = String(Math.floor(1000 + Math.random() * 9000));
 
       const response = await fetch('/api/submit', {
@@ -206,22 +205,22 @@ export default function NewClinicPage() {
       });
 
       setSubmitStep(1);
-
-      if (!response.ok) {
-        throw new Error('제출 실패');
-      }
+      if (!response.ok) throw new Error('제출 실패');
 
       const result = await response.json();
+      const pageId = result.pageId;
+
+      // 요약 페이지용 데이터를 localStorage에 저장
+      localStorage.setItem(`mediandmedi-submitted-${pageId}`, JSON.stringify(data));
+
       setSubmitStep(2);
 
-      // 제출 완료 처리
       clearForm(sessionId);
-      localStorage.setItem('mediandmedi-last-submission', result.pageId);
-      localStorage.setItem(`mediandmedi-pin-${result.pageId}`, pin);
+      localStorage.setItem('mediandmedi-last-submission', pageId);
+      localStorage.setItem(`mediandmedi-pin-${pageId}`, pin);
 
-      // 약간의 딜레이 후 요약 페이지로
       await new Promise((r) => setTimeout(r, 1500));
-      router.push(`/summary/${result.pageId}?pin=${pin}`);
+      router.push(`/summary?id=${pageId}&pin=${pin}`);
     } catch (error) {
       setSubmitting(false);
       setRetryCount((c) => c + 1);

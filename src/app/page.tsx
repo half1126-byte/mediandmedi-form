@@ -60,7 +60,7 @@ export default function Home() {
               onClick={() => {
                 const lastId = localStorage.getItem('mediandmedi-last-submission');
                 if (lastId) {
-                  router.push(`/summary/${lastId}`);
+                  router.push(`/summary?id=${lastId}`);
                 }
               }}
               className="w-full h-14 bg-white text-[#374151] border border-[#D1D5DB] rounded-xl

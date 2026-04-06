@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createChangeRecord } from '@/lib/notion';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,19 +11,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pageId = await createChangeRecord(body);
+    // 데모 모드
+    const demoPageId = 'change-' + Date.now().toString(36);
 
     return NextResponse.json({
       success: true,
-      pageId,
+      pageId: demoPageId,
+      demo: true,
     });
   } catch (error) {
     console.error('Change submit error:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
