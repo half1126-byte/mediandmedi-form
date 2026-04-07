@@ -113,6 +113,9 @@ export default function Home() {
         <p className="text-center text-xs text-[#9CA3AF] mt-8 animate-fade-in-delay-2">
           &copy; 메디앤메디 전략기획팀
         </p>
+        <a href="/admin/schedule" className="text-xs text-gray-400 hover:text-gray-600 mt-4 block text-center">
+          관리자 대시보드
+        </a>
       </div>
     </div>
   );

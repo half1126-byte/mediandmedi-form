@@ -134,6 +134,25 @@ export async function createScheduleChangeRecord(
 
   const scheduleData = (data.scheduleData as string) || '';
   const printSizes = (data.printSizes as string[]) || [];
+  const dateSchedulesRaw = (data.dateSchedulesRaw as Record<string, string[]>) || {};
+
+  // 태그별로 날짜 분류
+  const TAG_TYPES = ['휴진', '토요일진료', '일요일진료', '오전진료', '오후진료', '야간진료', '공휴일진료'] as const;
+
+  const tagToDates: Record<string, string[]> = {};
+  for (const tag of TAG_TYPES) tagToDates[tag] = [];
+
+  for (const [dateStr, tags] of Object.entries(dateSchedulesRaw)) {
+    const day = parseInt(dateStr.split('-')[2]);
+    const label = `${day}일`;
+    for (const tag of tags as string[]) {
+      if (tagToDates[tag]) {
+        tagToDates[tag].push(label);
+      }
+    }
+  }
+
+  const sortDates = (arr: string[]) => arr.sort((a, b) => parseInt(a) - parseInt(b)).join(', ');
 
   const response = await withRetry(() =>
     notion.pages.create({
@@ -150,6 +169,13 @@ export async function createScheduleChangeRecord(
         '기타요청': data.extraRequest ? { rich_text: [{ text: { content: (data.extraRequest as string) } }] } : undefined,
         '처리상태': { select: { name: '접수' } },
         '제출일': { date: { start: new Date().toISOString().split('T')[0] } },
+        '휴진일': tagToDates['휴진'].length > 0 ? { rich_text: [{ text: { content: sortDates(tagToDates['휴진']) } }] } : undefined,
+        '토요일진료': tagToDates['토요일진료'].length > 0 ? { rich_text: [{ text: { content: sortDates(tagToDates['토요일진료']) } }] } : undefined,
+        '일요일진료': tagToDates['일요일진료'].length > 0 ? { rich_text: [{ text: { content: sortDates(tagToDates['일요일진료']) } }] } : undefined,
+        '오전진료': tagToDates['오전진료'].length > 0 ? { rich_text: [{ text: { content: sortDates(tagToDates['오전진료']) } }] } : undefined,
+        '오후진료': tagToDates['오후진료'].length > 0 ? { rich_text: [{ text: { content: sortDates(tagToDates['오후진료']) } }] } : undefined,
+        '야간진료': tagToDates['야간진료'].length > 0 ? { rich_text: [{ text: { content: sortDates(tagToDates['야간진료']) } }] } : undefined,
+        '공휴일진료': tagToDates['공휴일진료'].length > 0 ? { rich_text: [{ text: { content: sortDates(tagToDates['공휴일진료']) } }] } : undefined,
       } as any,
     })
   );
