@@ -141,7 +141,8 @@ export async function createScheduleChangeRecord(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       properties: {
         title: { title: [{ text: { content: (data.clinicName as string) || '' } }] },
-        '원장명': { rich_text: [{ text: { content: (data.doctorName as string) || '' } }] },
+        '거래처명': { select: { name: (data.clinicName as string) || '' } },
+        '성함': { rich_text: [{ text: { content: (data.doctorName as string) || '' } }] },
         '대상월': { rich_text: [{ text: { content: (data.targetMonth as string) || '' } }] },
         '일정데이터': scheduleData ? { rich_text: [{ text: { content: scheduleData.substring(0, 2000) } }] } : undefined,
         '이벤트': data.events ? { rich_text: [{ text: { content: (data.events as string) } }] } : undefined,

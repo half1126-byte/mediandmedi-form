@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getHolidaysForMonth, isHoliday } from '@/data/holidays';
 
@@ -42,6 +42,34 @@ export default function ScheduleChangePage() {
   // 폼 상태
   const [clinicName, setClinicName] = useState('');
   const [doctorName, setDoctorName] = useState('');
+  const [clinicOptions, setClinicOptions] = useState<string[]>([]);
+  const [showClinicDropdown, setShowClinicDropdown] = useState(false);
+  const clinicInputRef = useRef<HTMLDivElement>(null);
+
+  // 거래처명 옵션 로드
+  useEffect(() => {
+    fetch('/api/clinic-names')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.clinicNames) setClinicOptions(d.clinicNames);
+      })
+      .catch(() => {});
+  }, []);
+
+  // 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (clinicInputRef.current && !clinicInputRef.current.contains(e.target as Node)) {
+        setShowClinicDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filteredClinics = clinicOptions.filter(
+    (name) => name.toLowerCase().includes(clinicName.toLowerCase()) && name !== clinicName
+  );
 
   // 달력 상태
   const now = new Date();
@@ -150,13 +178,24 @@ export default function ScheduleChangePage() {
             <h2 className="text-lg font-bold text-[#374151] mt-3">이용 안내</h2>
             <p className="text-sm text-[#6B7280] mt-1">진료일정 입력 전 확인해 주세요</p>
           </div>
-          <div className="bg-[#F8FAFC] rounded-xl p-4 space-y-3 text-sm text-[#374151]">
-            <p>
-              본 진료일정은 <span className="font-semibold text-[#2563EB]">매월 8일까지</span> 전달주셔야 제작이 가능합니다.
-            </p>
-            <p>
-              문의/수정사항이 있으실경우 <span className="font-semibold text-[#F59E0B]">카카오톡</span>을 통해 전해주시면 감사하겠습니다.
-            </p>
+          <div className="bg-[#F8FAFC] rounded-xl p-4 space-y-4 text-sm text-[#374151]">
+            <div className="space-y-1">
+              <p className="font-semibold text-[#1E3A5F]">📅 제출 기한</p>
+              <p>
+                본 진료일정은<br />
+                <span className="font-semibold text-[#2563EB]">매월 8일까지</span> 전달주셔야<br />
+                제작이 가능합니다.
+              </p>
+            </div>
+            <hr className="border-[#E5E7EB]" />
+            <div className="space-y-1">
+              <p className="font-semibold text-[#1E3A5F]">💬 문의/수정</p>
+              <p>
+                문의 또는 수정사항이 있으실 경우<br />
+                <span className="font-semibold text-[#F59E0B]">카카오톡</span>을 통해<br />
+                전해주시면 감사하겠습니다.
+              </p>
+            </div>
           </div>
           <button
             onClick={() => setShowGuide(false)}
@@ -267,22 +306,42 @@ export default function ScheduleChangePage() {
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-[#6B7280]">거래처 정보</h3>
           <div className="flex gap-3">
-            <div className="flex-1">
+            <div className="flex-1 relative" ref={clinicInputRef}>
               <input
                 type="text"
                 value={clinicName}
-                onChange={(e) => setClinicName(e.target.value)}
-                placeholder="치과명 *"
+                onChange={(e) => {
+                  setClinicName(e.target.value);
+                  setShowClinicDropdown(true);
+                }}
+                onFocus={() => setShowClinicDropdown(true)}
+                placeholder="거래처명 *"
                 className="w-full h-12 px-4 rounded-lg border border-[#D1D5DB] text-base
                            focus:outline-none focus:border-[#2563EB] transition-colors"
               />
+              {showClinicDropdown && filteredClinics.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#D1D5DB] rounded-lg shadow-lg z-20 max-h-40 overflow-y-auto">
+                  {filteredClinics.map((name) => (
+                    <button
+                      key={name}
+                      onClick={() => {
+                        setClinicName(name);
+                        setShowClinicDropdown(false);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#F0F7FF] transition-colors"
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex-1">
               <input
                 type="text"
                 value={doctorName}
                 onChange={(e) => setDoctorName(e.target.value)}
-                placeholder="원장명 *"
+                placeholder="성함 *"
                 className="w-full h-12 px-4 rounded-lg border border-[#D1D5DB] text-base
                            focus:outline-none focus:border-[#2563EB] transition-colors"
               />

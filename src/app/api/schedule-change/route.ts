@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
     if (!body.clinicName || !body.doctorName) {
       return NextResponse.json(
-        { success: false, error: '필수 항목 누락 (치과명, 원장명)' },
+        { success: false, error: '필수 항목 누락 (거래처명, 성함)' },
         { status: 400 }
       );
     }
