@@ -56,6 +56,11 @@ interface FormData {
     openDate: string;
     region: { city: string; district: string; dong?: string };
     address: string;
+    phone: string;
+    fax: string;
+    softOpenDate: string;
+    interiorCompleteDate: string;
+    photoDate: string;
   };
   step2: {
     dentalSubjects: string[];
@@ -72,6 +77,9 @@ interface FormData {
     facilities: string[];
     parking: { available: string; detail: string };
     interiorStyle: string;
+    implantBrands: string[];
+    hasLabRoom: boolean;
+    labEquipment: string[];
   };
   step4: {
     oneLiner: string;
@@ -80,6 +88,7 @@ interface FormData {
     differentiator: string;
     doctorCareer: string;
     hasProfilePhoto: boolean;
+    additionalDoctors: { name: string; title: string; specialty: string }[];
   };
   step5: {
     referralSource: string[];
@@ -88,6 +97,8 @@ interface FormData {
     marketingGoals: string[];
     desiredChannels: string[];
     additionalRequest: string;
+    benchmarkClinics: string;
+    openingEvent: string;
   };
   step6: {
     services: { serviceId: string; quantity?: number }[];
@@ -95,19 +106,21 @@ interface FormData {
     contractStartDate: string;
     monthlyFee: string;
     specialNotes: string;
+    didCount: number;
+    didInfo: string;
   };
 }
 
 const INITIAL_DATA: FormData = {
-  step1: { clinicName: '', doctorName: '', openDate: '', region: { city: '', district: '' }, address: '' },
+  step1: { clinicName: '', doctorName: '', openDate: '', region: { city: '', district: '' }, address: '', phone: '', fax: '', softOpenDate: '', interiorCompleteDate: '', photoDate: '' },
   step2: {
     dentalSubjects: [], topSubjects: [], schedule: DEFAULT_SCHEDULE,
     holidays: [], holidayClose: true, lunchTime: { start: '12:30', end: '13:30' }, nightWeekend: '',
   },
-  step3: { chairs: 5, equipment: [], facilities: [], parking: { available: '가능', detail: '' }, interiorStyle: '' },
-  step4: { oneLiner: '', philosophy: '', targetPatients: '', differentiator: '', doctorCareer: '', hasProfilePhoto: false },
-  step5: { referralSource: [], previousMarketing: '', budgetRange: '', marketingGoals: [], desiredChannels: [], additionalRequest: '' },
-  step6: { services: [], isStarterPackage: false, contractStartDate: '', monthlyFee: '', specialNotes: '' },
+  step3: { chairs: 5, equipment: [], facilities: [], parking: { available: '가능', detail: '' }, interiorStyle: '', implantBrands: [], hasLabRoom: false, labEquipment: [] },
+  step4: { oneLiner: '', philosophy: '', targetPatients: '', differentiator: '', doctorCareer: '', hasProfilePhoto: false, additionalDoctors: [] },
+  step5: { referralSource: [], previousMarketing: '', budgetRange: '', marketingGoals: [], desiredChannels: [], additionalRequest: '', benchmarkClinics: '', openingEvent: '' },
+  step6: { services: [], isStarterPackage: false, contractStartDate: '', monthlyFee: '', specialNotes: '', didCount: 0, didInfo: '' },
 };
 
 export default function NewClinicPage() {
@@ -424,6 +437,26 @@ function Step1({
         <FieldLabel>상세 주소</FieldLabel>
         <TextInput value={data.address} onChange={(v) => onChange({ address: v })} placeholder="예: OO빌딩 3층" />
       </div>
+      <div>
+        <FieldLabel>대표전화</FieldLabel>
+        <TextInput value={data.phone} onChange={(v) => onChange({ phone: v })} placeholder="예: 02-1234-5678" />
+      </div>
+      <div>
+        <FieldLabel>팩스번호</FieldLabel>
+        <TextInput value={data.fax} onChange={(v) => onChange({ fax: v })} placeholder="예: 02-1234-5679" />
+      </div>
+      <div>
+        <FieldLabel>가오픈 예정일</FieldLabel>
+        <TextInput type="date" value={data.softOpenDate} onChange={(v) => onChange({ softOpenDate: v })} />
+      </div>
+      <div>
+        <FieldLabel>인테리어 완료 예정일</FieldLabel>
+        <TextInput type="date" value={data.interiorCompleteDate} onChange={(v) => onChange({ interiorCompleteDate: v })} />
+      </div>
+      <div>
+        <FieldLabel>사진 촬영 가능 날짜</FieldLabel>
+        <TextInput type="date" value={data.photoDate} onChange={(v) => onChange({ photoDate: v })} />
+      </div>
     </div>
   );
 }
@@ -584,6 +617,40 @@ function Step3({
           placeholder="예: 모던, 따뜻한 우드톤, 아이 친화적"
         />
       </div>
+      <div>
+        <FieldLabel>임플란트 제품사</FieldLabel>
+        <ChipSelector
+          options={['오스템', '메가젠', '스트라우만', '덴티움', '네오', '디오', '코웰']}
+          selected={data.implantBrands}
+          onChange={(v) => onChange({ implantBrands: v })}
+        />
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => onChange({ hasLabRoom: !data.hasLabRoom })}
+          className={`w-12 h-7 rounded-full transition-all flex-shrink-0 ${
+            data.hasLabRoom ? 'bg-[#2563EB]' : 'bg-[#D1D5DB]'
+          }`}
+        >
+          <div
+            className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform mx-1 ${
+              data.hasLabRoom ? 'translate-x-5' : ''
+            }`}
+          />
+        </button>
+        <span className="text-sm text-[#374151]">기공소 보유</span>
+      </div>
+      {data.hasLabRoom && (
+        <div>
+          <FieldLabel>기공소 장비</FieldLabel>
+          <ChipSelector
+            options={['밀링머신', '포세린퍼니스', '신터링기', '모델스캐너']}
+            selected={data.labEquipment}
+            onChange={(v) => onChange({ labEquipment: v })}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -657,6 +724,66 @@ function Step4({
         </button>
         <span className="text-sm text-[#374151]">프로필 사진 보유</span>
       </div>
+      <div>
+        <FieldLabel>봉직의 정보</FieldLabel>
+        <p className="text-xs text-[#6B7280] mb-3">봉직의가 있는 경우 입력해주세요</p>
+        {data.additionalDoctors.map((doc, idx) => (
+          <div key={idx} className="bg-[#F8FAFC] rounded-lg p-3 space-y-2 mb-2">
+            <div className="flex gap-2">
+              <input
+                placeholder="이름"
+                value={doc.name}
+                onChange={(e) => {
+                  const updated = [...data.additionalDoctors];
+                  updated[idx] = { ...updated[idx], name: e.target.value };
+                  onChange({ additionalDoctors: updated });
+                }}
+                className="flex-1 h-10 px-3 rounded-lg border border-[#D1D5DB] text-sm focus:outline-none focus:border-[#2563EB]"
+              />
+              <select
+                value={doc.title}
+                onChange={(e) => {
+                  const updated = [...data.additionalDoctors];
+                  updated[idx] = { ...updated[idx], title: e.target.value };
+                  onChange({ additionalDoctors: updated });
+                }}
+                className="w-28 h-10 px-2 rounded-lg border border-[#D1D5DB] text-sm focus:outline-none focus:border-[#2563EB]"
+              >
+                <option>봉직의</option>
+                <option>부원장</option>
+                <option>원장</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  const updated = data.additionalDoctors.filter((_, i) => i !== idx);
+                  onChange({ additionalDoctors: updated });
+                }}
+                className="w-10 h-10 text-[#9CA3AF] hover:text-[#DC2626] text-lg flex items-center justify-center"
+              >
+                ×
+              </button>
+            </div>
+            <input
+              placeholder="전문의 분야 (예: 소아치과 전문의)"
+              value={doc.specialty}
+              onChange={(e) => {
+                const updated = [...data.additionalDoctors];
+                updated[idx] = { ...updated[idx], specialty: e.target.value };
+                onChange({ additionalDoctors: updated });
+              }}
+              className="w-full h-10 px-3 rounded-lg border border-[#D1D5DB] text-sm focus:outline-none focus:border-[#2563EB]"
+            />
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => onChange({ additionalDoctors: [...data.additionalDoctors, { name: '', title: '봉직의', specialty: '' }] })}
+          className="w-full h-10 border border-dashed border-[#D1D5DB] rounded-lg text-sm text-[#6B7280] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors"
+        >
+          + 봉직의 추가
+        </button>
+      </div>
     </div>
   );
 }
@@ -713,6 +840,22 @@ function Step5({
           options={MARKETING_CHANNELS}
           selected={data.desiredChannels}
           onChange={(v) => onChange({ desiredChannels: v })}
+        />
+      </div>
+      <div>
+        <FieldLabel>벤치마킹 병원</FieldLabel>
+        <TextArea
+          value={data.benchmarkClinics}
+          onChange={(v) => onChange({ benchmarkClinics: v })}
+          placeholder="예: 트리움치과, 연세행복한치과 - 홈페이지 디자인 및 진료 콘텐츠 참고"
+        />
+      </div>
+      <div>
+        <FieldLabel>개원 이벤트 계획</FieldLabel>
+        <TextArea
+          value={data.openingEvent}
+          onChange={(v) => onChange({ openingEvent: v })}
+          placeholder="예: 불소도포 무료, 교정 정밀진단비 할인, 첫 방문 기념 선물"
         />
       </div>
       <div>
@@ -777,6 +920,36 @@ function Step6({
         <TextInput value={data.monthlyFee} onChange={(v) => onChange({ monthlyFee: v })} placeholder="예: 150만원" />
       </div>
       <div>
+        <FieldLabel>DID 설치 대수</FieldLabel>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => onChange({ didCount: Math.max(0, data.didCount - 1) })}
+            className="w-10 h-10 rounded-lg border border-[#D1D5DB] text-[#374151] text-xl font-semibold flex items-center justify-center hover:bg-[#F3F4F6] transition-colors"
+          >
+            -
+          </button>
+          <span className="text-lg font-semibold text-[#374151] w-10 text-center">{data.didCount}</span>
+          <button
+            type="button"
+            onClick={() => onChange({ didCount: Math.min(10, data.didCount + 1) })}
+            className="w-10 h-10 rounded-lg border border-[#D1D5DB] text-[#374151] text-xl font-semibold flex items-center justify-center hover:bg-[#F3F4F6] transition-colors"
+          >
+            +
+          </button>
+        </div>
+      </div>
+      {data.didCount > 0 && (
+        <div>
+          <FieldLabel>DID 위치/방향 상세</FieldLabel>
+          <TextArea
+            value={data.didInfo}
+            onChange={(v) => onChange({ didInfo: v })}
+            placeholder="예: 데스크 왼쪽 1 가로(교정 영상), 진료실 입구 오른쪽 1 세로"
+          />
+        </div>
+      )}
+      <div>
         <FieldLabel>특이사항</FieldLabel>
         <TextArea
           value={data.specialNotes}
@@ -839,6 +1012,11 @@ function Step7({
         <SummaryItem label="개원예정일" value={step1.openDate} />
         <SummaryItem label="지역" value={[step1.region.city, step1.region.district, step1.region.dong].filter(Boolean).join(' ')} />
         <SummaryItem label="주소" value={step1.address} />
+        <SummaryItem label="대표전화" value={step1.phone} />
+        <SummaryItem label="팩스번호" value={step1.fax} />
+        <SummaryItem label="가오픈예정일" value={step1.softOpenDate} />
+        <SummaryItem label="인테리어완료일" value={step1.interiorCompleteDate} />
+        <SummaryItem label="촬영가능일" value={step1.photoDate} />
       </SummarySection>
 
       <SummarySection title="진료 정보" stepIndex={1}>
@@ -854,12 +1032,17 @@ function Step7({
         <SummaryItem label="시설" value={step3.facilities.join(', ')} />
         <SummaryItem label="주차" value={step3.parking.detail ? `${step3.parking.available} (${step3.parking.detail})` : step3.parking.available} />
         <SummaryItem label="인테리어" value={step3.interiorStyle} />
+        <SummaryItem label="임플란트" value={step3.implantBrands.join(', ')} />
+        <SummaryItem label="기공소" value={step3.hasLabRoom ? `보유${step3.labEquipment.length > 0 ? ` (${step3.labEquipment.join(', ')})` : ''}` : '미보유'} />
       </SummarySection>
 
       <SummarySection title="브랜딩 & 철학" stepIndex={3}>
         <SummaryItem label="한줄소개" value={step4.oneLiner} />
         <SummaryItem label="타겟환자" value={step4.targetPatients} />
         <SummaryItem label="차별점" value={step4.differentiator} />
+        {step4.additionalDoctors.length > 0 && (
+          <SummaryItem label="봉직의" value={step4.additionalDoctors.map((d) => `${d.name} ${d.title}${d.specialty ? ` (${d.specialty})` : ''}`).join(', ')} />
+        )}
       </SummarySection>
 
       <SummarySection title="마케팅 방향" stepIndex={4}>
@@ -867,6 +1050,8 @@ function Step7({
         <SummaryItem label="예산" value={step5.budgetRange} />
         <SummaryItem label="목표" value={step5.marketingGoals.join(', ')} />
         <SummaryItem label="채널" value={step5.desiredChannels.join(', ')} />
+        <SummaryItem label="벤치마킹" value={step5.benchmarkClinics} />
+        <SummaryItem label="개원이벤트" value={step5.openingEvent} />
       </SummarySection>
 
       <SummarySection title="계약 상품" stepIndex={5}>
@@ -880,6 +1065,9 @@ function Step7({
         <SummaryItem label="패키지" value={step6.isStarterPackage ? '초기개원 패키지' : '일반'} />
         <SummaryItem label="계약시작" value={step6.contractStartDate} />
         <SummaryItem label="월계약금" value={step6.monthlyFee} />
+        {step6.didCount > 0 && (
+          <SummaryItem label="DID 대수" value={`${step6.didCount}대${step6.didInfo ? ` - ${step6.didInfo}` : ''}`} />
+        )}
       </SummarySection>
     </div>
   );

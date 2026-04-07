@@ -184,6 +184,11 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     '지역(구군)': region.district ? { select: { name: region.district } } : undefined,
     '지역(동)': region.dong ? { rich_text: [{ text: { content: region.dong } }] } : undefined,
     '주소': s1.address ? { rich_text: [{ text: { content: s1.address as string } }] } : undefined,
+    '대표전화': s1.phone ? { rich_text: [{ text: { content: s1.phone as string } }] } : undefined,
+    '팩스번호': s1.fax ? { rich_text: [{ text: { content: s1.fax as string } }] } : undefined,
+    '가오픈예정일': s1.softOpenDate ? { date: { start: s1.softOpenDate as string } } : undefined,
+    '인테리어완료일': s1.interiorCompleteDate ? { date: { start: s1.interiorCompleteDate as string } } : undefined,
+    '사진촬영가능일': s1.photoDate ? { date: { start: s1.photoDate as string } } : undefined,
     '진료과목': { multi_select: ((s2.dentalSubjects as string[]) || []).map(s => ({ name: s })) },
     '주력진료': { multi_select: ((s2.topSubjects as string[]) || []).map(s => ({ name: s })) },
     '진료시간': (() => {
@@ -205,18 +210,29 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     '주차': (s3.parking as Record<string, string>)?.available ? { select: { name: (s3.parking as Record<string, string>).available } } : undefined,
     '주차상세': (s3.parking as Record<string, string>)?.detail ? { rich_text: [{ text: { content: (s3.parking as Record<string, string>).detail } }] } : undefined,
     '인테리어': s3.interiorStyle ? { rich_text: [{ text: { content: s3.interiorStyle as string } }] } : undefined,
+    '임플란트제품사': { multi_select: ((s3.implantBrands as string[]) || []).map(s => ({ name: s })) },
+    '기공소보유': { checkbox: (s3.hasLabRoom as boolean) || false },
+    '기공소장비': { multi_select: ((s3.labEquipment as string[]) || []).map(s => ({ name: s })) },
     '한줄소개': s4.oneLiner ? { rich_text: [{ text: { content: s4.oneLiner as string } }] } : undefined,
     '진료철학': s4.philosophy ? { rich_text: [{ text: { content: s4.philosophy as string } }] } : undefined,
     '타겟환자': s4.targetPatients ? { rich_text: [{ text: { content: s4.targetPatients as string } }] } : undefined,
     '차별점': s4.differentiator ? { rich_text: [{ text: { content: s4.differentiator as string } }] } : undefined,
     '원장경력': s4.doctorCareer ? { rich_text: [{ text: { content: s4.doctorCareer as string } }] } : undefined,
     '프로필사진보유': { checkbox: (s4.hasProfilePhoto as boolean) || false },
+    '봉직의정보': (() => {
+      const docs = (s4.additionalDoctors as {name:string;title:string;specialty:string}[]) || [];
+      if (docs.length === 0) return undefined;
+      const text = docs.map(d => `${d.name} ${d.title}${d.specialty ? ` (${d.specialty})` : ''}`).join(', ');
+      return { rich_text: [{ text: { content: text } }] };
+    })(),
     '유입경로': { multi_select: ((s5.referralSource as string[]) || []).map(s => ({ name: s })) },
     '이전마케팅': s5.previousMarketing ? { rich_text: [{ text: { content: s5.previousMarketing as string } }] } : undefined,
     '예산범위': s5.budgetRange ? { select: { name: s5.budgetRange as string } } : undefined,
     '마케팅목표': { multi_select: ((s5.marketingGoals as string[]) || []).map(s => ({ name: s })) },
     '원하는채널': { multi_select: ((s5.desiredChannels as string[]) || []).map(s => ({ name: s })) },
     '추가요청': s5.additionalRequest ? { rich_text: [{ text: { content: s5.additionalRequest as string } }] } : undefined,
+    '벤치마킹병원': s5.benchmarkClinics ? { rich_text: [{ text: { content: s5.benchmarkClinics as string } }] } : undefined,
+    '개원이벤트': s5.openingEvent ? { rich_text: [{ text: { content: s5.openingEvent as string } }] } : undefined,
     '계약서비스': (() => {
       const services = (s6.services || []) as { serviceId: string; quantity?: number }[];
       if (services.length === 0) return undefined;
@@ -239,6 +255,8 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     '계약시작일': s6.contractStartDate ? { date: { start: s6.contractStartDate as string } } : undefined,
     '월계약금': s6.monthlyFee ? { rich_text: [{ text: { content: s6.monthlyFee as string } }] } : undefined,
     '특이사항': s6.specialNotes ? { rich_text: [{ text: { content: s6.specialNotes as string } }] } : undefined,
+    'DID설치대수': s6.didCount ? { number: s6.didCount as number } : undefined,
+    'DID위치정보': s6.didInfo ? { rich_text: [{ text: { content: s6.didInfo as string } }] } : undefined,
     '제출일': { date: { start: new Date().toISOString().split('T')[0] } },
   };
 }

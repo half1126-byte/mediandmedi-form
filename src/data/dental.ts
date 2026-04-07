@@ -36,6 +36,7 @@ export const EQUIPMENT_LIST = [
   'CT(CBCT)', '구강스캐너', '디지털X선', 'CAD/CAM',
   '레이저', '현미경', '임플란트 네비게이션',
   '교정 시뮬레이션', '구강카메라', '에어플로우',
+  'N2O 장비', '성장진단장비', '골격분석검사기', '성장판검사기',
 ];
 
 export const FACILITY_LIST = [
