@@ -35,8 +35,8 @@ export default function Home() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC] px-6">
       <div className="w-full max-w-sm">
         {/* 로고 영역 */}
-        <div className="text-center mb-12">
-          <div className="w-16 h-16 bg-[#1E3A5F] rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <div className="text-center mb-12 animate-fade-in">
+          <div className="w-16 h-16 bg-[#1E3A5F] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
             <span className="text-white text-2xl font-bold">M</span>
           </div>
           <h1 className="text-2xl font-bold text-[#1E3A5F]">메디앤메디</h1>
@@ -71,7 +71,7 @@ export default function Home() {
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 animate-fade-in-delay">
             <button
               onClick={handleNewClinic}
               className="w-full h-14 bg-[#2563EB] text-white rounded-xl font-semibold text-base
@@ -98,7 +98,7 @@ export default function Home() {
           </div>
         )}
 
-        <p className="text-center text-xs text-[#9CA3AF] mt-8">
+        <p className="text-center text-xs text-[#9CA3AF] mt-8 animate-fade-in-delay-2">
           &copy; 메디앤메디 전략기획팀
         </p>
       </div>

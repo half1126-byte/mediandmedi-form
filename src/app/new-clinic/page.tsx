@@ -165,19 +165,30 @@ export default function NewClinicPage() {
     [data, step]
   );
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const nextStep = () => {
     saveNow();
-    if (step < TOTAL_STEPS - 1) setStep(step + 1);
+    if (step < TOTAL_STEPS - 1) {
+      setStep(step + 1);
+      scrollToTop();
+    }
   };
 
   const prevStep = () => {
     saveNow();
-    if (step > 0) setStep(step - 1);
+    if (step > 0) {
+      setStep(step - 1);
+      scrollToTop();
+    }
   };
 
   const goToStep = (s: number) => {
     saveNow();
     setStep(s);
+    scrollToTop();
   };
 
   const updateStep = <K extends keyof FormData>(
@@ -274,13 +285,15 @@ export default function NewClinicPage() {
 
       {/* 폼 콘텐츠 */}
       <main className="flex-1 max-w-lg mx-auto w-full px-6 py-6 pb-28">
-        {step === 0 && <Step1 data={data.step1} onChange={(u) => updateStep('step1', u)} />}
-        {step === 1 && <Step2 data={data.step2} onChange={(u) => updateStep('step2', u)} />}
-        {step === 2 && <Step3 data={data.step3} onChange={(u) => updateStep('step3', u)} />}
-        {step === 3 && <Step4 data={data.step4} onChange={(u) => updateStep('step4', u)} />}
-        {step === 4 && <Step5 data={data.step5} onChange={(u) => updateStep('step5', u)} />}
-        {step === 5 && <Step6 data={data.step6} onChange={(u) => updateStep('step6', u)} />}
-        {step === 6 && <Step7 data={data} onGoToStep={goToStep} />}
+        <div key={step} className="animate-fade-slide-in">
+          {step === 0 && <Step1 data={data.step1} onChange={(u) => updateStep('step1', u)} />}
+          {step === 1 && <Step2 data={data.step2} onChange={(u) => updateStep('step2', u)} />}
+          {step === 2 && <Step3 data={data.step3} onChange={(u) => updateStep('step3', u)} />}
+          {step === 3 && <Step4 data={data.step4} onChange={(u) => updateStep('step4', u)} />}
+          {step === 4 && <Step5 data={data.step5} onChange={(u) => updateStep('step5', u)} />}
+          {step === 5 && <Step6 data={data.step6} onChange={(u) => updateStep('step6', u)} />}
+          {step === 6 && <Step7 data={data} onGoToStep={goToStep} />}
+        </div>
       </main>
 
       {/* 하단 버튼 */}
@@ -297,8 +310,13 @@ export default function NewClinicPage() {
           {step < 6 ? (
             <button
               onClick={nextStep}
+              disabled={
+                (step === 0 && (!data.step1.clinicName || !data.step1.doctorName || !data.step1.openDate || !data.step1.region.city || !data.step1.region.district)) ||
+                (step === 1 && data.step2.dentalSubjects.length === 0)
+              }
               className="flex-1 h-12 bg-[#2563EB] text-white rounded-lg font-semibold
-                         hover:bg-[#1d4ed8] active:scale-[0.98] transition-all"
+                         hover:bg-[#1d4ed8] active:scale-[0.98] transition-all
+                         disabled:opacity-50 disabled:cursor-not-allowed"
             >
               다음
             </button>
