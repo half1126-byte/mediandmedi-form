@@ -7,28 +7,21 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    if (!body.clinicName || !body.doctorName || !body.reason) {
+    if (!body.clinicName || !body.doctorName) {
       return NextResponse.json(
-        { success: false, error: '필수 항목 누락 (치과명, 원장명, 변경사유)' },
+        { success: false, error: '필수 항목 누락 (치과명, 원장명)' },
         { status: 400 }
       );
     }
 
     if (isDemoMode) {
       const demoPageId = 'schedule-' + Date.now().toString(36);
-      return NextResponse.json({
-        success: true,
-        pageId: demoPageId,
-        demo: true,
-      });
+      return NextResponse.json({ success: true, pageId: demoPageId, demo: true });
     }
 
     const pageId = await createScheduleChangeRecord(body);
 
-    return NextResponse.json({
-      success: true,
-      pageId,
-    });
+    return NextResponse.json({ success: true, pageId });
   } catch (error) {
     console.error('Schedule change error:', error);
     return NextResponse.json(

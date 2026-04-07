@@ -132,14 +132,8 @@ export async function createScheduleChangeRecord(
   const dbId = process.env.NOTION_SCHEDULE_DB_ID;
   if (!dbId) throw new Error('NOTION_SCHEDULE_DB_ID not configured');
 
-  const schedule = (data.schedule || {}) as Record<string, { enabled: boolean; start: string; end: string }>;
-  const lines = Object.entries(schedule)
-    .filter(([, v]) => v.enabled)
-    .map(([day, v]) => `${day} ${v.start}~${v.end}`);
-  const scheduleText = lines.join(', ');
-
-  const lunch = (data.lunchTime || {}) as { start?: string; end?: string };
-  const lunchText = lunch.start && lunch.end ? `${lunch.start}~${lunch.end}` : '';
+  const scheduleData = (data.scheduleData as string) || '';
+  const printSizes = (data.printSizes as string[]) || [];
 
   const response = await withRetry(() =>
     notion.pages.create({
@@ -148,11 +142,11 @@ export async function createScheduleChangeRecord(
       properties: {
         title: { title: [{ text: { content: (data.clinicName as string) || '' } }] },
         '원장명': { rich_text: [{ text: { content: (data.doctorName as string) || '' } }] },
-        '변경된진료시간': { rich_text: [{ text: { content: scheduleText } }] },
-        '점심시간': lunchText ? { rich_text: [{ text: { content: lunchText } }] } : undefined,
-        '공휴일휴진': { checkbox: (data.holidayClose as boolean) || false },
-        '야간주말진료': data.nightWeekend ? { rich_text: [{ text: { content: data.nightWeekend as string } }] } : undefined,
-        '변경사유': { rich_text: [{ text: { content: (data.reason as string) || '' } }] },
+        '대상월': { rich_text: [{ text: { content: (data.targetMonth as string) || '' } }] },
+        '일정데이터': scheduleData ? { rich_text: [{ text: { content: scheduleData.substring(0, 2000) } }] } : undefined,
+        '이벤트': data.events ? { rich_text: [{ text: { content: (data.events as string) } }] } : undefined,
+        '출력사이즈': printSizes.length > 0 ? { multi_select: printSizes.map((s) => ({ name: s })) } : undefined,
+        '기타요청': data.extraRequest ? { rich_text: [{ text: { content: (data.extraRequest as string) } }] } : undefined,
         '처리상태': { select: { name: '접수' } },
         '제출일': { date: { start: new Date().toISOString().split('T')[0] } },
       } as any,
