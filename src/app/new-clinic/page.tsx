@@ -815,7 +815,7 @@ function Step7({
   );
 
   const SummaryItem = ({ label, value }: { label: string; value: string | undefined }) => {
-    if (!value) return null;
+    if (!value || !value.trim()) return null;
     return (
       <div className="flex">
         <span className="w-24 flex-shrink-0 text-[#9CA3AF]">{label}</span>
@@ -852,7 +852,8 @@ function Step7({
         <SummaryItem label="체어 수" value={`${step3.chairs}대`} />
         <SummaryItem label="장비" value={step3.equipment.join(', ')} />
         <SummaryItem label="시설" value={step3.facilities.join(', ')} />
-        <SummaryItem label="주차" value={step3.parking.available} />
+        <SummaryItem label="주차" value={step3.parking.detail ? `${step3.parking.available} (${step3.parking.detail})` : step3.parking.available} />
+        <SummaryItem label="인테리어" value={step3.interiorStyle} />
       </SummarySection>
 
       <SummarySection title="브랜딩 & 철학" stepIndex={3}>

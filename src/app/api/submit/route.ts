@@ -1,27 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createMainRecord } from '@/lib/notion';
+import { generateTeamTasks } from '@/lib/team-tasks';
 
-// TODO: Notion 연동 시 아래 주석 해제
-// import { createMainRecord } from '@/lib/notion';
-// import { generateTeamTasks } from '@/lib/team-tasks';
+const isDemoMode = !process.env.NOTION_API_KEY || !process.env.NOTION_MAIN_DB_ID;
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { pin } = body;
+    const { pin, step1, step6 } = body;
 
-    // 데모 모드: Notion 대신 메모리에서 처리
-    const demoPageId = 'demo-' + Date.now().toString(36);
+    // 데모 모드: 환경변수 없으면 자동 전환
+    if (isDemoMode) {
+      const demoPageId = 'demo-' + Date.now().toString(36);
+      return NextResponse.json({
+        success: true,
+        pageId: demoPageId,
+        pin,
+        taskResults: [],
+        demo: true,
+      });
+    }
 
-    // TODO: Notion 연동 시 아래로 교체
-    // const pageId = await createMainRecord(formData);
-    // const taskResults = await generateTeamTasks(clinicName, services, pageId);
+    // 실제 Notion 연동
+    const pageId = await createMainRecord(body);
+
+    // 팀별 업무 자동 생성 (부분 실패 허용)
+    let taskResults: { team: string; taskName: string; success: boolean; error?: string }[] = [];
+    const clinicName = step1?.clinicName || '';
+    const services = step6?.services || [];
+
+    if (services.length > 0 && clinicName) {
+      taskResults = await generateTeamTasks(clinicName, services, pageId);
+    }
 
     return NextResponse.json({
       success: true,
-      pageId: demoPageId,
+      pageId,
       pin,
-      taskResults: [],
-      demo: true,
+      taskResults,
     });
   } catch (error) {
     console.error('Submit error:', error);

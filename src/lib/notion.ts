@@ -1,4 +1,5 @@
 import { Client } from '@notionhq/client';
+import { SERVICES } from '@/data/services';
 
 const notion = new Client({
   auth: process.env.NOTION_API_KEY,
@@ -109,6 +110,14 @@ export async function createChangeRecord(
         '추가상품': { multi_select: ((data.addServices as string[]) || []).map(s => ({ name: s })) },
         '축소상품': { multi_select: ((data.removeServices as string[]) || []).map(s => ({ name: s })) },
         '변경사유': { rich_text: [{ text: { content: (data.reason as string) || '' } }] },
+        '변경유형': { select: { name: (() => {
+          const add = ((data.addServices as string[]) || []).length;
+          const remove = ((data.removeServices as string[]) || []).length;
+          if (add > 0 && remove > 0) return '서비스 변경';
+          if (remove > 0) return '서비스 축소';
+          return '서비스 추가';
+        })() } },
+        '처리상태': { select: { name: '접수' } },
         '제출일': { date: { start: new Date().toISOString().split('T')[0] } },
       },
     })
@@ -146,12 +155,24 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     '주소': s1.address ? { rich_text: [{ text: { content: s1.address as string } }] } : undefined,
     '진료과목': { multi_select: ((s2.dentalSubjects as string[]) || []).map(s => ({ name: s })) },
     '주력진료': { multi_select: ((s2.topSubjects as string[]) || []).map(s => ({ name: s })) },
+    '진료시간': (() => {
+      const schedule = (s2.schedule || {}) as Record<string, { enabled: boolean; start: string; end: string }>;
+      const lines = Object.entries(schedule)
+        .filter(([, v]) => v.enabled)
+        .map(([day, v]) => `${day} ${v.start}~${v.end}`);
+      return lines.length > 0 ? { rich_text: [{ text: { content: lines.join(', ') } }] } : undefined;
+    })(),
+    '점심시간': (() => {
+      const lunch = (s2.lunchTime || {}) as { start?: string; end?: string };
+      return lunch.start && lunch.end ? { rich_text: [{ text: { content: `${lunch.start}~${lunch.end}` } }] } : undefined;
+    })(),
     '공휴일휴진': { checkbox: (s2.holidayClose as boolean) || false },
     '야간주말진료': s2.nightWeekend ? { rich_text: [{ text: { content: s2.nightWeekend as string } }] } : undefined,
     '체어수': s3.chairs ? { number: s3.chairs as number } : undefined,
     '장비': { multi_select: ((s3.equipment as string[]) || []).map(s => ({ name: s })) },
     '시설': { multi_select: ((s3.facilities as string[]) || []).map(s => ({ name: s })) },
     '주차': (s3.parking as Record<string, string>)?.available ? { select: { name: (s3.parking as Record<string, string>).available } } : undefined,
+    '주차상세': (s3.parking as Record<string, string>)?.detail ? { rich_text: [{ text: { content: (s3.parking as Record<string, string>).detail } }] } : undefined,
     '인테리어': s3.interiorStyle ? { rich_text: [{ text: { content: s3.interiorStyle as string } }] } : undefined,
     '한줄소개': s4.oneLiner ? { rich_text: [{ text: { content: s4.oneLiner as string } }] } : undefined,
     '진료철학': s4.philosophy ? { rich_text: [{ text: { content: s4.philosophy as string } }] } : undefined,
@@ -164,6 +185,25 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     '예산범위': s5.budgetRange ? { select: { name: s5.budgetRange as string } } : undefined,
     '마케팅목표': { multi_select: ((s5.marketingGoals as string[]) || []).map(s => ({ name: s })) },
     '원하는채널': { multi_select: ((s5.desiredChannels as string[]) || []).map(s => ({ name: s })) },
+    '추가요청': s5.additionalRequest ? { rich_text: [{ text: { content: s5.additionalRequest as string } }] } : undefined,
+    '계약서비스': (() => {
+      const services = (s6.services || []) as { serviceId: string; quantity?: number }[];
+      if (services.length === 0) return undefined;
+      return { multi_select: services.map((s) => {
+        const svc = SERVICES.find((sv) => sv.id === s.serviceId);
+        return { name: svc?.name || s.serviceId };
+      })};
+    })(),
+    '서비스수량': (() => {
+      const services = (s6.services || []) as { serviceId: string; quantity?: number }[];
+      const withQty = services.filter(s => s.quantity);
+      if (withQty.length === 0) return undefined;
+      const text = withQty.map((s) => {
+        const svc = SERVICES.find((sv) => sv.id === s.serviceId);
+        return `${svc?.name || s.serviceId} ${s.quantity}${svc?.unit || ''}`;
+      }).join(', ');
+      return { rich_text: [{ text: { content: text } }] };
+    })(),
     '초기개원패키지': { checkbox: (s6.isStarterPackage as boolean) || false },
     '계약시작일': s6.contractStartDate ? { date: { start: s6.contractStartDate as string } } : undefined,
     '월계약금': s6.monthlyFee ? { rich_text: [{ text: { content: s6.monthlyFee as string } }] } : undefined,

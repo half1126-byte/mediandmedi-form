@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createChangeRecord } from '@/lib/notion';
+
+const isDemoMode = !process.env.NOTION_API_KEY || !process.env.NOTION_CHANGE_DB_ID;
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,13 +14,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 데모 모드
-    const demoPageId = 'change-' + Date.now().toString(36);
+    // 데모 모드: 환경변수 없으면 자동 전환
+    if (isDemoMode) {
+      const demoPageId = 'change-' + Date.now().toString(36);
+      return NextResponse.json({
+        success: true,
+        pageId: demoPageId,
+        demo: true,
+      });
+    }
+
+    // 실제 Notion 연동
+    const pageId = await createChangeRecord(body);
 
     return NextResponse.json({
       success: true,
-      pageId: demoPageId,
-      demo: true,
+      pageId,
     });
   } catch (error) {
     console.error('Change submit error:', error);

@@ -19,6 +19,7 @@ export default function ContractChangePage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitStep, setSubmitStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
 
   const handleSubmit = async () => {
     if (!clinicName || !doctorName || currentServices.length === 0 || !reason) {
@@ -31,20 +32,70 @@ export default function ContractChangePage() {
     setError(null);
 
     try {
-      // 데모 모드: 로컬 저장
+      const response = await fetch('/api/change', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clinicName,
+          doctorName,
+          currentServices,
+          addServices,
+          removeServices,
+          reason,
+        }),
+      });
+
       setSubmitStep(1);
-      await new Promise((r) => setTimeout(r, 1000));
+      if (!response.ok) throw new Error('저장 실패');
+
+      const result = await response.json();
+
+      // 결과 localStorage 저장
+      localStorage.setItem(`mediandmedi-change-${result.pageId}`, JSON.stringify({
+        clinicName, doctorName, currentServices, addServices, removeServices, reason,
+      }));
 
       setSubmitStep(2);
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, 1000));
 
-      alert(`${clinicName} 계약변경이 저장되었습니다.`);
-      router.push('/');
+      setSubmitting(false);
+      setDone(true);
     } catch (err) {
       setSubmitting(false);
       setError(err instanceof Error ? err.message : '저장 실패');
     }
   };
+
+  if (done) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center px-6">
+        <div className="w-full max-w-sm text-center space-y-6">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+            <svg className="w-8 h-8 text-[#16A34A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-[#374151]">
+              {clinicName} 계약변경이 저장되었습니다
+            </h2>
+            <p className="text-sm text-[#6B7280] mt-2">
+              {addServices.length > 0 && `추가: ${addServices.join(', ')}`}
+              {addServices.length > 0 && removeServices.length > 0 && ' / '}
+              {removeServices.length > 0 && `축소: ${removeServices.join(', ')}`}
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/')}
+            className="w-full h-12 bg-[#2563EB] text-white rounded-lg font-semibold
+                       hover:bg-[#1d4ed8] active:scale-[0.98] transition-all"
+          >
+            홈으로 돌아가기
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">

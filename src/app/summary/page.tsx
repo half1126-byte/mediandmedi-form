@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { SERVICES } from '@/data/services';
 
 function SummaryContent() {
   const router = useRouter();
@@ -13,6 +14,7 @@ function SummaryContent() {
   const [data, setData] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pageId, setPageId] = useState('');
+  const [showPin, setShowPin] = useState(false);
 
   useEffect(() => {
     const id = searchParams.get('id') || '';
@@ -123,9 +125,14 @@ function SummaryContent() {
   const formData = data as Record<string, Record<string, unknown>> | null;
   const step1 = (formData?.step1 || {}) as Record<string, unknown>;
   const step2 = (formData?.step2 || {}) as Record<string, unknown>;
+  const step3 = (formData?.step3 || {}) as Record<string, unknown>;
+  const step4 = (formData?.step4 || {}) as Record<string, unknown>;
   const step5 = (formData?.step5 || {}) as Record<string, unknown>;
+  const step6 = (formData?.step6 || {}) as Record<string, unknown>;
   const region = (step1.region || {}) as Record<string, string>;
+  const parking = (step3.parking || {}) as Record<string, string>;
   const clinicName = (step1.clinicName as string) || '거래처';
+  const services = (step6.services || []) as { serviceId: string; quantity?: number }[];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -160,22 +167,49 @@ function SummaryContent() {
         </div>
 
         {data && (
-          <div className="bg-white rounded-xl border border-[#E5E7EB] p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-[#374151]">요약</h3>
-            {(step1.doctorName as string) && (
+          <div className="space-y-4">
+            <SummarySection title="기본 정보">
               <InfoRow label="원장명" value={step1.doctorName as string} />
-            )}
-            {region.city && (
-              <InfoRow label="지역" value={`${region.city} ${region.district || ''}`} />
-            )}
-            {((step2.dentalSubjects as string[]) || []).length > 0 && (
-              <InfoRow label="진료과목" value={(step2.dentalSubjects as string[]).join(', ')} />
-            )}
-            {((step2.topSubjects as string[]) || []).length > 0 && (
-              <InfoRow label="주력진료" value={(step2.topSubjects as string[]).join(', ')} />
-            )}
-            {(step5.budgetRange as string) && (
+              <InfoRow label="개원예정일" value={step1.openDate as string} />
+              {region.city && <InfoRow label="지역" value={`${region.city} ${region.district || ''}`} />}
+              <InfoRow label="주소" value={step1.address as string} />
+            </SummarySection>
+
+            <SummarySection title="진료 정보">
+              <InfoRow label="진료과목" value={((step2.dentalSubjects as string[]) || []).join(', ')} />
+              <InfoRow label="주력진료" value={((step2.topSubjects as string[]) || []).join(', ')} />
+              <InfoRow label="공휴일" value={(step2.holidayClose as boolean) ? '휴진' : '진료'} />
+            </SummarySection>
+
+            <SummarySection title="시설/장비">
+              <InfoRow label="체어 수" value={step3.chairs ? `${step3.chairs}대` : ''} />
+              <InfoRow label="장비" value={((step3.equipment as string[]) || []).join(', ')} />
+              <InfoRow label="시설" value={((step3.facilities as string[]) || []).join(', ')} />
+              <InfoRow label="주차" value={parking.detail ? `${parking.available} (${parking.detail})` : parking.available} />
+              <InfoRow label="인테리어" value={step3.interiorStyle as string} />
+            </SummarySection>
+
+            <SummarySection title="브랜딩 & 철학">
+              <InfoRow label="한줄소개" value={step4.oneLiner as string} />
+              <InfoRow label="타겟환자" value={step4.targetPatients as string} />
+              <InfoRow label="차별점" value={step4.differentiator as string} />
+            </SummarySection>
+
+            <SummarySection title="마케팅 방향">
               <InfoRow label="예산" value={step5.budgetRange as string} />
+              <InfoRow label="목표" value={((step5.marketingGoals as string[]) || []).join(', ')} />
+              <InfoRow label="채널" value={((step5.desiredChannels as string[]) || []).join(', ')} />
+            </SummarySection>
+
+            {services.length > 0 && (
+              <SummarySection title="계약 상품">
+                <InfoRow label="서비스" value={services.map((s) => {
+                  const svc = SERVICES.find((sv) => sv.id === s.serviceId);
+                  return svc ? (s.quantity ? `${svc.name} ${s.quantity}${svc.unit}` : svc.name) : s.serviceId;
+                }).join(', ')} />
+                <InfoRow label="패키지" value={(step6.isStarterPackage as boolean) ? '초기개원 패키지' : '일반'} />
+                <InfoRow label="월계약금" value={step6.monthlyFee as string} />
+              </SummarySection>
             )}
           </div>
         )}
@@ -200,9 +234,12 @@ function SummaryContent() {
           </button>
         </div>
 
-        <p className="text-center text-xs text-[#9CA3AF]">
-          PIN: {pin} (이 PIN으로 다시 접근할 수 있습니다)
-        </p>
+        <button
+          onClick={() => setShowPin(!showPin)}
+          className="w-full text-center text-xs text-[#9CA3AF] py-2"
+        >
+          {showPin ? `PIN: ${pin}` : 'PIN 보기 (탭하세요)'}
+        </button>
       </main>
     </div>
   );
@@ -220,7 +257,17 @@ export default function SummaryPage() {
   );
 }
 
+function SummarySection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-xl border border-[#E5E7EB] p-4 space-y-2">
+      <h3 className="text-sm font-semibold text-[#374151]">{title}</h3>
+      <div className="space-y-1">{children}</div>
+    </div>
+  );
+}
+
 function InfoRow({ label, value }: { label: string; value: string }) {
+  if (!value || !value.trim()) return null;
   return (
     <div className="flex text-sm">
       <span className="w-20 flex-shrink-0 text-[#9CA3AF]">{label}</span>
