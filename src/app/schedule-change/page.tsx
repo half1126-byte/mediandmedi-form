@@ -17,12 +17,8 @@ const SCHEDULE_TAGS: { label: ScheduleTag; color: string; bg: string; emoji: str
   { label: '공휴일진료', color: '#BE185D', bg: '#FCE7F3', emoji: '🎌' },
 ];
 
-const ABBR: Record<string, string> = {
-  '휴진': '휴', '토요일진료': '토', '일요일진료': '일',
-  '오전진료': '전', '오후진료': '후', '야간진료': '야', '공휴일진료': '공',
-};
-
 const PRINT_SIZES = ['팝업(가로)', '팝업(세로)', 'A4(가로)', 'A4(세로)', '세로형 DID', '가로형 DID'] as const;
+const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
 function formatDate(y: number, m: number, d: number) {
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -209,7 +205,6 @@ export default function ScheduleChangePage() {
   }
 
   // ─── 메인 폼 ─────────────────────────────────────────────────────────────
-  const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
   const activeModeTag = activeMode && activeMode !== 'ERASE'
     ? SCHEDULE_TAGS.find(t => t.label === activeMode) : null;
 

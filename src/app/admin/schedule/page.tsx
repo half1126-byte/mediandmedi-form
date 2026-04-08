@@ -227,20 +227,30 @@ export default function AdminSchedulePage() {
 
   const updateRecord = async (id: string, updates: Record<string, unknown>) => {
     setUpdatingId(id);
-    await fetch(`/api/admin/schedule/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
-    });
-    await fetchRecords();
+    try {
+      const res = await fetch(`/api/admin/schedule/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) alert('수정 실패: 네트워크 오류');
+      await fetchRecords();
+    } catch {
+      alert('수정 실패: 서버에 연결할 수 없습니다');
+    }
     setUpdatingId(null);
   };
 
   const deleteRecord = async (id: string) => {
     if (!confirm('이 항목을 삭제하시겠습니까?')) return;
-    await fetch(`/api/admin/schedule/${id}`, { method: 'DELETE' });
-    if (selectedId === id) setSelectedId(null);
-    await fetchRecords();
+    try {
+      const res = await fetch(`/api/admin/schedule/${id}`, { method: 'DELETE' });
+      if (!res.ok) alert('삭제 실패');
+      if (selectedId === id) setSelectedId(null);
+      await fetchRecords();
+    } catch {
+      alert('삭제 실패: 서버에 연결할 수 없습니다');
+    }
   };
 
   const filtered = records.filter(
@@ -287,7 +297,7 @@ export default function AdminSchedulePage() {
           <div className="px-4 pt-4 pb-2">
             {/* 연도 탭 */}
             <div className="flex gap-2 mb-3">
-              {[2025, 2026, 2027].map((y) => (
+              {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((y) => (
                 <button
                   key={y}
                   onClick={() => setSelectedYear(y)}
@@ -410,7 +420,7 @@ export default function AdminSchedulePage() {
           {!selectedRecord ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-600">
               <span className="text-5xl mb-4">📅</span>
-              <p className="text-sm">좌측에서 거래처를 선택하세요</p>
+              <p className="text-sm">좌측에서 치과를 선택하세요</p>
             </div>
           ) : (
             <div className="max-w-2xl mx-auto space-y-6">

@@ -270,7 +270,7 @@ export default function NewClinicPage() {
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       <LoadingOverlay
         show={submitting}
-        steps={['거래처 정보를 저장하고 있습니다...', '팀별 업무를 생성하고 있습니다...', '완료!']}
+        steps={['치과 정보를 저장하고 있습니다...', '팀별 업무를 생성하고 있습니다...', '완료!']}
         currentStepIndex={submitStep}
       />
 

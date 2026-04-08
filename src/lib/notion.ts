@@ -1,8 +1,12 @@
 import { Client } from '@notionhq/client';
 import { SERVICES } from '@/data/services';
 
+if (!process.env.NOTION_API_KEY) {
+  console.warn('[notion] NOTION_API_KEY 환경변수 미설정 — Notion 연동 비활성');
+}
+
 const notion = new Client({
-  auth: process.env.NOTION_API_KEY,
+  auth: process.env.NOTION_API_KEY || '',
 });
 
 const DELAY_MS = 350;
@@ -221,14 +225,6 @@ export async function createScheduleChangeRecord(
   return response.id;
 }
 
-export async function getPageData(pageId: string): Promise<Record<string, unknown> | null> {
-  try {
-    const page = await withRetry(() => notion.pages.retrieve({ page_id: pageId }));
-    return page as unknown as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
 
 function buildMainProperties(data: Record<string, unknown>): Record<string, unknown> {
   const s1 = (data.step1 || {}) as Record<string, unknown>;

@@ -10,7 +10,7 @@ interface LoadingOverlayProps {
 
 export default function LoadingOverlay({
   show,
-  steps = ['거래처 정보 저장 중...', '팀별 업무 생성 중...', '완료!'],
+  steps = ['치과 정보 저장 중...', '팀별 업무 생성 중...', '완료!'],
   currentStepIndex = 0,
 }: LoadingOverlayProps) {
   const [dots, setDots] = useState('');
