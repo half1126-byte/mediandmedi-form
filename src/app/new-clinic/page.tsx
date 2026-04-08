@@ -61,6 +61,7 @@ interface FormData {
     softOpenDate: string;
     interiorCompleteDate: string;
     photoDate: string;
+    doctorCount: number;
   };
   step2: {
     dentalSubjects: string[];
@@ -112,7 +113,7 @@ interface FormData {
 }
 
 const INITIAL_DATA: FormData = {
-  step1: { clinicName: '', doctorName: '', openDate: '', region: { city: '', district: '' }, address: '', phone: '', fax: '', softOpenDate: '', interiorCompleteDate: '', photoDate: '' },
+  step1: { clinicName: '', doctorName: '', openDate: '', region: { city: '', district: '' }, address: '', phone: '', fax: '', softOpenDate: '', interiorCompleteDate: '', photoDate: '', doctorCount: 1 },
   step2: {
     dentalSubjects: [], topSubjects: [], schedule: DEFAULT_SCHEDULE,
     holidays: [], holidayClose: true, lunchTime: { start: '12:30', end: '13:30' }, nightWeekend: '',
@@ -456,6 +457,25 @@ function Step1({
       <div>
         <FieldLabel>사진 촬영 가능 날짜</FieldLabel>
         <TextInput type="date" value={data.photoDate} onChange={(v) => onChange({ photoDate: v })} />
+      </div>
+      <div>
+        <FieldLabel>총 의료진 수</FieldLabel>
+        <p className="text-xs text-[#6B7280] mb-3">원장 포함 전체 의료진 인원</p>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => onChange({ doctorCount: Math.max(1, (data.doctorCount || 1) - 1) })}
+            className="w-10 h-10 rounded-full border border-[#D1D5DB] text-[#374151] text-xl font-light flex items-center justify-center hover:border-[#2563EB] hover:text-[#2563EB] transition-colors"
+          >−</button>
+          <span className="text-2xl font-bold text-[#2563EB] w-16 text-center">
+            {data.doctorCount || 1}명
+          </span>
+          <button
+            type="button"
+            onClick={() => onChange({ doctorCount: (data.doctorCount || 1) + 1 })}
+            className="w-10 h-10 rounded-full border border-[#D1D5DB] text-[#374151] text-xl font-light flex items-center justify-center hover:border-[#2563EB] hover:text-[#2563EB] transition-colors"
+          >+</button>
+        </div>
       </div>
     </div>
   );
@@ -1017,6 +1037,7 @@ function Step7({
         <SummaryItem label="가오픈예정일" value={step1.softOpenDate} />
         <SummaryItem label="인테리어완료일" value={step1.interiorCompleteDate} />
         <SummaryItem label="촬영가능일" value={step1.photoDate} />
+        <SummaryItem label="총 의료진" value={step1.doctorCount ? `${step1.doctorCount}명` : undefined} />
       </SummarySection>
 
       <SummarySection title="진료 정보" stepIndex={1}>

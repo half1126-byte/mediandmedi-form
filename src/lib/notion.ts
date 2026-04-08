@@ -215,6 +215,7 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     '가오픈예정일': s1.softOpenDate ? { date: { start: s1.softOpenDate as string } } : undefined,
     '인테리어완료일': s1.interiorCompleteDate ? { date: { start: s1.interiorCompleteDate as string } } : undefined,
     '사진촬영가능일': s1.photoDate ? { date: { start: s1.photoDate as string } } : undefined,
+    '총의료진수': s1.doctorCount ? { number: s1.doctorCount as number } : undefined,
     '진료과목': { multi_select: ((s2.dentalSubjects as string[]) || []).map(s => ({ name: s })) },
     '주력진료': { multi_select: ((s2.topSubjects as string[]) || []).map(s => ({ name: s })) },
     '진료시간': (() => {
