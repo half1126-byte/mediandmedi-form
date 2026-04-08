@@ -4,76 +4,41 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { isHoliday } from '@/data/holidays';
 
-// 날짜별 일정 타입
 type ScheduleTag = '휴진' | '토요일진료' | '일요일진료' | '오전진료' | '오후진료' | '야간진료' | '공휴일진료';
-
 type ActiveMode = ScheduleTag | 'ERASE' | null;
 
-const SCHEDULE_TAGS: { label: ScheduleTag; color: string; bg: string }[] = [
-  { label: '휴진', color: '#DC2626', bg: '#FEE2E2' },
-  { label: '토요일진료', color: '#2563EB', bg: '#DBEAFE' },
-  { label: '일요일진료', color: '#7C3AED', bg: '#EDE9FE' },
-  { label: '오전진료', color: '#059669', bg: '#D1FAE5' },
-  { label: '오후진료', color: '#D97706', bg: '#FEF3C7' },
-  { label: '야간진료', color: '#1E3A5F', bg: '#E0E7FF' },
-  { label: '공휴일진료', color: '#BE185D', bg: '#FCE7F3' },
+const SCHEDULE_TAGS: { label: ScheduleTag; color: string; bg: string; emoji: string }[] = [
+  { label: '휴진',     color: '#DC2626', bg: '#FEE2E2', emoji: '🔴' },
+  { label: '토요일진료', color: '#2563EB', bg: '#DBEAFE', emoji: '🔵' },
+  { label: '일요일진료', color: '#7C3AED', bg: '#EDE9FE', emoji: '🟣' },
+  { label: '오전진료',  color: '#059669', bg: '#D1FAE5', emoji: '🟢' },
+  { label: '오후진료',  color: '#D97706', bg: '#FEF3C7', emoji: '🟡' },
+  { label: '야간진료',  color: '#1E3A5F', bg: '#E0E7FF', emoji: '🌙' },
+  { label: '공휴일진료', color: '#BE185D', bg: '#FCE7F3', emoji: '🎌' },
 ];
 
-const PRINT_SIZES = [
-  '팝업(가로)', '팝업(세로)', 'A4(가로)', 'A4(세로)', '세로형 DID', '가로형 DID',
-] as const;
+const ABBR: Record<string, string> = {
+  '휴진': '휴', '토요일진료': '토', '일요일진료': '일',
+  '오전진료': '전', '오후진료': '후', '야간진료': '야', '공휴일진료': '공',
+};
 
-function formatDate(y: number, m: number, d: number): string {
+const PRINT_SIZES = ['팝업(가로)', '팝업(세로)', 'A4(가로)', 'A4(세로)', '세로형 DID', '가로형 DID'] as const;
+
+function formatDate(y: number, m: number, d: number) {
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
-
-function getDaysInMonth(year: number, month: number): number {
-  return new Date(year, month, 0).getDate();
-}
-
-function getFirstDayOfWeek(year: number, month: number): number {
-  return new Date(year, month - 1, 1).getDay(); // 0=일, 1=월...
-}
+function getDaysInMonth(year: number, month: number) { return new Date(year, month, 0).getDate(); }
+function getFirstDayOfWeek(year: number, month: number) { return new Date(year, month - 1, 1).getDay(); }
 
 export default function ScheduleChangePage() {
   const router = useRouter();
 
-  // 안내 팝업
-  const [showGuide, setShowGuide] = useState(true);
-
-  // 폼 상태
   const [clinicName, setClinicName] = useState('');
   const [doctorName, setDoctorName] = useState('');
   const [clinicOptions, setClinicOptions] = useState<string[]>([]);
   const [showClinicDropdown, setShowClinicDropdown] = useState(false);
   const clinicInputRef = useRef<HTMLDivElement>(null);
 
-  // 거래처명 옵션 로드
-  useEffect(() => {
-    fetch('/api/clinic-names')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.clinicNames) setClinicOptions(d.clinicNames);
-      })
-      .catch(() => {});
-  }, []);
-
-  // 외부 클릭 시 드롭다운 닫기
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (clinicInputRef.current && !clinicInputRef.current.contains(e.target as Node)) {
-        setShowClinicDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const filteredClinics = clinicOptions.filter(
-    (name) => name.toLowerCase().includes(clinicName.toLowerCase()) && name !== clinicName
-  );
-
-  // 달력 상태
   const now = new Date();
   const nextMonth = now.getMonth() + 2 > 12
     ? { year: now.getFullYear() + 1, month: 1 }
@@ -81,38 +46,46 @@ export default function ScheduleChangePage() {
   const [calYear, setCalYear] = useState(nextMonth.year);
   const [calMonth, setCalMonth] = useState(nextMonth.month);
   const [dateSchedules, setDateSchedules] = useState<Record<string, ScheduleTag[]>>({});
-
-  // 모드 상태
   const [activeMode, setActiveMode] = useState<ActiveMode>(null);
   const [showModeHint, setShowModeHint] = useState(false);
 
-  // 이벤트, 사이즈, 요청
+  const [holidayReason, setHolidayReason] = useState('');
   const [events, setEvents] = useState('');
   const [printSizes, setPrintSizes] = useState<string[]>([]);
   const [extraRequest, setExtraRequest] = useState('');
-  const [holidayReason, setHolidayReason] = useState('');
-
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
 
-  // 달력 데이터 계산
+  useEffect(() => {
+    fetch('/api/clinic-names').then(r => r.json()).then(d => {
+      if (d.clinicNames) setClinicOptions(d.clinicNames);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (clinicInputRef.current && !clinicInputRef.current.contains(e.target as Node))
+        setShowClinicDropdown(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filteredClinics = clinicOptions.filter(
+    n => n.toLowerCase().includes(clinicName.toLowerCase()) && n !== clinicName
+  );
+
   const daysInMonth = getDaysInMonth(calYear, calMonth);
   const firstDay = getFirstDayOfWeek(calYear, calMonth);
 
-  const prevMonth = () => {
-    if (calMonth === 1) { setCalYear(calYear - 1); setCalMonth(12); }
-    else setCalMonth(calMonth - 1);
-  };
-  const nextMo = () => {
-    if (calMonth === 12) { setCalYear(calYear + 1); setCalMonth(1); }
-    else setCalMonth(calMonth + 1);
-  };
+  const prevMonth = () => { if (calMonth === 1) { setCalYear(calYear - 1); setCalMonth(12); } else setCalMonth(calMonth - 1); };
+  const nextMo = () => { if (calMonth === 12) { setCalYear(calYear + 1); setCalMonth(1); } else setCalMonth(calMonth + 1); };
 
   const applyModeToDate = (dateStr: string) => {
     if (!activeMode) {
       setShowModeHint(true);
-      setTimeout(() => setShowModeHint(false), 2000);
+      setTimeout(() => setShowModeHint(false), 2500);
       return;
     }
     if (activeMode === 'ERASE') {
@@ -125,63 +98,44 @@ export default function ScheduleChangePage() {
     const hasTag = current.includes(activeMode as ScheduleTag);
     setDateSchedules({
       ...dateSchedules,
-      [dateStr]: hasTag
-        ? current.filter(t => t !== activeMode)
-        : [...current, activeMode as ScheduleTag],
+      [dateStr]: hasTag ? current.filter(t => t !== activeMode) : [...current, activeMode as ScheduleTag],
     });
   };
 
-  const togglePrintSize = (size: string) => {
-    if (printSizes.includes(size)) {
-      setPrintSizes(printSizes.filter((s) => s !== size));
-    } else {
-      setPrintSizes([...printSizes, size]);
-    }
-  };
+  const togglePrintSize = (size: string) =>
+    setPrintSizes(prev => prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]);
 
   const canSubmit = clinicName.trim() && doctorName.trim();
+  const hasHoliday = Object.values(dateSchedules).some(tags => tags.includes('휴진'));
 
   const handleSubmit = async () => {
     if (!canSubmit || submitting) return;
     setSubmitting(true);
     setError('');
-
-    // 일정 데이터를 텍스트로 정리
     const scheduleSummary = Object.entries(dateSchedules)
       .filter(([, tags]) => tags.length > 0)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, tags]) => {
         const d = parseInt(date.split('-')[2]);
         const h = isHoliday(date);
-        const prefix = h ? `${d}일(${h.name})` : `${d}일`;
-        return `${prefix}: ${tags.join(', ')}`;
-      })
-      .join('\n');
+        return `${h ? `${d}일(${h.name})` : `${d}일`}: ${tags.join(', ')}`;
+      }).join('\n');
 
     try {
       const res = await fetch('/api/schedule-change', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clinicName: clinicName.trim(),
-          doctorName: doctorName.trim(),
-          targetMonth: `${calYear}년 ${calMonth}월`,
-          calYear,
-          calMonth,
-          scheduleData: scheduleSummary,
-          dateSchedulesRaw: dateSchedules,
-          events: events.trim(),
-          printSizes,
-          extraRequest: extraRequest.trim(),
-          holidayReason: holidayReason.trim(),
+          clinicName: clinicName.trim(), doctorName: doctorName.trim(),
+          targetMonth: `${calYear}년 ${calMonth}월`, calYear, calMonth,
+          scheduleData: scheduleSummary, dateSchedulesRaw: dateSchedules,
+          events: events.trim(), printSizes,
+          extraRequest: extraRequest.trim(), holidayReason: holidayReason.trim(),
         }),
       });
       const data = await res.json();
-      if (data.success) {
-        setDone(true);
-      } else {
-        setError(data.error || '저장 실패');
-      }
+      if (data.success) setDone(true);
+      else setError(data.error || '저장 실패');
     } catch {
       setError('네트워크 연결을 확인해 주세요');
     } finally {
@@ -189,44 +143,7 @@ export default function ScheduleChangePage() {
     }
   };
 
-  // 안내 팝업
-  if (showGuide) {
-    return (
-      <div className="min-h-screen bg-black/50 flex items-center justify-center px-6 fixed inset-0 z-50">
-        <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 animate-fade-in">
-          <div className="text-center mb-5">
-            <span className="text-4xl">📋</span>
-            <h2 className="text-lg font-bold text-[#374151] mt-3">이용 안내</h2>
-            <p className="text-sm text-[#6B7280] mt-1">진료일정 입력 전 확인해 주세요</p>
-          </div>
-          <div className="bg-[#F8FAFC] rounded-xl p-4 space-y-4 text-sm text-[#374151]">
-            <div className="space-y-1">
-              <p className="font-semibold text-[#1E3A5F]">📅 제출 기한</p>
-              <p>
-                진료일정은 매월 8일까지 전달해 주셔야 정상 제작이 가능합니다
-              </p>
-            </div>
-            <hr className="border-[#E5E7EB]" />
-            <div className="space-y-1">
-              <p className="font-semibold text-[#1E3A5F]">💬 문의/수정</p>
-              <p>
-                문의 또는 수정사항이 있으시면 카카오톡으로 편하게 말씀해 주세요
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowGuide(false)}
-            className="w-full h-12 mt-5 bg-[#2563EB] text-white rounded-lg font-semibold
-                       hover:bg-[#1d4ed8] active:scale-[0.98] transition-all"
-          >
-            확인했습니다
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // 완료 화면
+  // ─── 완료 화면 ───────────────────────────────────────────────────────────
   if (done) {
     const taggedDates = Object.entries(dateSchedules)
       .filter(([, tags]) => tags.length > 0)
@@ -245,32 +162,31 @@ export default function ScheduleChangePage() {
             <div className="w-10" />
           </div>
         </header>
-        <main className="max-w-5xl mx-auto px-6 py-6 space-y-6">
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-[#16A34A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <main className="max-w-5xl mx-auto px-6 py-8 space-y-5">
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-8 text-center">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-10 h-10 text-[#16A34A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-[#374151] mb-1">
-              {clinicName} 진료일정 변경 접수
-            </h2>
-            <p className="text-sm text-[#6B7280]">{calYear}년 {calMonth}월 일정이 정상적으로 접수되었습니다</p>
+            <h2 className="text-2xl font-bold text-[#374151] mb-2">제출 완료!</h2>
+            <p className="text-[#6B7280]">{clinicName} · {calYear}년 {calMonth}월 진료일정이 접수되었습니다</p>
           </div>
 
           {taggedDates.length > 0 && (
-            <div className="bg-white rounded-xl border border-[#E5E7EB] p-4 space-y-2">
-              <h3 className="text-sm font-semibold text-[#374151]">변경 일정</h3>
+            <div className="bg-white rounded-xl border border-[#E5E7EB] p-5 space-y-2">
+              <h3 className="text-sm font-semibold text-[#374151] mb-3">접수된 일정</h3>
               {taggedDates.map(([date, tags]) => {
                 const d = parseInt(date.split('-')[2]);
                 return (
-                  <div key={date} className="flex items-center gap-2 text-sm">
-                    <span className="text-[#6B7280] w-10">{d}일</span>
+                  <div key={date} className="flex items-center gap-3 text-sm">
+                    <span className="text-[#9CA3AF] w-8 text-right">{d}일</span>
                     <div className="flex flex-wrap gap-1">
-                      {tags.map((tag) => {
-                        const t = SCHEDULE_TAGS.find((s) => s.label === tag);
+                      {tags.map(tag => {
+                        const t = SCHEDULE_TAGS.find(s => s.label === tag);
                         return (
-                          <span key={tag} className="px-2 py-0.5 rounded text-xs font-medium" style={{ color: t?.color, backgroundColor: t?.bg }}>
+                          <span key={tag} className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                            style={{ color: t?.color, backgroundColor: t?.bg }}>
                             {tag}
                           </span>
                         );
@@ -282,18 +198,9 @@ export default function ScheduleChangePage() {
             </div>
           )}
 
-          {printSizes.length > 0 && (
-            <div className="bg-white rounded-xl border border-[#E5E7EB] p-4">
-              <h3 className="text-sm font-semibold text-[#374151] mb-1">출력 사이즈</h3>
-              <p className="text-sm text-[#374151]">{printSizes.join(', ')}</p>
-            </div>
-          )}
-
-          <button
-            onClick={() => router.push('/')}
-            className="w-full h-12 bg-[#2563EB] text-white rounded-lg font-semibold
-                       hover:bg-[#1d4ed8] active:scale-[0.98] transition-all"
-          >
+          <button onClick={() => router.push('/')}
+            className="w-full h-13 bg-[#2563EB] text-white rounded-xl font-semibold py-3.5
+                       hover:bg-[#1d4ed8] active:scale-[0.98] transition-all text-base">
             처음으로 돌아가기
           </button>
         </main>
@@ -301,18 +208,23 @@ export default function ScheduleChangePage() {
     );
   }
 
-  // 메인 폼
+  // ─── 메인 폼 ─────────────────────────────────────────────────────────────
   const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+  const activeModeTag = activeMode && activeMode !== 'ERASE'
+    ? SCHEDULE_TAGS.find(t => t.label === activeMode) : null;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      {/* 모드 힌트 토스트 */}
+      {/* 모드 미선택 토스트 */}
       {showModeHint && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-[#1E3A5F] text-white text-sm px-4 py-2 rounded-full shadow-lg z-50">
-          먼저 위에서 태그를 선택해 주세요
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50
+                        bg-[#1E3A5F] text-white text-sm px-5 py-2.5 rounded-full shadow-lg
+                        flex items-center gap-2 whitespace-nowrap">
+          <span>👆</span> 위에서 종류를 먼저 선택해 주세요
         </div>
       )}
 
+      {/* 헤더 */}
       <header className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-6 py-4">
           <button onClick={() => router.push('/')} className="w-10 h-10 flex items-center justify-center">
@@ -320,124 +232,147 @@ export default function ScheduleChangePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h2 className="text-base font-semibold text-[#374151]">진료일정 변경</h2>
+          <div className="text-center">
+            <h2 className="text-base font-semibold text-[#374151]">진료일정 전달</h2>
+            <p className="text-[10px] text-[#9CA3AF]">📅 매월 8일까지 제출해 주세요</p>
+          </div>
           <div className="w-10" />
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto w-full px-4 py-6 pb-28 lg:pb-6
+      <main className="max-w-5xl mx-auto w-full px-4 py-5 pb-28 lg:pb-6
                        lg:grid lg:grid-cols-[1fr_400px] lg:gap-8">
 
-        {/* 좌측: 거래처 정보 + 태그 바 + 달력 */}
-        <div className="space-y-6">
+        {/* ── 좌측: 치과 정보 + 달력 ── */}
+        <div className="space-y-5">
 
-          {/* 거래처 정보 섹션 */}
-          <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-[#6B7280]">거래처 정보</h3>
-            <div className="flex gap-3">
-              <div className="flex-1 relative" ref={clinicInputRef}>
+          {/* STEP 1: 치과 정보 */}
+          <section className="bg-white rounded-2xl border border-[#E5E7EB] p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
+              <h3 className="font-semibold text-[#374151]">치과 정보를 입력해 주세요</h3>
+            </div>
+            <div className="space-y-3">
+              {/* 치과명 자동완성 */}
+              <div className="relative" ref={clinicInputRef}>
+                <label className="block text-xs text-[#6B7280] mb-1 font-medium">치과명</label>
                 <input
                   type="text"
                   value={clinicName}
-                  onChange={(e) => {
-                    setClinicName(e.target.value);
-                    setShowClinicDropdown(true);
-                  }}
+                  onChange={e => { setClinicName(e.target.value); setShowClinicDropdown(true); }}
                   onFocus={() => setShowClinicDropdown(true)}
-                  placeholder="치과명을 입력해 주세요"
-                  className="w-full h-12 px-4 rounded-lg border border-[#D1D5DB] text-base
-                             focus:outline-none focus:border-[#2563EB] transition-colors"
+                  placeholder="예: OO치과의원"
+                  className="w-full h-12 px-4 rounded-xl border border-[#D1D5DB] text-base
+                             focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
                 />
                 {showClinicDropdown && filteredClinics.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#D1D5DB] rounded-lg shadow-lg z-20 max-h-40 overflow-y-auto">
-                    {filteredClinics.map((name) => (
-                      <button
-                        key={name}
-                        onClick={() => {
-                          setClinicName(name);
-                          setShowClinicDropdown(false);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#F0F7FF] transition-colors"
-                      >
-                        {name}
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#D1D5DB] rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
+                    {filteredClinics.map(name => (
+                      <button key={name} onClick={() => { setClinicName(name); setShowClinicDropdown(false); }}
+                        className="w-full text-left px-4 py-3 text-sm hover:bg-[#EFF6FF] transition-colors first:rounded-t-xl last:rounded-b-xl">
+                        🏥 {name}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-              <div className="flex-1">
+              {/* 원장님 성함 */}
+              <div>
+                <label className="block text-xs text-[#6B7280] mb-1 font-medium">원장님 성함</label>
                 <input
                   type="text"
                   value={doctorName}
-                  onChange={(e) => setDoctorName(e.target.value)}
-                  placeholder="성함 *"
-                  className="w-full h-12 px-4 rounded-lg border border-[#D1D5DB] text-base
-                             focus:outline-none focus:border-[#2563EB] transition-colors"
+                  onChange={e => setDoctorName(e.target.value)}
+                  placeholder="예: 홍길동"
+                  className="w-full h-12 px-4 rounded-xl border border-[#D1D5DB] text-base
+                             focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
                 />
               </div>
             </div>
           </section>
 
-          {/* 달력 + 태그 바 */}
-          <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-[#6B7280]">월별 진료일정</h3>
+          {/* STEP 2: 진료일정 달력 */}
+          <section className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
+            {/* 스텝 헤더 */}
+            <div className="px-5 pt-5 pb-4 border-b border-[#F3F4F6]">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
+                <h3 className="font-semibold text-[#374151]">달력에 일정을 표시해 주세요</h3>
+              </div>
+              <p className="text-sm text-[#6B7280] ml-8">① 아래에서 종류 선택 → ② 해당 날짜 탭</p>
+            </div>
 
-            {/* 태그 선택 바 */}
-            <div className="bg-white rounded-xl border border-[#E5E7EB] p-4">
-              <p className="text-xs text-[#6B7280] mb-3">태그를 먼저 선택하신 후 날짜를 눌러 주세요</p>
-              <div className="flex flex-wrap gap-2">
-                {SCHEDULE_TAGS.map((tag) => {
+            {/* 태그 선택 */}
+            <div className="px-5 py-4 bg-[#F8FAFC] border-b border-[#E5E7EB]">
+              <div className="flex flex-wrap gap-2 mb-3">
+                {SCHEDULE_TAGS.map(tag => {
                   const isActive = activeMode === tag.label;
                   return (
                     <button
                       key={tag.label}
                       onClick={() => setActiveMode(isActive ? null : tag.label as ScheduleTag)}
-                      className={`px-3 py-2 rounded-full text-sm font-semibold transition-all
-                        ${isActive ? 'scale-105 shadow-md' : 'opacity-70 hover:opacity-100'}
-                      `}
-                      style={{
-                        color: isActive ? '#fff' : tag.color,
-                        backgroundColor: isActive ? tag.color : tag.bg,
-                        border: isActive ? `2px solid ${tag.color}` : '2px solid transparent',
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold
+                                 transition-all active:scale-95"
+                      style={isActive ? {
+                        backgroundColor: tag.color,
+                        color: '#fff',
+                        boxShadow: `0 0 0 3px ${tag.color}40, 0 2px 8px ${tag.color}50`,
+                        transform: 'scale(1.05)',
+                      } : {
+                        backgroundColor: tag.bg,
+                        color: tag.color,
+                        border: `1.5px solid ${tag.color}30`,
                       }}
                     >
+                      {isActive && <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
                       {tag.label}
                     </button>
                   );
                 })}
-                {/* 지우개 모드 */}
+                {/* 지우개 */}
                 <button
                   onClick={() => setActiveMode(activeMode === 'ERASE' ? null : 'ERASE')}
-                  className={`px-3 py-2 rounded-full text-sm font-semibold transition-all
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95
                     ${activeMode === 'ERASE'
-                      ? 'bg-[#374151] text-white scale-105 shadow-md border-2 border-[#374151]'
-                      : 'bg-[#F3F4F6] text-[#374151] opacity-70 hover:opacity-100 border-2 border-transparent'}
-                  `}
+                      ? 'bg-[#374151] text-white shadow-md scale-105'
+                      : 'bg-[#F3F4F6] text-[#6B7280] border border-[#E5E7EB]'}`}
                 >
-                  🧹 지우개
+                  {activeMode === 'ERASE' && <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
+                  🧹 지우기
                 </button>
               </div>
-              {activeMode && (
-                <p className="text-xs mt-3 font-medium"
-                  style={{ color: activeMode === 'ERASE' ? '#374151' : SCHEDULE_TAGS.find(t => t.label === activeMode)?.color }}>
+
+              {/* 활성 모드 표시줄 */}
+              {activeMode ? (
+                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold"
+                  style={activeModeTag ? {
+                    backgroundColor: activeModeTag.bg,
+                    color: activeModeTag.color,
+                    border: `1.5px solid ${activeModeTag.color}40`,
+                  } : { backgroundColor: '#F3F4F6', color: '#374151', border: '1.5px solid #E5E7EB' }}>
+                  <span className="text-base">{activeModeTag ? activeModeTag.emoji : '🧹'}</span>
                   {activeMode === 'ERASE'
-                    ? '날짜를 탭하시면 해당 날짜의 태그가 모두 지워집니다'
-                    : `"${activeMode}" 모드 — 날짜를 탭해 주세요`}
-                </p>
+                    ? '지우기 모드 · 날짜를 탭하면 해당 날짜 표시가 모두 삭제됩니다'
+                    : `${activeMode} · 이제 아래 달력에서 날짜를 탭해 주세요`}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm text-[#9CA3AF] bg-white border border-[#E5E7EB]">
+                  <span>☝️</span> 위에서 일정 종류를 먼저 선택해 주세요
+                </div>
               )}
             </div>
 
             {/* 달력 */}
-            <div className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden">
+            <div>
               {/* 월 네비게이션 */}
               <div className="flex items-center justify-between px-4 py-3 bg-[#1E3A5F]">
-                <button onClick={prevMonth} className="w-10 h-10 flex items-center justify-center text-white">
+                <button onClick={prevMonth} className="w-10 h-10 flex items-center justify-center text-white/70 hover:text-white">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
                 <h4 className="text-lg font-bold text-white">{calYear}년 {calMonth}월</h4>
-                <button onClick={nextMo} className="w-10 h-10 flex items-center justify-center text-white">
+                <button onClick={nextMo} className="w-10 h-10 flex items-center justify-center text-white/70 hover:text-white">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
@@ -445,14 +380,10 @@ export default function ScheduleChangePage() {
               </div>
 
               {/* 요일 헤더 */}
-              <div className="grid grid-cols-7 border-b border-[#E5E7EB]">
+              <div className="grid grid-cols-7 bg-[#F8FAFC]">
                 {WEEKDAY_LABELS.map((d, i) => (
-                  <div
-                    key={d}
-                    className={`text-center py-2 text-xs font-semibold ${
-                      i === 0 ? 'text-[#DC2626]' : i === 6 ? 'text-[#2563EB]' : 'text-[#6B7280]'
-                    }`}
-                  >
+                  <div key={d} className={`text-center py-2 text-xs font-bold
+                    ${i === 0 ? 'text-[#DC2626]' : i === 6 ? 'text-[#2563EB]' : 'text-[#9CA3AF]'}`}>
                     {d}
                   </div>
                 ))}
@@ -460,12 +391,9 @@ export default function ScheduleChangePage() {
 
               {/* 날짜 그리드 */}
               <div className="grid grid-cols-7">
-                {/* 빈 칸 */}
                 {Array.from({ length: firstDay }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-20 border-b border-r border-[#F3F4F6]" />
+                  <div key={`e${i}`} className="h-20 border-b border-r border-[#F3F4F6]" />
                 ))}
-
-                {/* 날짜 셀 */}
                 {Array.from({ length: daysInMonth }).map((_, i) => {
                   const day = i + 1;
                   const dateStr = formatDate(calYear, calMonth, day);
@@ -474,8 +402,6 @@ export default function ScheduleChangePage() {
                   const tags = dateSchedules[dateStr] || [];
                   const isSun = dayOfWeek === 0;
                   const isSat = dayOfWeek === 6;
-
-                  // 배경색: 첫 번째 태그의 bg 또는 기본
                   const primaryTag = tags[0] ? SCHEDULE_TAGS.find(s => s.label === tags[0]) : null;
 
                   return (
@@ -483,40 +409,34 @@ export default function ScheduleChangePage() {
                       key={day}
                       onClick={() => applyModeToDate(dateStr)}
                       className={`h-20 border-b border-r border-[#F3F4F6] flex flex-col items-center pt-1.5 pb-1
-                        transition-colors relative
-                        ${activeMode === 'ERASE' && tags.length > 0
-                          ? 'hover:bg-red-50 hover:ring-2 hover:ring-inset hover:ring-red-300'
-                          : activeMode
-                          ? 'hover:bg-blue-50 cursor-pointer'
-                          : 'cursor-default'}
+                        relative transition-all
+                        ${activeMode
+                          ? activeMode === 'ERASE' && tags.length > 0
+                            ? 'hover:bg-red-50 hover:ring-2 hover:ring-inset hover:ring-red-300 cursor-pointer'
+                            : 'hover:opacity-80 cursor-pointer'
+                          : 'cursor-pointer'}
                       `}
-                      style={primaryTag ? { backgroundColor: primaryTag.bg + '80' } : {}}
+                      style={primaryTag ? { backgroundColor: primaryTag.bg + '90' } : {}}
                     >
-                      {/* 날짜 숫자 */}
-                      <span className={`text-xs font-semibold leading-none ${
-                        hol || isSun ? 'text-[#DC2626]' : isSat ? 'text-[#2563EB]' : 'text-[#374151]'
-                      }`}>
+                      <span className={`text-xs font-bold leading-none
+                        ${primaryTag ? '' : hol || isSun ? 'text-[#DC2626]' : isSat ? 'text-[#2563EB]' : 'text-[#374151]'}`}
+                        style={primaryTag ? { color: primaryTag.color } : {}}>
                         {day}
                       </span>
-                      {/* 공휴일명 */}
                       {hol && (
                         <span className="text-[8px] text-[#DC2626] leading-none mt-0.5 truncate max-w-full px-0.5">
-                          {hol.name.length > 4 ? hol.name.substring(0, 4) : hol.name}
+                          {hol.name.length > 4 ? hol.name.slice(0, 4) : hol.name}
                         </span>
                       )}
-                      {/* 태그 원형 뱃지 */}
                       {tags.length > 0 && (
                         <div className="flex flex-wrap gap-0.5 mt-auto justify-center mb-1 px-0.5">
-                          {tags.slice(0, 3).map((tag) => {
+                          {tags.slice(0, 3).map(tag => {
                             const t = SCHEDULE_TAGS.find(s => s.label === tag);
-                            const abbr = tag === '휴진' ? '휴' : tag === '토요일진료' ? '토' : tag === '일요일진료' ? '일'
-                              : tag === '오전진료' ? '전' : tag === '오후진료' ? '후' : tag === '야간진료' ? '야' : '공';
                             return (
                               <span key={tag}
                                 className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white flex-shrink-0"
-                                style={{ backgroundColor: t?.color }}
-                              >
-                                {abbr}
+                                style={{ backgroundColor: t?.color }}>
+                                {ABBR[tag]}
                               </span>
                             );
                           })}
@@ -528,115 +448,117 @@ export default function ScheduleChangePage() {
                 })}
               </div>
             </div>
-
-            {/* 범례 */}
-            <div className="flex flex-wrap gap-2 px-1">
-              {SCHEDULE_TAGS.map((tag) => (
-                <div key={tag.label} className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }} />
-                  <span className="text-[10px] text-[#9CA3AF]">{tag.label}</span>
-                </div>
-              ))}
-            </div>
           </section>
         </div>
 
-        {/* 우측: 이벤트 + 출력 + 기타 + PC 제출 버튼 */}
-        <div className="space-y-6 mt-6 lg:mt-0 lg:sticky lg:top-20 lg:self-start">
+        {/* ── 우측 패널 ── */}
+        <div className="space-y-4 mt-5 lg:mt-0 lg:sticky lg:top-20 lg:self-start">
 
-          {/* 휴진 사유 - 휴진 날짜가 있을 때만 표시 */}
-          {Object.values(dateSchedules).some((tags) => tags.includes('휴진')) && (
-            <section className="space-y-3">
-              <h3 className="text-sm font-semibold text-[#6B7280]">
-                <span className="inline-block w-2 h-2 rounded-full bg-[#DC2626] mr-1.5 align-middle" />
-                휴진 사유
-              </h3>
-              <input
-                type="text"
-                value={holidayReason}
-                onChange={(e) => setHolidayReason(e.target.value)}
-                placeholder="예: 원장 개인 사정, 건물 공사, 학회 참석"
-                className="w-full h-11 px-4 rounded-lg border border-[#D1D5DB] text-sm
-                           focus:outline-none focus:border-[#DC2626] transition-colors"
-              />
-            </section>
-          )}
-
-          {/* 이벤트 */}
-          <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-[#6B7280]">다음 달 이벤트를 알려 주세요</h3>
-            <textarea
-              value={events}
-              onChange={(e) => setEvents(e.target.value)}
-              placeholder={`다음 달 이벤트 내용을 알려 주세요\n예: 5/1~5/15 화이트닝 이벤트 30% 할인`}
-              rows={3}
-              className="w-full px-4 py-3 rounded-lg border border-[#D1D5DB] text-sm resize-none
-                         focus:outline-none focus:border-[#2563EB] transition-colors"
-            />
-          </section>
-
-          {/* 출력 사이즈 */}
-          <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-[#6B7280]">출력 사이즈를 선택해 주세요</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {PRINT_SIZES.map((size) => {
-                const active = printSizes.includes(size);
-                return (
-                  <button
-                    key={size}
-                    onClick={() => togglePrintSize(size)}
-                    className={`h-11 rounded-lg text-sm font-medium transition-all
-                      ${active
-                        ? 'bg-[#2563EB] text-white shadow-sm'
-                        : 'bg-white text-[#374151] border border-[#D1D5DB] hover:border-[#2563EB] hover:text-[#2563EB]'
-                      }
-                    `}
-                  >
-                    {size}
-                  </button>
-                );
-              })}
+          {/* STEP 3: 추가 정보 */}
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 space-y-5">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
+              <h3 className="font-semibold text-[#374151]">추가 정보</h3>
             </div>
-          </section>
 
-          {/* 기타 요청사항 */}
-          <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-[#6B7280]">추가 요청사항</h3>
-            <textarea
-              value={extraRequest}
-              onChange={(e) => setExtraRequest(e.target.value)}
-              placeholder="추가로 요청하실 내용이 있으시면 자유롭게 적어 주세요"
-              rows={3}
-              className="w-full px-4 py-3 rounded-lg border border-[#D1D5DB] text-sm resize-none
-                         focus:outline-none focus:border-[#2563EB] transition-colors"
-            />
-          </section>
+            {/* 휴진 사유 - 휴진 선택 시만 표시 */}
+            {hasHoliday && (
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-[#DC2626]">🔴 휴진 사유</label>
+                <input
+                  type="text"
+                  value={holidayReason}
+                  onChange={e => setHolidayReason(e.target.value)}
+                  placeholder="예: 원장 개인 사정, 학회 참석, 건물 공사"
+                  className="w-full h-11 px-4 rounded-xl border border-[#FCA5A5] text-sm
+                             focus:outline-none focus:border-[#DC2626] focus:ring-2 focus:ring-[#DC2626]/20 transition-all"
+                />
+              </div>
+            )}
 
-          {error && <p className="text-sm text-[#DC2626] text-center">{error}</p>}
+            {/* 다음달 이벤트 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-[#374151]">
+                다음 달 이벤트 <span className="text-[#9CA3AF] font-normal">(선택)</span>
+              </label>
+              <textarea
+                value={events}
+                onChange={e => setEvents(e.target.value)}
+                placeholder={`예: 5/1~5/15 화이트닝 30% 할인 이벤트`}
+                rows={2}
+                className="w-full px-4 py-3 rounded-xl border border-[#D1D5DB] text-sm resize-none
+                           focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
+              />
+            </div>
+
+            {/* 출력 사이즈 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-[#374151]">
+                출력 사이즈 <span className="text-[#9CA3AF] font-normal">(해당하는 것 모두 선택)</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {PRINT_SIZES.map(size => {
+                  const active = printSizes.includes(size);
+                  return (
+                    <button key={size} onClick={() => togglePrintSize(size)}
+                      className={`h-11 rounded-xl text-sm font-semibold transition-all
+                        ${active
+                          ? 'bg-[#2563EB] text-white ring-2 ring-[#2563EB] ring-offset-1'
+                          : 'bg-[#F8FAFC] text-[#374151] border border-[#E5E7EB] hover:border-[#2563EB] hover:text-[#2563EB]'
+                        }`}>
+                      {active && '✓ '}{size}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 기타 요청사항 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-[#374151]">
+                기타 요청사항 <span className="text-[#9CA3AF] font-normal">(선택)</span>
+              </label>
+              <textarea
+                value={extraRequest}
+                onChange={e => setExtraRequest(e.target.value)}
+                placeholder="그 외 전달하실 내용이 있으시면 자유롭게 적어 주세요"
+                rows={2}
+                className="w-full px-4 py-3 rounded-xl border border-[#D1D5DB] text-sm resize-none
+                           focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* 제출 안내 + 버튼 */}
+          {error && <p className="text-sm text-[#DC2626] text-center px-1">{error}</p>}
+
+          {!canSubmit && (
+            <p className="text-xs text-center text-[#9CA3AF]">치과명과 원장님 성함을 입력해야 제출할 수 있습니다</p>
+          )}
 
           {/* PC 전용 제출 버튼 */}
           <button
-            className="hidden lg:block w-full h-12 bg-[#2563EB] text-white rounded-lg font-semibold
+            className="hidden lg:block w-full py-4 bg-[#2563EB] text-white rounded-xl font-bold text-base
                        hover:bg-[#1d4ed8] active:scale-[0.98] transition-all
-                       disabled:opacity-50 disabled:cursor-not-allowed"
+                       disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={handleSubmit}
             disabled={!canSubmit || submitting}
           >
-            {submitting ? '제출 중입니다...' : '진료일정 제출하기'}
+            {submitting ? '제출 중입니다...' : '📤 진료일정 제출하기'}
           </button>
         </div>
       </main>
 
-      {/* 모바일 전용 하단 고정 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] px-6 py-4 lg:hidden">
+      {/* 모바일 하단 고정 버튼 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] px-4 py-3 lg:hidden">
         <button
           onClick={handleSubmit}
           disabled={!canSubmit || submitting}
-          className="w-full h-12 bg-[#2563EB] text-white rounded-lg font-semibold
-                     disabled:opacity-50 disabled:cursor-not-allowed
+          className="w-full py-3.5 bg-[#2563EB] text-white rounded-xl font-bold text-base
+                     disabled:opacity-40 disabled:cursor-not-allowed
                      hover:bg-[#1d4ed8] active:scale-[0.98] transition-all"
         >
-          {submitting ? '제출 중입니다...' : '진료일정 제출하기'}
+          {submitting ? '제출 중입니다...' : '📤 진료일정 제출하기'}
         </button>
       </div>
     </div>

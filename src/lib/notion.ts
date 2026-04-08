@@ -149,9 +149,7 @@ async function findClinicInMainDB(
       return title === clinicName;
     });
     if (!match) return null;
-    const hoursVal =
-      match.properties?.['진료시간']?.rich_text?.[0]?.text?.content || '';
-    return { pageId: match.id, clinicHours: hoursVal };
+    return { pageId: match.id, clinicHours: '' };
   } catch {
     return null;
   }
@@ -206,8 +204,7 @@ export async function createScheduleChangeRecord(
         '제출일': { date: { start: new Date().toISOString().split('T')[0] } },
         // 메인 거래처DB와 관계 연결 (Notion에 '거래처' Relation 속성 필요)
         ...(clinicInfo ? { '거래처': { relation: [{ id: clinicInfo.pageId }] } } : {}),
-        // 정기 진료시간 (메인 DB에서 조회)
-        '진료시간': clinicInfo?.clinicHours ? { rich_text: [{ text: { content: clinicInfo.clinicHours } }] } : undefined,
+        // 진료시간은 담당자가 거래처DB에서 직접 수정 (자동 조회 제외)
         // 휴진 사유
         '휴진사유': holidayReason ? { rich_text: [{ text: { content: holidayReason } }] } : undefined,
         '휴진일': tagToDates['휴진'].length > 0 ? { rich_text: [{ text: { content: sortDates(tagToDates['휴진']) } }] } : undefined,
