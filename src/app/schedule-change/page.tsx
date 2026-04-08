@@ -392,7 +392,7 @@ export default function ScheduleChangePage() {
               {/* 날짜 그리드 */}
               <div className="grid grid-cols-7">
                 {Array.from({ length: firstDay }).map((_, i) => (
-                  <div key={`e${i}`} className="h-20 border-b border-r border-[#F3F4F6]" />
+                  <div key={`e${i}`} className="h-24 border-b border-r border-[#F3F4F6]" />
                 ))}
                 {Array.from({ length: daysInMonth }).map((_, i) => {
                   const day = i + 1;
@@ -408,7 +408,7 @@ export default function ScheduleChangePage() {
                     <button
                       key={day}
                       onClick={() => applyModeToDate(dateStr)}
-                      className={`h-20 border-b border-r border-[#F3F4F6] flex flex-col items-center pt-1.5 pb-1
+                      className={`h-24 border-b border-r border-[#F3F4F6] flex flex-col items-center pt-1.5 pb-1
                         relative transition-all
                         ${activeMode
                           ? activeMode === 'ERASE' && tags.length > 0
@@ -429,18 +429,27 @@ export default function ScheduleChangePage() {
                         </span>
                       )}
                       {tags.length > 0 && (
-                        <div className="flex flex-wrap gap-0.5 mt-auto justify-center mb-1 px-0.5">
+                        <div className="flex flex-col gap-0.5 mt-1 w-full px-1">
                           {tags.slice(0, 3).map(tag => {
                             const t = SCHEDULE_TAGS.find(s => s.label === tag);
+                            const shortLabel =
+                              tag === '토요일진료' ? '토요' :
+                              tag === '일요일진료' ? '일요' :
+                              tag === '오전진료' ? '오전' :
+                              tag === '오후진료' ? '오후' :
+                              tag === '야간진료' ? '야간' :
+                              tag === '공휴일진료' ? '공휴' : '휴진';
                             return (
                               <span key={tag}
-                                className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white flex-shrink-0"
-                                style={{ backgroundColor: t?.color }}>
-                                {ABBR[tag]}
+                                className="w-full text-center text-[9px] font-bold leading-none py-0.5 rounded"
+                                style={{ backgroundColor: t?.color, color: '#fff' }}>
+                                {shortLabel}
                               </span>
                             );
                           })}
-                          {tags.length > 3 && <span className="text-[7px] text-[#9CA3AF]">+{tags.length - 3}</span>}
+                          {tags.length > 3 && (
+                            <span className="w-full text-center text-[8px] text-[#9CA3AF]">+{tags.length - 3}</span>
+                          )}
                         </div>
                       )}
                     </button>
