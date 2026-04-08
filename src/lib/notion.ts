@@ -126,6 +126,37 @@ export async function createChangeRecord(
   return response.id;
 }
 
+// 메인 거래처DB에서 치과명으로 페이지 조회 → pageId + 진료시간 반환
+async function findClinicInMainDB(
+  clinicName: string
+): Promise<{ pageId: string; clinicHours: string } | null> {
+  const dbId = process.env.NOTION_MAIN_DB_ID;
+  if (!dbId || !clinicName) return null;
+  try {
+    const res = await withRetry(() =>
+      notion.search({
+        query: clinicName,
+        filter: { value: 'page', property: 'object' },
+        page_size: 10,
+      })
+    );
+    // 메인 DB 소속 페이지 중 제목이 정확히 일치하는 것 찾기
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const match = (res.results as any[]).find((p) => {
+      if (p.parent?.database_id?.replace(/-/g, '') !== dbId.replace(/-/g, '')) return false;
+      const titleArr = p.properties?.['이름']?.title || p.properties?.['title']?.title || [];
+      const title = titleArr[0]?.plain_text || '';
+      return title === clinicName;
+    });
+    if (!match) return null;
+    const hoursVal =
+      match.properties?.['진료시간']?.rich_text?.[0]?.text?.content || '';
+    return { pageId: match.id, clinicHours: hoursVal };
+  } catch {
+    return null;
+  }
+}
+
 export async function createScheduleChangeRecord(
   data: Record<string, unknown>
 ): Promise<string> {
@@ -135,6 +166,10 @@ export async function createScheduleChangeRecord(
   const scheduleData = (data.scheduleData as string) || '';
   const printSizes = (data.printSizes as string[]) || [];
   const dateSchedulesRaw = (data.dateSchedulesRaw as Record<string, string[]>) || {};
+  const holidayReason = (data.holidayReason as string) || '';
+
+  // 메인 거래처DB에서 해당 치과 조회 (진료시간 가져오기 + Relation 연결)
+  const clinicInfo = await findClinicInMainDB((data.clinicName as string) || '');
 
   // 태그별로 날짜 분류
   const TAG_TYPES = ['휴진', '토요일진료', '일요일진료', '오전진료', '오후진료', '야간진료', '공휴일진료'] as const;
@@ -169,6 +204,12 @@ export async function createScheduleChangeRecord(
         '기타요청': data.extraRequest ? { rich_text: [{ text: { content: (data.extraRequest as string) } }] } : undefined,
         '처리상태': { select: { name: '접수' } },
         '제출일': { date: { start: new Date().toISOString().split('T')[0] } },
+        // 메인 거래처DB와 관계 연결 (Notion에 '거래처' Relation 속성 필요)
+        ...(clinicInfo ? { '거래처': { relation: [{ id: clinicInfo.pageId }] } } : {}),
+        // 정기 진료시간 (메인 DB에서 조회)
+        '진료시간': clinicInfo?.clinicHours ? { rich_text: [{ text: { content: clinicInfo.clinicHours } }] } : undefined,
+        // 휴진 사유
+        '휴진사유': holidayReason ? { rich_text: [{ text: { content: holidayReason } }] } : undefined,
         '휴진일': tagToDates['휴진'].length > 0 ? { rich_text: [{ text: { content: sortDates(tagToDates['휴진']) } }] } : undefined,
         '토요일진료': tagToDates['토요일진료'].length > 0 ? { rich_text: [{ text: { content: sortDates(tagToDates['토요일진료']) } }] } : undefined,
         '일요일진료': tagToDates['일요일진료'].length > 0 ? { rich_text: [{ text: { content: sortDates(tagToDates['일요일진료']) } }] } : undefined,

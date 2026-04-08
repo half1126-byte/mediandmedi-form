@@ -90,6 +90,7 @@ export default function ScheduleChangePage() {
   const [events, setEvents] = useState('');
   const [printSizes, setPrintSizes] = useState<string[]>([]);
   const [extraRequest, setExtraRequest] = useState('');
+  const [holidayReason, setHolidayReason] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -172,6 +173,7 @@ export default function ScheduleChangePage() {
           events: events.trim(),
           printSizes,
           extraRequest: extraRequest.trim(),
+          holidayReason: holidayReason.trim(),
         }),
       });
       const data = await res.json();
@@ -541,6 +543,24 @@ export default function ScheduleChangePage() {
 
         {/* 우측: 이벤트 + 출력 + 기타 + PC 제출 버튼 */}
         <div className="space-y-6 mt-6 lg:mt-0 lg:sticky lg:top-20 lg:self-start">
+
+          {/* 휴진 사유 - 휴진 날짜가 있을 때만 표시 */}
+          {Object.values(dateSchedules).some((tags) => tags.includes('휴진')) && (
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold text-[#6B7280]">
+                <span className="inline-block w-2 h-2 rounded-full bg-[#DC2626] mr-1.5 align-middle" />
+                휴진 사유
+              </h3>
+              <input
+                type="text"
+                value={holidayReason}
+                onChange={(e) => setHolidayReason(e.target.value)}
+                placeholder="예: 원장 개인 사정, 건물 공사, 학회 참석"
+                className="w-full h-11 px-4 rounded-lg border border-[#D1D5DB] text-sm
+                           focus:outline-none focus:border-[#DC2626] transition-colors"
+              />
+            </section>
+          )}
 
           {/* 이벤트 */}
           <section className="space-y-3">
