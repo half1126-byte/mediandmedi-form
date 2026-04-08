@@ -250,7 +250,7 @@ export default function NewClinicPage() {
       setSubmitting(false);
       setRetryCount((c) => c + 1);
       setSubmitError(
-        error instanceof Error ? error.message : '저장 실패, 데이터는 기기에 보관 중입니다.'
+        error instanceof Error ? error.message : '저장에 실패했습니다. 입력 내용은 기기에 보관 중이오니 다시 시도해 주세요'
       );
     }
   };
@@ -270,13 +270,13 @@ export default function NewClinicPage() {
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       <LoadingOverlay
         show={submitting}
-        steps={['거래처 정보 저장 중...', '팀별 업무 생성 중...', '완료!']}
+        steps={['거래처 정보를 저장하고 있습니다...', '팀별 업무를 생성하고 있습니다...', '완료!']}
         currentStepIndex={submitStep}
       />
 
       {/* 상단 헤더 */}
       <header className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between px-6 py-3">
             <button
               onClick={() => step === 0 ? router.push('/') : prevStep()}
@@ -298,7 +298,7 @@ export default function NewClinicPage() {
       </header>
 
       {/* 폼 콘텐츠 */}
-      <main className="flex-1 max-w-lg mx-auto w-full px-6 py-6 pb-28">
+      <main className="flex-1 max-w-2xl mx-auto w-full px-6 py-6 pb-28">
         <div key={step} className="animate-fade-slide-in">
           {step === 0 && <Step1 data={data.step1} onChange={(u) => updateStep('step1', u)} />}
           {step === 1 && <Step2 data={data.step2} onChange={(u) => updateStep('step2', u)} />}
@@ -312,7 +312,7 @@ export default function NewClinicPage() {
 
       {/* 하단 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-        <div className="max-w-lg mx-auto px-6 py-4 flex gap-3">
+        <div className="max-w-2xl mx-auto px-6 py-4 flex gap-3">
           {step > 0 && step < 6 && (
             <button
               onClick={prevStep}
@@ -347,7 +347,7 @@ export default function NewClinicPage() {
           )}
         </div>
         {submitError && (
-          <div className="max-w-lg mx-auto px-6 pb-4">
+          <div className="max-w-2xl mx-auto px-6 pb-4">
             <div className="bg-red-50 text-[#DC2626] text-sm p-3 rounded-lg flex items-center justify-between">
               <span>{submitError}</span>
               <button
@@ -492,7 +492,7 @@ function Step2({
     <div className="space-y-6">
       <div>
         <FieldLabel required>진료과목</FieldLabel>
-        <p className="text-xs text-[#6B7280] mb-3">해당하는 진료과목을 모두 선택해주세요</p>
+        <p className="text-xs text-[#6B7280] mb-3">해당하는 진료과목을 모두 선택해 주세요</p>
         <CategoryChipSelector
           categories={DENTAL_CATEGORIES}
           selected={data.dentalSubjects}
@@ -502,7 +502,7 @@ function Step2({
       {data.dentalSubjects.length > 0 && (
         <div>
           <FieldLabel>주력진료 TOP 3</FieldLabel>
-          <p className="text-xs text-[#6B7280] mb-3">선택한 과목 중 주력으로 마케팅할 과목 (최대 3개)</p>
+          <p className="text-xs text-[#6B7280] mb-3">주력으로 마케팅하실 과목을 최대 3개까지 선택해 주세요</p>
           <ChipSelector
             options={data.dentalSubjects}
             selected={data.topSubjects}
@@ -746,7 +746,7 @@ function Step4({
       </div>
       <div>
         <FieldLabel>봉직의 정보</FieldLabel>
-        <p className="text-xs text-[#6B7280] mb-3">봉직의가 있는 경우 입력해주세요</p>
+        <p className="text-xs text-[#6B7280] mb-3">봉직의가 계신 경우 입력해 주세요</p>
         {data.additionalDoctors.map((doc, idx) => (
           <div key={idx} className="bg-[#F8FAFC] rounded-lg p-3 space-y-2 mb-2">
             <div className="flex gap-2">
@@ -883,7 +883,7 @@ function Step5({
         <TextArea
           value={data.additionalRequest}
           onChange={(v) => onChange({ additionalRequest: v })}
-          placeholder="기타 요청사항이 있으시면 자유롭게 작성해주세요"
+          placeholder="기타 요청사항이 있으시면 자유롭게 적어 주세요"
         />
       </div>
     </div>
@@ -1023,7 +1023,7 @@ function Step7({
     <div className="space-y-4">
       <h2 className="text-lg font-bold text-[#374151] mb-2">최종 확인</h2>
       <p className="text-sm text-[#6B7280] mb-4">
-        입력하신 내용을 확인 후 제출해주세요. 각 섹션의 [수정] 버튼으로 수정할 수 있습니다.
+        입력하신 내용을 한 번 더 확인해 주세요. 각 섹션의 [수정] 버튼으로 수정하실 수 있습니다.
       </p>
 
       <SummarySection title="기본 정보" stepIndex={0}>

@@ -23,7 +23,7 @@ export default function ContractChangePage() {
 
   const handleSubmit = async () => {
     if (!clinicName || !doctorName || currentServices.length === 0 || !reason) {
-      setError('필수 항목을 모두 입력해주세요 (치과명, 원장명, 현재 상품, 변경 사유)');
+      setError('치과명, 원장님 성함, 현재 상품, 변경 사유는 필수로 입력해 주세요');
       return;
     }
 
@@ -77,7 +77,7 @@ export default function ContractChangePage() {
           </div>
           <div>
             <h2 className="text-xl font-bold text-[#374151]">
-              {clinicName} 계약변경이 저장되었습니다
+              {clinicName} 계약변경이 접수되었습니다
             </h2>
             <p className="text-sm text-[#6B7280] mt-2">
               {addServices.length > 0 && `추가: ${addServices.join(', ')}`}
@@ -90,7 +90,7 @@ export default function ContractChangePage() {
             className="w-full h-12 bg-[#2563EB] text-white rounded-lg font-semibold
                        hover:bg-[#1d4ed8] active:scale-[0.98] transition-all"
           >
-            홈으로 돌아가기
+            처음으로 돌아가기
           </button>
         </div>
       </div>
@@ -101,12 +101,12 @@ export default function ContractChangePage() {
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       <LoadingOverlay
         show={submitting}
-        steps={['계약변경 정보 저장 중...', '완료!']}
+        steps={['계약변경 정보를 저장하고 있습니다...', '완료!']}
         currentStepIndex={submitStep}
       />
 
       <header className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10">
-        <div className="max-w-lg mx-auto flex items-center justify-between px-6 py-4">
+        <div className="max-w-2xl mx-auto flex items-center justify-between px-6 py-4">
           <button
             onClick={() => router.push('/')}
             className="w-10 h-10 flex items-center justify-center min-w-[44px] min-h-[44px]"
@@ -120,7 +120,7 @@ export default function ContractChangePage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-lg mx-auto w-full px-6 py-6 pb-28 space-y-6">
+      <main className="flex-1 max-w-2xl mx-auto w-full px-6 py-6 pb-28 space-y-6">
         <div>
           <label className="block text-sm font-semibold text-[#374151] mb-2">
             치과명 <span className="text-[#DC2626]">*</span>
@@ -147,7 +147,7 @@ export default function ContractChangePage() {
 
         <div>
           <label className="block text-sm font-semibold text-[#374151] mb-2">
-            현재 계약 상품 <span className="text-[#DC2626]">*</span>
+            현재 계약 중인 상품 <span className="text-[#DC2626]">*</span>
           </label>
           <ChipSelector
             options={SERVICE_NAMES}
@@ -158,7 +158,7 @@ export default function ContractChangePage() {
 
         <div>
           <label className="block text-sm font-semibold text-[#374151] mb-2">
-            추가할 상품
+            추가하실 상품
           </label>
           <ChipSelector
             options={SERVICE_NAMES.filter((s) => !currentServices.includes(s))}
@@ -169,7 +169,7 @@ export default function ContractChangePage() {
 
         <div>
           <label className="block text-sm font-semibold text-[#374151] mb-2">
-            축소/해지할 상품
+            축소 또는 해지하실 상품
           </label>
           <ChipSelector
             options={currentServices}
@@ -185,7 +185,7 @@ export default function ContractChangePage() {
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="계약 변경 사유를 작성해주세요"
+            placeholder="계약 변경 사유를 자유롭게 적어 주세요"
             rows={4}
             className="w-full px-4 py-3 rounded-lg border border-[#D1D5DB] text-base focus:outline-none focus:border-[#2563EB] resize-none"
           />
@@ -193,7 +193,7 @@ export default function ContractChangePage() {
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-        <div className="max-w-lg mx-auto px-6 py-4">
+        <div className="max-w-2xl mx-auto px-6 py-4">
           <button
             onClick={handleSubmit}
             disabled={submitting}
