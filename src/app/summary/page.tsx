@@ -86,7 +86,7 @@ function SummaryContent() {
               </svg>
             </div>
             <h2 className="text-lg font-semibold text-[#374151]">PIN 입력</h2>
-            <p className="text-sm text-[#6B7280] mt-1">제출 시 받은 4자리 PIN을 입력해주세요</p>
+            <p className="text-sm text-[#6B7280] mt-1">제출 시 받은 4자리 PIN을 입력해 주세요</p>
           </div>
           <input
             type="text"
@@ -230,7 +230,7 @@ function SummaryContent() {
             className="w-full h-12 bg-white text-[#374151] border border-[#D1D5DB] rounded-lg font-medium
                        hover:border-[#2563EB] hover:text-[#2563EB] transition-all"
           >
-            홈으로 돌아가기
+            처음으로 돌아가기
           </button>
         </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { isHoliday } from '@/data/holidays';
 
 // 태그 정의
 const SCHEDULE_TAGS = {
@@ -14,23 +15,6 @@ const SCHEDULE_TAGS = {
 } as const;
 
 type TagKey = keyof typeof SCHEDULE_TAGS;
-
-// 한국 공휴일 (2026년)
-const HOLIDAYS_2026: Record<string, string> = {
-  '2026-01-01': '신정', '2026-02-16': '설날연휴', '2026-02-17': '설날', '2026-02-18': '설날연휴',
-  '2026-03-01': '삼일절', '2026-05-05': '어린이날', '2026-05-24': '부처님오신날',
-  '2026-05-25': '대체공휴일', '2026-06-06': '현충일', '2026-08-15': '광복절',
-  '2026-09-24': '추석연휴', '2026-09-25': '추석', '2026-09-26': '추석연휴',
-  '2026-10-03': '개천절', '2026-10-09': '한글날', '2026-12-25': '크리스마스',
-};
-const HOLIDAYS_2027: Record<string, string> = {
-  '2027-01-01': '신정', '2027-02-06': '설날연휴', '2027-02-07': '설날', '2027-02-08': '설날연휴',
-  '2027-03-01': '삼일절', '2027-05-05': '어린이날', '2027-05-13': '부처님오신날',
-  '2027-06-06': '현충일', '2027-08-15': '광복절',
-  '2027-09-14': '추석연휴', '2027-09-15': '추석', '2027-09-16': '추석연휴',
-  '2027-10-03': '개천절', '2027-10-09': '한글날', '2027-10-11': '대체공휴일', '2027-12-25': '크리스마스',
-};
-const ALL_HOLIDAYS: Record<string, string> = { ...HOLIDAYS_2026, ...HOLIDAYS_2027 };
 
 interface ScheduleRecord {
   id: string;
@@ -96,7 +80,7 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
   for (const [dayStr, tags] of taggedDays) {
     const day = parseInt(dayStr);
     const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const holiday = ALL_HOLIDAYS[dateKey];
+    const holiday = isHoliday(dateKey)?.name;
     for (const tag of tags) {
       allChips.push({ day, tag, holiday });
     }
@@ -149,7 +133,7 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
             const day = i + 1;
             const dayOfWeek = (firstDay + i) % 7;
             const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const holiday = ALL_HOLIDAYS[dateKey];
+            const holiday = isHoliday(dateKey)?.name;
             const tags = dateTagMap[day] || [];
             const primaryTag = getPrimaryTag(tags);
             const t = primaryTag ? SCHEDULE_TAGS[primaryTag] : null;
@@ -213,7 +197,10 @@ export default function AdminSchedulePage() {
   const [records, setRecords] = useState<ScheduleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState(() => {
+    const now = new Date();
+    return now.getMonth() + 2 > 12 ? now.getFullYear() + 1 : now.getFullYear();
+  });
   const [selectedMonth, setSelectedMonth] = useState(
     new Date().getMonth() + 2 > 12 ? 1 : new Date().getMonth() + 2
   );

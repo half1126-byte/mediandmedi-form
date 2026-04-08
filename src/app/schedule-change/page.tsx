@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { getHolidaysForMonth, isHoliday } from '@/data/holidays';
+import { isHoliday } from '@/data/holidays';
 
 // 날짜별 일정 타입
 type ScheduleTag = '휴진' | '토요일진료' | '일요일진료' | '오전진료' | '오후진료' | '야간진료' | '공휴일진료';
@@ -98,8 +98,6 @@ export default function ScheduleChangePage() {
   // 달력 데이터 계산
   const daysInMonth = getDaysInMonth(calYear, calMonth);
   const firstDay = getFirstDayOfWeek(calYear, calMonth);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const holidays = useMemo(() => getHolidaysForMonth(calYear, calMonth), [calYear, calMonth]);
 
   const prevMonth = () => {
     if (calMonth === 1) { setCalYear(calYear - 1); setCalMonth(12); }
