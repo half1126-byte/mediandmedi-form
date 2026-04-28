@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminToken } from '@/lib/admin-auth';
 
 export async function PATCH(
   request: NextRequest,
@@ -6,6 +7,9 @@ export async function PATCH(
 ) {
   const apiKey = process.env.NOTION_API_KEY;
   if (!apiKey) return NextResponse.json({ success: false }, { status: 500 });
+
+  const authError = verifyAdminToken(request);
+  if (authError) return authError;
 
   const { id } = await params;
   const body = await request.json() as Record<string, unknown>;
@@ -41,6 +45,9 @@ export async function DELETE(
 ) {
   const apiKey = process.env.NOTION_API_KEY;
   if (!apiKey) return NextResponse.json({ success: false }, { status: 500 });
+
+  const authError2 = verifyAdminToken(request);
+  if (authError2) return authError2;
 
   const { id } = await params;
 

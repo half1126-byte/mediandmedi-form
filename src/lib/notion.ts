@@ -194,7 +194,6 @@ export async function createScheduleChangeRecord(
   const response = await withRetry(() =>
     notion.pages.create({
       parent: { database_id: dbId },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       properties: {
         title: { title: [{ text: { content: (data.clinicName as string) || '' } }] },
         '거래처명': { select: { name: (data.clinicName as string) || '' } },
@@ -218,6 +217,7 @@ export async function createScheduleChangeRecord(
         '오후진료': tagToDates['오후진료'].length > 0 ? { rich_text: [{ text: { content: sortDates(tagToDates['오후진료']) } }] } : undefined,
         '야간진료': tagToDates['야간진료'].length > 0 ? { rich_text: [{ text: { content: sortDates(tagToDates['야간진료']) } }] } : undefined,
         '공휴일진료': tagToDates['공휴일진료'].length > 0 ? { rich_text: [{ text: { content: sortDates(tagToDates['공휴일진료']) } }] } : undefined,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
     })
   );
@@ -225,6 +225,14 @@ export async function createScheduleChangeRecord(
   return response.id;
 }
 
+
+// 업로드된 파일 배열 → Notion rich_text (URL 줄바꿈으로 연결)
+function filesToText(files: unknown): { rich_text: { text: { content: string } }[] } | undefined {
+  const arr = (files as { url: string; filename: string }[] | undefined) || [];
+  if (arr.length === 0) return undefined;
+  const text = arr.map(f => `${f.filename}\n${f.url}`).join('\n\n').slice(0, 2000);
+  return { rich_text: [{ text: { content: text } }] };
+}
 
 function buildMainProperties(data: Record<string, unknown>): Record<string, unknown> {
   const s1 = (data.step1 || {}) as Record<string, unknown>;
@@ -286,6 +294,17 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
       const text = docs.map(d => `${d.name} ${d.title}${d.specialty ? ` (${d.specialty})` : ''}`).join(', ');
       return { rich_text: [{ text: { content: text } }] };
     })(),
+    // 첨부파일 URL들 (FTP 호스팅에 업로드된 파일)
+    '약력이미지': filesToText(s1.careerImages),
+    '인테리어도면': filesToText(s3.blueprintFiles),
+    '로고파일': filesToText(s4.logoFiles),
+    '면허증': filesToText(s4.licenseFiles),
+    '전문의자격증': filesToText(s4.certificateFiles),
+    '사업자등록증': filesToText(s4.businessFiles),
+    '개설필증': filesToText(s4.permitFiles),
+    '간판사진': filesToText(s4.signageFiles),
+    '현수막사진': filesToText(s4.bannerFiles),
+    '공사현장사진': filesToText(s4.constructionFiles),
     '유입경로': { multi_select: ((s5.referralSource as string[]) || []).map(s => ({ name: s })) },
     '이전마케팅': s5.previousMarketing ? { rich_text: [{ text: { content: s5.previousMarketing as string } }] } : undefined,
     '예산범위': s5.budgetRange ? { select: { name: s5.budgetRange as string } } : undefined,

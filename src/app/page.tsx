@@ -1,34 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { findExistingSaves, type SavedFormData } from '@/lib/autosave';
-
 export default function Home() {
   const router = useRouter();
-  const [previousSubmissions, setPreviousSubmissions] = useState(false);
-  const [savedForms, setSavedForms] = useState<SavedFormData[]>([]);
+  const [previousSubmissions, setPreviousSubmissions] = useState(() => {
+    try { return !!localStorage.getItem('mediandmedi-last-submission'); }
+    catch { return false; }
+  });
   const [showChoice, setShowChoice] = useState(false);
 
-  useEffect(() => {
-    const saves = findExistingSaves();
-    if (saves.length > 0) {
-      setSavedForms(saves);
-    }
-    // 로컬스토리지에서 제출 완료 기록 확인
-    try {
-      const submitted = localStorage.getItem('mediandmedi-last-submission');
-      if (submitted) setPreviousSubmissions(true);
-    } catch { /* ignore */ }
-  }, []);
-
   const handleNewClinic = () => {
-    if (savedForms.length > 0) {
-      // 기존 저장 데이터가 있으면 new-clinic에서 복원 다이얼로그 처리
-      router.push('/new-clinic');
-    } else {
-      router.push('/new-clinic');
-    }
+    router.push('/new-clinic');
   };
 
   return (

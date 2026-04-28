@@ -106,7 +106,7 @@ export default function ContractChangePage() {
       />
 
       <header className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto flex items-center justify-between px-6 py-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between px-6 py-4">
           <button
             onClick={() => router.push('/')}
             className="w-10 h-10 flex items-center justify-center min-w-[44px] min-h-[44px]"
@@ -120,7 +120,7 @@ export default function ContractChangePage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-2xl mx-auto w-full px-6 py-6 pb-28 space-y-6">
+      <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-6 pb-28 space-y-6">
         <div>
           <label className="block text-sm font-semibold text-[#374151] mb-2">
             치과명 <span className="text-[#DC2626]">*</span>
@@ -193,7 +193,7 @@ export default function ContractChangePage() {
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-        <div className="max-w-2xl mx-auto px-6 py-4">
+        <div className="max-w-4xl mx-auto px-6 py-4">
           <button
             onClick={handleSubmit}
             disabled={submitting}

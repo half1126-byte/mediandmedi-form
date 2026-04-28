@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { isHoliday } from '@/data/holidays';
 
 type ScheduleTag = '휴진' | '토요일진료' | '일요일진료' | '오전진료' | '오후진료' | '야간진료' | '공휴일진료';
-type ActiveMode = ScheduleTag | 'ERASE' | null;
+type ActiveMode = ScheduleTag | null;
 
 const SCHEDULE_TAGS: { label: ScheduleTag; color: string; bg: string; emoji: string }[] = [
   { label: '휴진',     color: '#DC2626', bg: '#FEE2E2', emoji: '🔴' },
@@ -84,12 +84,6 @@ export default function ScheduleChangePage() {
       setTimeout(() => setShowModeHint(false), 2500);
       return;
     }
-    if (activeMode === 'ERASE') {
-      const updated = { ...dateSchedules };
-      delete updated[dateStr];
-      setDateSchedules(updated);
-      return;
-    }
     const current = dateSchedules[dateStr] || [];
     const hasTag = current.includes(activeMode as ScheduleTag);
     setDateSchedules({
@@ -148,7 +142,7 @@ export default function ScheduleChangePage() {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
         <header className="bg-white border-b border-[#E5E7EB]">
-          <div className="max-w-5xl mx-auto flex items-center justify-between px-6 py-4">
+          <div className="max-w-4xl mx-auto flex items-center justify-between px-6 py-4">
             <button onClick={() => router.push('/')} className="w-10 h-10 flex items-center justify-center">
               <svg className="w-5 h-5 text-[#374151]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -158,7 +152,7 @@ export default function ScheduleChangePage() {
             <div className="w-10" />
           </div>
         </header>
-        <main className="max-w-5xl mx-auto px-6 py-8 space-y-5">
+        <main className="max-w-4xl mx-auto px-6 py-8 space-y-5">
           <div className="bg-white rounded-2xl border border-[#E5E7EB] p-8 text-center">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-10 h-10 text-[#16A34A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -205,7 +199,7 @@ export default function ScheduleChangePage() {
   }
 
   // ─── 메인 폼 ─────────────────────────────────────────────────────────────
-  const activeModeTag = activeMode && activeMode !== 'ERASE'
+  const activeModeTag = activeMode
     ? SCHEDULE_TAGS.find(t => t.label === activeMode) : null;
 
   return (
@@ -221,24 +215,21 @@ export default function ScheduleChangePage() {
 
       {/* 헤더 */}
       <header className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto flex items-center justify-between px-6 py-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between px-6 py-4">
           <button onClick={() => router.push('/')} className="w-10 h-10 flex items-center justify-center">
             <svg className="w-5 h-5 text-[#374151]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <div className="text-center">
-            <h2 className="text-base font-semibold text-[#374151]">진료일정 전달</h2>
+            <h2 className="text-base font-semibold text-[#374151]">진료일정 변경</h2>
             <p className="text-[10px] text-[#9CA3AF]">📅 매월 8일까지 제출해 주세요</p>
           </div>
           <div className="w-10" />
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto w-full px-4 py-5 pb-28 lg:pb-6
-                       lg:grid lg:grid-cols-[1fr_400px] lg:gap-8">
-
-        {/* ── 좌측: 치과 정보 + 달력 ── */}
+      <main className="max-w-4xl mx-auto w-full px-4 py-5 pb-8">
         <div className="space-y-5">
 
           {/* STEP 1: 치과 정보 */}
@@ -324,31 +315,32 @@ export default function ScheduleChangePage() {
                     </button>
                   );
                 })}
-                {/* 지우개 */}
+                {/* 전체 지우기 */}
                 <button
-                  onClick={() => setActiveMode(activeMode === 'ERASE' ? null : 'ERASE')}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95
-                    ${activeMode === 'ERASE'
-                      ? 'bg-[#374151] text-white shadow-md scale-105'
-                      : 'bg-[#F3F4F6] text-[#6B7280] border border-[#E5E7EB]'}`}
+                  onClick={() => {
+                    if (Object.keys(dateSchedules).length === 0) return;
+                    if (confirm('달력에 표시된 모든 일정을 초기화할까요?')) {
+                      setDateSchedules({});
+                      setActiveMode(null);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95
+                    bg-[#F3F4F6] text-[#6B7280] border border-[#E5E7EB] hover:bg-red-50 hover:text-red-500 hover:border-red-200"
                 >
-                  {activeMode === 'ERASE' && <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
-                  🧹 지우기
+                  🧹 전체 지우기
                 </button>
               </div>
 
               {/* 활성 모드 표시줄 */}
-              {activeMode ? (
+              {activeMode && activeModeTag ? (
                 <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold"
-                  style={activeModeTag ? {
+                  style={{
                     backgroundColor: activeModeTag.bg,
                     color: activeModeTag.color,
                     border: `1.5px solid ${activeModeTag.color}40`,
-                  } : { backgroundColor: '#F3F4F6', color: '#374151', border: '1.5px solid #E5E7EB' }}>
-                  <span className="text-base">{activeModeTag ? activeModeTag.emoji : '🧹'}</span>
-                  {activeMode === 'ERASE'
-                    ? '지우기 모드 · 날짜를 탭하면 해당 날짜 표시가 모두 삭제됩니다'
-                    : `${activeMode} · 이제 아래 달력에서 날짜를 탭해 주세요`}
+                  }}>
+                  <span className="text-base">{activeModeTag.emoji}</span>
+                  {`${activeMode} · 이제 아래 달력에서 날짜를 탭해 주세요`}
                 </div>
               ) : (
                 <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm text-[#9CA3AF] bg-white border border-[#E5E7EB]">
@@ -406,9 +398,7 @@ export default function ScheduleChangePage() {
                       className={`h-24 border-b border-r border-[#F3F4F6] flex flex-col items-center pt-1.5 pb-1
                         relative transition-all
                         ${activeMode
-                          ? activeMode === 'ERASE' && tags.length > 0
-                            ? 'hover:bg-red-50 hover:ring-2 hover:ring-inset hover:ring-red-300 cursor-pointer'
-                            : 'hover:opacity-80 cursor-pointer'
+                          ? 'hover:opacity-80 cursor-pointer'
                           : 'cursor-pointer'}
                       `}
                       style={primaryTag ? { backgroundColor: primaryTag.bg + '90' } : {}}
@@ -455,8 +445,8 @@ export default function ScheduleChangePage() {
           </section>
         </div>
 
-        {/* ── 우측 패널 ── */}
-        <div className="space-y-4 mt-5 lg:mt-0 lg:sticky lg:top-20 lg:self-start">
+        {/* ── 추가 정보 (아래) ── */}
+        <div className="space-y-4 mt-5">
 
           {/* STEP 3: 추가 정보 */}
           <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 space-y-5">
@@ -483,7 +473,7 @@ export default function ScheduleChangePage() {
             {/* 다음달 이벤트 */}
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-[#374151]">
-                다음 달 이벤트 <span className="text-[#9CA3AF] font-normal">(선택)</span>
+                다음 달 이벤트 내용이 있다면 알려 주세요
               </label>
               <textarea
                 value={events}
@@ -498,7 +488,7 @@ export default function ScheduleChangePage() {
             {/* 출력 사이즈 */}
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-[#374151]">
-                출력 사이즈 <span className="text-[#9CA3AF] font-normal">(해당하는 것 모두 선택)</span>
+                출력 사이즈를 선택해 주세요
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {PRINT_SIZES.map(size => {
@@ -520,7 +510,7 @@ export default function ScheduleChangePage() {
             {/* 기타 요청사항 */}
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-[#374151]">
-                기타 요청사항 <span className="text-[#9CA3AF] font-normal">(선택)</span>
+                기타 요청사항이 있으시다면 알려 주세요
               </label>
               <textarea
                 value={extraRequest}
@@ -540,9 +530,9 @@ export default function ScheduleChangePage() {
             <p className="text-xs text-center text-[#9CA3AF]">치과명과 원장님 성함을 입력해야 제출할 수 있습니다</p>
           )}
 
-          {/* PC 전용 제출 버튼 */}
+          {/* 제출 버튼 */}
           <button
-            className="hidden lg:block w-full py-4 bg-[#2563EB] text-white rounded-xl font-bold text-base
+            className="w-full py-4 bg-[#2563EB] text-white rounded-xl font-bold text-base
                        hover:bg-[#1d4ed8] active:scale-[0.98] transition-all
                        disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={handleSubmit}
@@ -553,18 +543,6 @@ export default function ScheduleChangePage() {
         </div>
       </main>
 
-      {/* 모바일 하단 고정 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] px-4 py-3 lg:hidden">
-        <button
-          onClick={handleSubmit}
-          disabled={!canSubmit || submitting}
-          className="w-full py-3.5 bg-[#2563EB] text-white rounded-xl font-bold text-base
-                     disabled:opacity-40 disabled:cursor-not-allowed
-                     hover:bg-[#1d4ed8] active:scale-[0.98] transition-all"
-        >
-          {submitting ? '제출 중입니다...' : '📤 진료일정 제출하기'}
-        </button>
-      </div>
     </div>
   );
 }

@@ -18,6 +18,7 @@ import {
   clearForm,
   type SavedFormData,
 } from '@/lib/autosave';
+import FileUpload, { type UploadedFile } from '@/components/FileUpload';
 import { SERVICES as SERVICES_LIST } from '@/data/services';
 import {
   DENTAL_CATEGORIES,
@@ -62,6 +63,7 @@ interface FormData {
     interiorCompleteDate: string;
     photoDate: string;
     doctorCount: number;
+    careerImages: UploadedFile[];
   };
   step2: {
     dentalSubjects: string[];
@@ -81,6 +83,7 @@ interface FormData {
     implantBrands: string[];
     hasLabRoom: boolean;
     labEquipment: string[];
+    blueprintFiles: UploadedFile[];
   };
   step4: {
     oneLiner: string;
@@ -90,6 +93,14 @@ interface FormData {
     doctorCareer: string;
     hasProfilePhoto: boolean;
     additionalDoctors: { name: string; title: string; specialty: string }[];
+    logoFiles: UploadedFile[];
+    licenseFiles: UploadedFile[];
+    certificateFiles: UploadedFile[];
+    businessFiles: UploadedFile[];
+    permitFiles: UploadedFile[];
+    signageFiles: UploadedFile[];
+    bannerFiles: UploadedFile[];
+    constructionFiles: UploadedFile[];
   };
   step5: {
     referralSource: string[];
@@ -113,13 +124,13 @@ interface FormData {
 }
 
 const INITIAL_DATA: FormData = {
-  step1: { clinicName: '', doctorName: '', openDate: '', region: { city: '', district: '' }, address: '', phone: '', fax: '', softOpenDate: '', interiorCompleteDate: '', photoDate: '', doctorCount: 1 },
+  step1: { clinicName: '', doctorName: '', openDate: '', region: { city: '', district: '' }, address: '', phone: '', fax: '', softOpenDate: '', interiorCompleteDate: '', photoDate: '', doctorCount: 1, careerImages: [] },
   step2: {
     dentalSubjects: [], topSubjects: [], schedule: DEFAULT_SCHEDULE,
     holidays: [], holidayClose: true, lunchTime: { start: '12:30', end: '13:30' }, nightWeekend: '',
   },
-  step3: { chairs: 5, equipment: [], facilities: [], parking: { available: '가능', detail: '' }, interiorStyle: '', implantBrands: [], hasLabRoom: false, labEquipment: [] },
-  step4: { oneLiner: '', philosophy: '', targetPatients: '', differentiator: '', doctorCareer: '', hasProfilePhoto: false, additionalDoctors: [] },
+  step3: { chairs: 5, equipment: [], facilities: [], parking: { available: '가능', detail: '' }, interiorStyle: '', implantBrands: [], hasLabRoom: false, labEquipment: [], blueprintFiles: [] },
+  step4: { oneLiner: '', philosophy: '', targetPatients: '', differentiator: '', doctorCareer: '', hasProfilePhoto: false, additionalDoctors: [], logoFiles: [], licenseFiles: [], certificateFiles: [], businessFiles: [], permitFiles: [], signageFiles: [], bannerFiles: [], constructionFiles: [] },
   step5: { referralSource: [], previousMarketing: '', budgetRange: '', marketingGoals: [], desiredChannels: [], additionalRequest: '', benchmarkClinics: '', openingEvent: '' },
   step6: { services: [], isStarterPackage: false, contractStartDate: '', monthlyFee: '', specialNotes: '', didCount: 0, didInfo: '' },
 };
@@ -276,7 +287,7 @@ export default function NewClinicPage() {
 
       {/* 상단 헤더 */}
       <header className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between px-6 py-3">
             <button
               onClick={() => step === 0 ? router.push('/') : prevStep()}
@@ -298,7 +309,7 @@ export default function NewClinicPage() {
       </header>
 
       {/* 폼 콘텐츠 */}
-      <main className="flex-1 max-w-2xl mx-auto w-full px-6 py-6 pb-28">
+      <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-6 pb-28">
         <div key={step} className="animate-fade-slide-in">
           {step === 0 && <Step1 data={data.step1} onChange={(u) => updateStep('step1', u)} />}
           {step === 1 && <Step2 data={data.step2} onChange={(u) => updateStep('step2', u)} />}
@@ -312,7 +323,7 @@ export default function NewClinicPage() {
 
       {/* 하단 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-        <div className="max-w-2xl mx-auto px-6 py-4 flex gap-3">
+        <div className="max-w-4xl mx-auto px-6 py-4 flex gap-3">
           {step > 0 && step < 6 && (
             <button
               onClick={prevStep}
@@ -347,7 +358,7 @@ export default function NewClinicPage() {
           )}
         </div>
         {submitError && (
-          <div className="max-w-2xl mx-auto px-6 pb-4">
+          <div className="max-w-4xl mx-auto px-6 pb-4">
             <div className="bg-red-50 text-[#DC2626] text-sm p-3 rounded-lg flex items-center justify-between">
               <span>{submitError}</span>
               <button
@@ -477,6 +488,17 @@ function Step1({
           >+</button>
         </div>
       </div>
+      <FileUpload
+        label="의료진 약력 이미지"
+        category="career"
+        clinicName={data.clinicName}
+        accept="image/jpeg,image/png"
+        multiple
+        maxFiles={10}
+        files={data.careerImages}
+        onChange={(files) => onChange({ careerImages: files })}
+        hint="이력서/약력서 사진을 업로드하실 수 있습니다 (선택, jpg/png)"
+      />
     </div>
   );
 }
@@ -671,6 +693,16 @@ function Step3({
           />
         </div>
       )}
+      <FileUpload
+        label="인테리어 3D 도면"
+        category="blueprint"
+        accept="application/pdf,image/jpeg,image/png"
+        multiple
+        maxFiles={5}
+        files={data.blueprintFiles}
+        onChange={(files) => onChange({ blueprintFiles: files })}
+        hint="3D 도면 또는 평면도를 업로드해 주세요 (선택, PDF/jpg/png, 최대 50MB)"
+      />
     </div>
   );
 }
@@ -803,6 +835,94 @@ function Step4({
         >
           + 봉직의 추가
         </button>
+      </div>
+
+      {/* 첨부 자료 섹션 */}
+      <div className="bg-[#F8FAFC] rounded-xl p-5 space-y-5 border border-[#E5E7EB]">
+        <div>
+          <h3 className="text-base font-bold text-[#374151]">📎 첨부 자료</h3>
+          <p className="text-xs text-[#6B7280] mt-1">보유하신 자료를 업로드해 주세요. 모두 선택 사항입니다.</p>
+        </div>
+
+        <FileUpload
+          label="로고"
+          category="logo"
+          accept=".png,.jpg,.jpeg,.svg"
+          files={data.logoFiles}
+          onChange={(files) => onChange({ logoFiles: files })}
+          hint="치과 로고 파일 (png/jpg/svg)"
+        />
+
+        <FileUpload
+          label="치과의사 면허증"
+          category="license"
+          accept=".pdf,.jpg,.jpeg,.png"
+          files={data.licenseFiles}
+          onChange={(files) => onChange({ licenseFiles: files })}
+          hint="원장님 면허증 사본 (PDF/jpg/png)"
+        />
+
+        <FileUpload
+          label="전문의 자격증"
+          category="certificate"
+          accept=".pdf,.jpg,.jpeg,.png"
+          multiple
+          maxFiles={5}
+          files={data.certificateFiles}
+          onChange={(files) => onChange({ certificateFiles: files })}
+          hint="전문의 자격증이 있으시면 업로드해 주세요 (여러 장 가능)"
+        />
+
+        <FileUpload
+          label="사업자등록증"
+          category="business"
+          accept=".pdf,.jpg,.jpeg,.png"
+          files={data.businessFiles}
+          onChange={(files) => onChange({ businessFiles: files })}
+          hint="PDF 또는 이미지"
+        />
+
+        <FileUpload
+          label="개설필증"
+          category="permit"
+          accept=".pdf,.jpg,.jpeg,.png"
+          files={data.permitFiles}
+          onChange={(files) => onChange({ permitFiles: files })}
+          hint="의료기관 개설 신고증"
+        />
+
+        <FileUpload
+          label="간판 사진"
+          category="signage"
+          accept=".jpg,.jpeg,.png"
+          multiple
+          maxFiles={5}
+          files={data.signageFiles}
+          onChange={(files) => onChange({ signageFiles: files })}
+          hint="간판이 설치되어 있으면 사진을 올려 주세요"
+        />
+
+        <FileUpload
+          label="현수막 사진"
+          category="banner"
+          accept=".jpg,.jpeg,.png"
+          multiple
+          maxFiles={5}
+          files={data.bannerFiles}
+          onChange={(files) => onChange({ bannerFiles: files })}
+          hint="개원 안내 현수막 사진"
+        />
+
+        <FileUpload
+          label="공사 현장 사진"
+          category="construction"
+          accept=".jpg,.jpeg,.png"
+          multiple
+          maxFiles={10}
+          files={data.constructionFiles}
+          onChange={(files) => onChange({ constructionFiles: files })}
+          hint="인테리어 진행 상황 사진 (최대 10장)"
+        />
       </div>
     </div>
   );
@@ -982,17 +1102,12 @@ function Step6({
 }
 
 // Step 7: 최종 확인
-function Step7({
-  data, onGoToStep,
+function SummarySection({
+  title, stepIndex, onGoToStep, children,
 }: {
-  data: FormData;
-  onGoToStep: (step: number) => void;
+  title: string; stepIndex: number; onGoToStep: (step: number) => void; children: React.ReactNode;
 }) {
-  const SummarySection = ({
-    title, stepIndex, children,
-  }: {
-    title: string; stepIndex: number; children: React.ReactNode;
-  }) => (
+  return (
     <div className="bg-white rounded-xl border border-[#E5E7EB] p-4 space-y-2">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-[#374151]">{title}</h3>
@@ -1006,17 +1121,24 @@ function Step7({
       <div className="text-sm text-[#6B7280] space-y-1">{children}</div>
     </div>
   );
+}
 
-  const SummaryItem = ({ label, value }: { label: string; value: string | undefined }) => {
-    if (!value || !value.trim()) return null;
-    return (
-      <div className="flex">
-        <span className="w-24 flex-shrink-0 text-[#9CA3AF]">{label}</span>
-        <span className="text-[#374151]">{value}</span>
-      </div>
-    );
-  };
+function SummaryItem({ label, value }: { label: string; value: string | undefined }) {
+  if (!value || !value.trim()) return null;
+  return (
+    <div className="flex">
+      <span className="w-24 flex-shrink-0 text-[#9CA3AF]">{label}</span>
+      <span className="text-[#374151]">{value}</span>
+    </div>
+  );
+}
 
+function Step7({
+  data, onGoToStep,
+}: {
+  data: FormData;
+  onGoToStep: (step: number) => void;
+}) {
   const { step1, step2, step3, step4, step5, step6 } = data;
 
   return (
@@ -1026,7 +1148,7 @@ function Step7({
         입력하신 내용을 한 번 더 확인해 주세요. 각 섹션의 [수정] 버튼으로 수정하실 수 있습니다.
       </p>
 
-      <SummarySection title="기본 정보" stepIndex={0}>
+      <SummarySection title="기본 정보" stepIndex={0} onGoToStep={onGoToStep}>
         <SummaryItem label="치과명" value={step1.clinicName} />
         <SummaryItem label="원장명" value={step1.doctorName} />
         <SummaryItem label="개원예정일" value={step1.openDate} />
@@ -1040,14 +1162,14 @@ function Step7({
         <SummaryItem label="총 의료진" value={step1.doctorCount ? `${step1.doctorCount}명` : undefined} />
       </SummarySection>
 
-      <SummarySection title="진료 정보" stepIndex={1}>
+      <SummarySection title="진료 정보" stepIndex={1} onGoToStep={onGoToStep}>
         <SummaryItem label="진료과목" value={step2.dentalSubjects.join(', ')} />
         <SummaryItem label="주력진료" value={step2.topSubjects.join(', ')} />
         <SummaryItem label="공휴일" value={step2.holidayClose ? '휴진' : '진료'} />
         <SummaryItem label="점심시간" value={`${step2.lunchTime.start} ~ ${step2.lunchTime.end}`} />
       </SummarySection>
 
-      <SummarySection title="시설/장비" stepIndex={2}>
+      <SummarySection title="시설/장비" stepIndex={2} onGoToStep={onGoToStep}>
         <SummaryItem label="체어 수" value={`${step3.chairs}대`} />
         <SummaryItem label="장비" value={step3.equipment.join(', ')} />
         <SummaryItem label="시설" value={step3.facilities.join(', ')} />
@@ -1057,7 +1179,7 @@ function Step7({
         <SummaryItem label="기공소" value={step3.hasLabRoom ? `보유${step3.labEquipment.length > 0 ? ` (${step3.labEquipment.join(', ')})` : ''}` : '미보유'} />
       </SummarySection>
 
-      <SummarySection title="브랜딩 & 철학" stepIndex={3}>
+      <SummarySection title="브랜딩 & 철학" stepIndex={3} onGoToStep={onGoToStep}>
         <SummaryItem label="한줄소개" value={step4.oneLiner} />
         <SummaryItem label="타겟환자" value={step4.targetPatients} />
         <SummaryItem label="차별점" value={step4.differentiator} />
@@ -1066,7 +1188,7 @@ function Step7({
         )}
       </SummarySection>
 
-      <SummarySection title="마케팅 방향" stepIndex={4}>
+      <SummarySection title="마케팅 방향" stepIndex={4} onGoToStep={onGoToStep}>
         <SummaryItem label="유입경로" value={step5.referralSource.join(', ')} />
         <SummaryItem label="예산" value={step5.budgetRange} />
         <SummaryItem label="목표" value={step5.marketingGoals.join(', ')} />
@@ -1075,7 +1197,7 @@ function Step7({
         <SummaryItem label="개원이벤트" value={step5.openingEvent} />
       </SummarySection>
 
-      <SummarySection title="계약 상품" stepIndex={5}>
+      <SummarySection title="계약 상품" stepIndex={5} onGoToStep={onGoToStep}>
         <SummaryItem
           label="서비스"
           value={step6.services.map((s) => {

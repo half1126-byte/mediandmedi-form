@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { isHoliday } from '@/data/holidays';
 
 // 태그 정의
@@ -194,6 +195,50 @@ const PRINT_SIZE_COLORS: Record<string, string> = {
 };
 
 export default function AdminSchedulePage() {
+  // 인증 상태
+  const [authed, setAuthed] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [authInput, setAuthInput] = useState('');
+  const [authError, setAuthError] = useState('');
+
+  const verifyToken = useCallback(async (token: string) => {
+    try {
+      const res = await fetch('/api/admin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        sessionStorage.setItem('admin_token', token);
+        setAuthed(true);
+      } else {
+        sessionStorage.removeItem('admin_token');
+        setAuthError('비밀번호가 맞지 않습니다');
+      }
+    } catch {
+      setAuthError('서버 연결 실패');
+    }
+    setAuthChecking(false);
+  }, []);
+
+  // 세션에서 토큰 복원 (async 검증 필수 — setState 불가피)
+  useEffect(() => {
+    const saved = sessionStorage.getItem('admin_token');
+    if (saved) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      verifyToken(saved);
+    } else {
+       
+      setAuthChecking(false);
+    }
+  }, [verifyToken]);
+
+  const getAuthHeaders = (): HeadersInit => {
+    const token = sessionStorage.getItem('admin_token');
+    return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+  };
+
   const [records, setRecords] = useState<ScheduleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -210,17 +255,22 @@ export default function AdminSchedulePage() {
   const targetMonth = `${selectedYear}년 ${selectedMonth}월`;
 
   const fetchRecords = useCallback(async () => {
+    if (!authed) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/schedules?month=${encodeURIComponent(targetMonth)}`);
+      const token = sessionStorage.getItem('admin_token');
+      const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const res = await fetch(`/api/admin/schedules?month=${encodeURIComponent(targetMonth)}`, { headers });
+      if (res.status === 401) { setAuthed(false); sessionStorage.removeItem('admin_token'); return; }
       const data = await res.json() as { success: boolean; records: ScheduleRecord[] };
       if (data.success) setRecords(data.records);
     } catch {
       // ignore
     }
     setLoading(false);
-  }, [targetMonth]);
+  }, [targetMonth, authed]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
   const selectedRecord = records.find((r) => r.id === selectedId);
@@ -230,7 +280,7 @@ export default function AdminSchedulePage() {
     try {
       const res = await fetch(`/api/admin/schedule/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(updates),
       });
       if (!res.ok) alert('수정 실패: 네트워크 오류');
@@ -244,7 +294,9 @@ export default function AdminSchedulePage() {
   const deleteRecord = async (id: string) => {
     if (!confirm('이 항목을 삭제하시겠습니까?')) return;
     try {
-      const res = await fetch(`/api/admin/schedule/${id}`, { method: 'DELETE' });
+      const token = sessionStorage.getItem('admin_token');
+      const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const res = await fetch(`/api/admin/schedule/${id}`, { method: 'DELETE', headers });
       if (!res.ok) alert('삭제 실패');
       if (selectedId === id) setSelectedId(null);
       await fetchRecords();
@@ -269,6 +321,50 @@ export default function AdminSchedulePage() {
     return chips.slice(0, 5);
   };
 
+  // 인증 로딩 중
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+        <p className="text-gray-400">확인 중...</p>
+      </div>
+    );
+  }
+
+  // 비밀번호 게이트
+  if (!authed) {
+    return (
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center px-6">
+        <div className="w-full max-w-sm space-y-5">
+          <div className="text-center">
+            <span className="text-4xl">🔒</span>
+            <h1 className="text-xl font-bold text-white mt-3">관리자 로그인</h1>
+            <p className="text-sm text-gray-400 mt-1">관리자 비밀번호를 입력해 주세요</p>
+          </div>
+          <form onSubmit={(e) => { e.preventDefault(); setAuthError(''); setAuthChecking(true); verifyToken(authInput); }}>
+            <input
+              type="password"
+              value={authInput}
+              onChange={(e) => setAuthInput(e.target.value)}
+              placeholder="비밀번호"
+              autoFocus
+              className="w-full h-12 px-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-500
+                         focus:outline-none focus:border-blue-500 text-center text-lg tracking-widest"
+            />
+            {authError && <p className="text-red-400 text-sm text-center mt-2">{authError}</p>}
+            <button
+              type="submit"
+              className="w-full h-12 mt-4 bg-blue-600 text-white rounded-xl font-semibold
+                         hover:bg-blue-700 active:scale-[0.98] transition-all"
+            >
+              로그인
+            </button>
+          </form>
+          <Link href="/" className="block text-center text-xs text-gray-500 hover:text-gray-300">← 홈으로</Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0f172a] text-white flex flex-col">
       {/* 헤더 */}
@@ -282,18 +378,18 @@ export default function AdminSchedulePage() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">총 {filtered.length}건</span>
-          <a
+          <Link
             href="/"
             className="text-xs text-gray-400 hover:text-white border border-white/10 rounded px-2 py-1"
           >
             ← 홈
-          </a>
+          </Link>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
         {/* 좌측 리스트 패널 */}
-        <aside className="w-[380px] flex-shrink-0 border-r border-white/10 flex flex-col">
+        <aside className="w-[480px] flex-shrink-0 border-r border-white/10 flex flex-col">
           <div className="px-4 pt-4 pb-2">
             {/* 연도 탭 */}
             <div className="flex gap-2 mb-3">
@@ -353,10 +449,13 @@ export default function AdminSchedulePage() {
                   .filter(Boolean).length;
                 const statusColor = STATUS_COLORS[r.status] || STATUS_COLORS['접수'];
                 return (
-                  <button
+                  <div
                     key={r.id}
                     onClick={() => setSelectedId(r.id === selectedId ? null : r.id)}
-                    className={`w-full text-left rounded-xl p-3 border transition-all ${
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter') setSelectedId(r.id === selectedId ? null : r.id); }}
+                    className={`w-full text-left rounded-xl p-3 border transition-all cursor-pointer ${
                       selectedId === r.id
                         ? 'bg-blue-600/20 border-blue-500/50'
                         : 'bg-white/5 border-white/10 hover:bg-white/10'
@@ -382,7 +481,7 @@ export default function AdminSchedulePage() {
                           return (
                             <span
                               key={i}
-                              className="text-[9px] px-1.5 py-0.5 rounded font-medium"
+                              className="text-[10px] px-1.5 py-0.5 rounded font-medium"
                               style={{
                                 backgroundColor: t?.bg,
                                 color: t?.color,
@@ -394,21 +493,21 @@ export default function AdminSchedulePage() {
                           );
                         })}
                         {totalTagCount > previewChips.length && (
-                          <span className="text-[9px] text-gray-500">
+                          <span className="text-[10px] text-gray-500">
                             +{totalTagCount - previewChips.length}
                           </span>
                         )}
                       </div>
                     )}
-                    <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-2 mt-2">
                       <button
-                        onClick={() => deleteRecord(r.id)}
+                        onClick={(e) => { e.stopPropagation(); deleteRecord(r.id); }}
                         className="text-[10px] text-red-400 hover:text-red-300"
                       >
                         삭제
                       </button>
                     </div>
-                  </button>
+                  </div>
                 );
               })
             )}
@@ -423,7 +522,7 @@ export default function AdminSchedulePage() {
               <p className="text-sm">좌측에서 치과를 선택하세요</p>
             </div>
           ) : (
-            <div className="max-w-2xl mx-auto space-y-6">
+            <div className="max-w-4xl mx-auto space-y-6">
               {/* 헤더 */}
               <div className="flex items-start justify-between">
                 <div>

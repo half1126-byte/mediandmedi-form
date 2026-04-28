@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminToken } from '@/lib/admin-auth';
 
 export async function GET(request: NextRequest) {
+  const authError = verifyAdminToken(request);
+  if (authError) return authError;
+
   const { searchParams } = new URL(request.url);
   const month = searchParams.get('month'); // "2026년 5월" 형식
 
