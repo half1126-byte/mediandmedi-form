@@ -52,13 +52,33 @@ export async function createMainRecord(
   const dbId = process.env.NOTION_MAIN_DB_ID;
   if (!dbId) throw new Error('NOTION_MAIN_DB_ID not configured');
 
+  // 1) 파일 URL 외 핵심 필드만 먼저 저장 (반드시 성공해야 함)
+  const coreProps = buildMainProperties(data);
   const response = await withRetry(() =>
     notion.pages.create({
       parent: { database_id: dbId },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      properties: buildMainProperties(data) as any,
+      properties: coreProps as any,
     })
   );
+
+  // 2) 파일 URL은 별도 update로 시도 (DB에 컬럼 없으면 실패해도 페이지는 보존)
+  const fileProps = buildFileProperties(data);
+  if (Object.keys(fileProps).length > 0) {
+    try {
+      await withRetry(() =>
+        notion.pages.update({
+          page_id: response.id,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          properties: fileProps as any,
+        })
+      );
+    } catch (err) {
+      // 파일 컬럼 미설정 등으로 실패해도 본 페이지는 이미 생성됨
+      // 파일 자체는 호스팅 서버에 업로드 완료된 상태이므로 데이터 유실 없음
+      console.error('[Notion] 파일 URL 업데이트 실패 (페이지는 생성됨):', err);
+    }
+  }
 
   return response.id;
 }
@@ -227,11 +247,42 @@ export async function createScheduleChangeRecord(
 
 
 // 업로드된 파일 배열 → Notion rich_text (URL 줄바꿈으로 연결)
+// 2000자 초과 시 truncated 표시 (Notion 텍스트 컬럼 한도 대응)
 function filesToText(files: unknown): { rich_text: { text: { content: string } }[] } | undefined {
   const arr = (files as { url: string; filename: string }[] | undefined) || [];
   if (arr.length === 0) return undefined;
-  const text = arr.map(f => `${f.filename}\n${f.url}`).join('\n\n').slice(0, 2000);
+  const fullText = arr.map(f => `${f.filename}\n${f.url}`).join('\n\n');
+  const text = fullText.length > 2000
+    ? `${fullText.slice(0, 1900)}\n\n[잘림: ${arr.length}개 중 일부만 표시]`
+    : fullText;
   return { rich_text: [{ text: { content: text } }] };
+}
+
+// 파일 URL 전용 properties (createMainRecord에서 분리 처리)
+// DB에 해당 컬럼이 없으면 update 실패하나 본 페이지는 보존됨
+function buildFileProperties(data: Record<string, unknown>): Record<string, unknown> {
+  const s1 = (data.step1 || {}) as Record<string, unknown>;
+  const s3 = (data.step3 || {}) as Record<string, unknown>;
+  const s4 = (data.step4 || {}) as Record<string, unknown>;
+
+  const props: Record<string, unknown> = {};
+  const fileFields: [string, unknown][] = [
+    ['약력이미지', s1.careerImages],
+    ['인테리어도면', s3.blueprintFiles],
+    ['로고파일', s4.logoFiles],
+    ['면허증', s4.licenseFiles],
+    ['전문의자격증', s4.certificateFiles],
+    ['사업자등록증', s4.businessFiles],
+    ['개설필증', s4.permitFiles],
+    ['간판사진', s4.signageFiles],
+    ['현수막사진', s4.bannerFiles],
+    ['공사현장사진', s4.constructionFiles],
+  ];
+  for (const [key, files] of fileFields) {
+    const value = filesToText(files);
+    if (value) props[key] = value;
+  }
+  return props;
 }
 
 function buildMainProperties(data: Record<string, unknown>): Record<string, unknown> {
@@ -294,17 +345,7 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
       const text = docs.map(d => `${d.name} ${d.title}${d.specialty ? ` (${d.specialty})` : ''}`).join(', ');
       return { rich_text: [{ text: { content: text } }] };
     })(),
-    // 첨부파일 URL들 (FTP 호스팅에 업로드된 파일)
-    '약력이미지': filesToText(s1.careerImages),
-    '인테리어도면': filesToText(s3.blueprintFiles),
-    '로고파일': filesToText(s4.logoFiles),
-    '면허증': filesToText(s4.licenseFiles),
-    '전문의자격증': filesToText(s4.certificateFiles),
-    '사업자등록증': filesToText(s4.businessFiles),
-    '개설필증': filesToText(s4.permitFiles),
-    '간판사진': filesToText(s4.signageFiles),
-    '현수막사진': filesToText(s4.bannerFiles),
-    '공사현장사진': filesToText(s4.constructionFiles),
+    // 파일 URL 컬럼은 buildFileProperties()로 분리 (DB 컬럼 미설정 시에도 본 페이지는 보존)
     '유입경로': { multi_select: ((s5.referralSource as string[]) || []).map(s => ({ name: s })) },
     '이전마케팅': s5.previousMarketing ? { rich_text: [{ text: { content: s5.previousMarketing as string } }] } : undefined,
     '예산범위': s5.budgetRange ? { select: { name: s5.budgetRange as string } } : undefined,

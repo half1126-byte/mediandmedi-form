@@ -131,9 +131,9 @@ vercel.json                            # Node 20.x 명시
 
 ### 6-1. Notion DB 신규 컬럼 추가 (필수)
 
-신규 개원 폼에 파일 업로드 기능을 추가했으나, **Notion DB에 해당 컬럼이 없어** URL이 저장되지 않음.
+신규 개원 폼에 파일 업로드 기능을 추가함. **Notion DB에 해당 컬럼이 없어도 본 페이지 생성은 성공**하도록 분리 구현되어 있으나, 파일 URL이 Notion에 저장되지 않으면 디자인팀이 Notion에서 자료를 못 찾음.
 
-거래처 메인 DB에 다음 **10개 텍스트 컬럼** 추가:
+거래처 메인 DB에 다음 **10개 텍스트(Rich Text) 컬럼** 추가:
 
 ```
 약력이미지
@@ -148,7 +148,18 @@ vercel.json                            # Node 20.x 명시
 공사현장사진
 ```
 
-> 추가 안 해도 폼은 작동 (파일 업로드 자체는 됨), URL이 Notion에 저장만 안 됨.
+**구현 동작:**
+- `notion.ts:createMainRecord` — 1단계 페이지 생성 (필수 컬럼만), 2단계 파일 URL `pages.update` (실패 허용)
+- 컬럼 누락 시: 폼 제출 성공 + 호스팅 서버에 파일 업로드 완료 + Notion 페이지 생성됨, 단지 파일 URL 컬럼만 비어있음
+- 따라서 "고아 파일 + 폼 실패" 시나리오 없음. 안전하게 컬럼 추가 가능.
+
+### 6-1a. 호스팅 서버 파일 정리 (운영)
+
+업로드된 파일은 **자동 삭제되지 않습니다.** 1년 누적 시 디스크 용량 모니터링 필요:
+- 위치: `medischedule.co.kr` 호스팅의 `/www/planner/uploads/`
+- 폴더 구조: `{category}/{clinicName}_{YYYY-MM-DD}/{timestamp}-{filename}`
+- 정리 방법: FileZilla로 접속 → 오래된 폴더 수동 삭제
+- 추후: cron 스크립트로 자동 정리 검토
 
 ### 6-2. NOTION_API_KEY 갱신
 
@@ -167,11 +178,23 @@ Vercel 환경변수에서 `NOTION_API_KEY`에 "Needs Attention" 경고 표시됨
 
 상세는 `docs/director-feedback-plan.md` + `docs/director-feedback-questions.md` 참고.
 
-### 6-4. 보안 강화 (선택)
+### 6-4. 알려진 보안 한계 (인지 후 사용)
 
-- `docs/poc-verification-report.md` 참고
-- Rate limiting 미적용 (`/api/admin/verify`) — brute-force 가능성
-- FTP가 평문 (호스팅 서버가 FTPS 미지원). SFTP 가능 여부 호스팅 회사에 문의
+#### 적용된 보안 (배포 완료)
+- `/api/admin/verify` — IP별 5회/분 실패 시 60초 차단 (in-memory rate limit)
+- `/api/upload` — 카테고리 화이트리스트 (path traversal 방지), Content-Length 사전 검증 (50MB), 카테고리별 형식/크기 검증
+- 관리자 토큰 — `crypto.timingSafeEqual` 사용 (timing attack 방지)
+- 프로덕션에서 `ADMIN_TOKEN` 미설정 시 모든 admin API가 500 반환 (실수로 노출 방지)
+
+#### 미해결 보안 사항 (운영 중 인지)
+1. **`/api/upload`는 인증 없는 공개 엔드포인트** — 누구나 호스팅 서버에 파일 업로드 가능. 한국 마케팅 컨텍스트 + 카테고리 화이트리스트로 위험도는 낮으나, 추후 세션 기반 토큰/CAPTCHA 권장.
+2. **FTP 평문 전송** — 호스팅이 FTPS 미지원. 비밀번호와 파일이 Vercel ↔ 호스팅 구간에서 평문. 호스팅 회사에 SFTP 활성화 문의 권장.
+3. **Admin 토큰 sessionStorage 보관** — XSS 발생 시 admin 권한 탈취 가능. 현재 admin은 내부 직원만 접근 + Notion API key가 별도로 필요해 영향 제한적.
+4. **Admin PATCH/DELETE는 임의 Notion page ID 허용** — 인증된 admin은 어떤 page_id든 수정/삭제 가능. 실수 방지 차원에서 schedule DB 소속 페이지인지 사전 검증 권장.
+5. **PIN은 4자리 + `Math.random()`** — `/summary` PIN 조회는 인증이 아닌 편의 기능. 민감 정보 조회 용도로 사용 금지.
+6. **공휴일 데이터는 2026~2027만 하드코딩** — 2028년 진입 시 `src/data/holidays.ts` 수동 갱신 필요.
+
+자세한 분석: `docs/poc-verification-report.md`, `docs/superpowers-fix-log.md`
 
 ---
 
@@ -333,14 +356,30 @@ npm run dev
 
 ## 12. 인수 체크리스트
 
+### 권한
 - [ ] GitHub 저장소 collaborator 추가 받기
 - [ ] Vercel 팀 멤버 추가 받기
 - [ ] Notion 워크스페이스 초대 받기
-- [ ] Notion 통합 (Internal Integration) 토큰 발급/갱신
-- [ ] 거래처 메인 DB에 신규 컬럼 10개 추가
-- [ ] 로컬 환경에서 빌드 + 모든 폼 정상 작동 확인
-- [ ] FTP 호스팅 SFTP 활성화 검토 (보안 강화)
-- [ ] 이사님 피드백 6개 항목 적용 일정 협의
+- [ ] FTP 호스팅 계정 정보 받기 (FileZilla)
+
+### 환경 검증 (로컬)
+- [ ] `git clone` + `npm install` + `npx vercel env pull .env.local`
+- [ ] `npm run dev` 실행 후 모든 폼 페이지 정상 표시
+- [ ] 신규개원 폼 — 파일 업로드 1개 시도 → FileZilla로 호스팅 서버에 실제 파일 생성 확인
+- [ ] 폼 제출 → Notion DB에 페이지 생성 확인
+- [ ] `/admin/schedule` 비밀번호 입력 후 진입 가능 확인
+- [ ] `npx eslint src/` → 0 errors
+
+### 운영 환경 점검
+- [ ] Vercel 환경변수 11개 모두 설정됨 (Notion 5 + Admin 1 + FTP 5)
+- [ ] `NOTION_API_KEY` "Needs Attention" 상태 해결 (만료 토큰 갱신)
+- [ ] 거래처 메인 DB에 신규 컬럼 10개 추가 (선택, 미추가 시 파일 URL만 누락)
+- [ ] 호스팅 서버 디스크 용량 확인 (`/www/planner/uploads/` 모니터링)
+
+### 인수 후 우선 작업 (P0)
+- [ ] FTP 호스팅에 SFTP 활성화 가능 여부 호스팅 회사에 문의
+- [ ] `/api/upload` 인증 추가 (세션 토큰 또는 CAPTCHA) 검토
+- [ ] 이사님 피드백 6개 항목 적용 일정 협의 (`docs/director-feedback-plan.md`)
 
 ---
 

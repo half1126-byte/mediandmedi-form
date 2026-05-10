@@ -847,10 +847,10 @@ function Step4({
         <FileUpload
           label="로고"
           category="logo"
-          accept=".png,.jpg,.jpeg,.svg"
+          accept=".png,.jpg,.jpeg"
           files={data.logoFiles}
           onChange={(files) => onChange({ logoFiles: files })}
-          hint="치과 로고 파일 (png/jpg/svg)"
+          hint="치과 로고 파일 (png/jpg)"
         />
 
         <FileUpload
