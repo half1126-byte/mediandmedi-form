@@ -1,0 +1,271 @@
+<!--
+  =================================================================
+  메디앤메디 발표자료에 추가할 슬라이드 2개
+  =================================================================
+
+  삽입 위치: 기존 Slide 5 (조직 계층) 다음, Slide 6 (해결책/로드맵) 앞
+
+  사용법:
+  1. 기존 HTML에서 <section class="slide" id="s5">...</section> 끝 직후에 아래 두 섹션 붙여넣기
+  2. 그 뒤의 기존 섹션들의 id 번호를 +2씩 조정 (s6→s8, s7→s9, s8→s10)
+  3. 상단 nav-side의 .nav-dot 항목 2개 추가:
+     <div class="nav-dot" onclick="goTo(6)">06</div>
+     <div class="nav-dot" onclick="goTo(7)">07</div>
+
+  슬라이드 구성:
+  - Slide 6: 폼 — 정보 인입의 첫 번째 채널을 만들었다
+  - Slide 7: 미팅 DB — 회의 기록의 표준을 만들었다
+  =================================================================
+-->
+
+
+<!-- ═══ SLIDE 6 : SOLUTION - WEB FORM ═══ -->
+<section class="slide" id="s6">
+  <div class="slide-inner">
+    <div class="slide-meta">
+      <span><span class="ch">Chapter 06</span> / 이미 만든 것 — 폼</span>
+      <span>SOLUTION 01</span>
+    </div>
+
+    <span class="eyebrow">정보 인입의 첫 번째 채널</span>
+    <h2 class="h-display">
+      구두로 오던 정보를<br>
+      <em>폼</em>으로 받기 시작했다
+    </h2>
+    <p class="h-lede">
+      앞에서 본 <strong>"기록되지 않는 채널"</strong> 문제.<br>
+      해결의 첫 단추는 <strong>원장님이 직접 입력하는 폼</strong>입니다.<br><br>
+      신규 개원, 계약 변경, 진료 일정 — 세 가지 인입을<br>
+      <strong>구조화된 데이터</strong>로 받습니다. 카톡·전화 받아쓰기 0.
+    </p>
+
+    <!-- 폼 3개 카드 -->
+    <div class="severity-bar">
+      <div class="sev-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="sev-cell">
+          <div class="sev-label">신규개원 폼</div>
+          <div class="sev-num">7<span class="unit">단계</span></div>
+          <div class="sev-desc">치과 정보 · 진료 · 시설 · 브랜딩<br>마케팅 · 계약 · 자료 첨부</div>
+        </div>
+        <div class="sev-cell">
+          <div class="sev-label">계약변경 폼</div>
+          <div class="sev-num">1<span class="unit">페이지</span></div>
+          <div class="sev-desc">현재 상품 · 추가 · 축소<br>변경 사유 한 화면 정리</div>
+        </div>
+        <div class="sev-cell">
+          <div class="sev-label">진료일정 폼</div>
+          <div class="sev-num">8<span class="unit">일</span></div>
+          <div class="sev-desc">매월 마감 · 달력 UI<br>휴진 · 야간 · 공휴일 태그</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="pc-row">
+          <span class="pc-num serif">Solved 01</span>
+          <span class="pc-tag forest">완료</span>
+        </div>
+        <span class="impact-tag" style="color:var(--forest);">정보 흐름 문제 → 해결</span>
+        <h3 class="pc-title">원장님이 폼에 직접 입력</h3>
+        <p class="pc-body">치과명, 원장 정보, 진료과목, 시설/장비, 브랜드 방향, 계약 상품까지.<br><strong>마케터의 받아쓰기 의존이 사라집니다.</strong><br><br>입력 즉시 Notion 거래처 DB에 자동 저장.<br>매칭 7중 레이어가 필요 없습니다.</p>
+        <div class="pc-data forest-line">제출 → Notion 페이지 자동 생성 + 팀별 업무 자동 배정</div>
+      </div>
+      <div class="problem-card">
+        <div class="pc-row">
+          <span class="pc-num serif">Solved 02</span>
+          <span class="pc-tag forest">완료</span>
+        </div>
+        <span class="impact-tag" style="color:var(--forest);">자료 누락 문제 → 해결</span>
+        <h3 class="pc-title">파일 첨부 9가지 카테고리</h3>
+        <p class="pc-body">로고, 면허증, 자격증, 사업자등록증, 개설필증,<br>인테리어 3D 도면, 간판/현수막/공사현장 사진.<br><br>회사 호스팅에 자동 업로드 → URL이 Notion에 함께 저장.<br><strong>"카톡으로 보내드릴게요"가 사라졌습니다.</strong></p>
+        <div class="pc-data forest-line">최대 50MB · path traversal 방어 · MIME 화이트리스트</div>
+      </div>
+      <div class="problem-card">
+        <div class="pc-row">
+          <span class="pc-num serif">Solved 03</span>
+          <span class="pc-tag forest">완료</span>
+        </div>
+        <span class="impact-tag" style="color:var(--forest);">월말 폭격 → 분산</span>
+        <h3 class="pc-title">진료일정은 매월 8일까지</h3>
+        <p class="pc-body">달력 UI에서 태그 선택 → 날짜 클릭으로 일정 입력.<br><strong>월말에 몰리던 진료일정 작업이</strong><br>매월 8일 정시 마감으로 분산됩니다.<br><br>관리자 대시보드에서 진행률 한눈에 확인.</p>
+        <div class="pc-data forest-line">관리자 비밀번호 보호 · 미제출 거래처 자동 표시</div>
+      </div>
+      <div class="problem-card">
+        <div class="pc-row">
+          <span class="pc-num serif">Solved 04</span>
+          <span class="pc-tag forest">완료</span>
+        </div>
+        <span class="impact-tag" style="color:var(--forest);">자동저장 + 이어쓰기</span>
+        <h3 class="pc-title">중간에 끊겨도 데이터 보존</h3>
+        <p class="pc-body">7단계 폼은 작성 시간이 길 수 있어<br>localStorage에 자동 저장됩니다.<br><br><strong>실수로 창을 닫아도</strong><br>다음에 들어오면 "이어서 작성하시겠어요?"</p>
+        <div class="pc-data">자동저장 30초 간격 · 세션 복원 다이얼로그</div>
+      </div>
+    </div>
+
+    <div class="pain-banner" style="background:var(--forest);">
+      <div class="pain-icon serif">✓</div>
+      <div class="pain-text">
+        <div class="pain-label">현재 상태 · 운영 중</div>
+        <div class="pain-message">
+          mediandmedi-form.vercel.app<br>
+          Production · Vercel 자동 배포
+        </div>
+      </div>
+      <div class="pain-stat">
+        <div class="pain-stat-val serif">3<span style="font-size:24px;color:rgba(244,241,234,0.7);">개</span></div>
+        <div class="pain-stat-label">폼 운영 중</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══ SLIDE 7 : SOLUTION - MEETING DB ═══ -->
+<section class="slide" id="s7">
+  <div class="slide-inner">
+    <div class="slide-meta">
+      <span><span class="ch">Chapter 07</span> / 이미 만든 것 — 미팅 DB</span>
+      <span>SOLUTION 02</span>
+    </div>
+
+    <span class="eyebrow">조직의 SOP 부재 — 미팅 영역 해결</span>
+    <h2 class="h-display">
+      미팅도 <em>받아쓰기</em>로<br>
+      DB가 된다
+    </h2>
+    <p class="h-lede">
+      "팀마다 기준이 다르다"는 문제 중 <strong>미팅 영역</strong>을 먼저 해결했습니다.<br>
+      Notion AI 받아쓰기 + 자동 요약 + 거래처 양방향 연결로<br>
+      <strong>모든 미팅이 동일한 형식으로 기록</strong>됩니다.<br><br>
+      받아쓰기가 끝나면 AI가 <strong>핵심 결정사항·액션 아이템</strong>을 자동 분리합니다.
+    </p>
+
+    <!-- 미팅 워크플로우 -->
+    <div class="flow-canvas">
+      <div class="flow-stage stage-1">
+        <div class="stage-label">STAGE 01 · 미팅 시작 전</div>
+        <div class="stage-title">새 미팅 페이지 생성 (1분)</div>
+        <div class="stage-channels">
+          <span class="channel">제목 · 일자</span>
+          <span class="channel">거래처 선택</span>
+          <span class="channel">참석자 태그</span>
+          <span class="channel">주요 안건</span>
+        </div>
+      </div>
+      <div class="flow-arrow-down">↓</div>
+      <div class="flow-stage stage-2">
+        <div class="stage-label">STAGE 02 · 미팅 중</div>
+        <div class="stage-title">/음성 메모 → 자동 받아쓰기 (한국어)</div>
+        <div class="stage-channels">
+          <span class="channel">노트북 마이크</span>
+          <span class="channel">모바일 앱 가능</span>
+          <span class="channel">자동 동기화</span>
+        </div>
+      </div>
+      <div class="flow-arrow-down">↓</div>
+      <div class="flow-stage stage-3">
+        <div class="stage-label">STAGE 03 · 미팅 직후</div>
+        <div class="stage-title">/AI → 지침대로 자동 요약 (1~2분)</div>
+        <div class="stage-channels">
+          <span class="channel">핵심 결정사항</span>
+          <span class="channel">액션 아이템</span>
+          <span class="channel">담당자/마감일</span>
+        </div>
+      </div>
+      <div class="flow-arrow-down">↓</div>
+      <div class="flow-stage stage-4" style="border-left-color:var(--forest);">
+        <div class="stage-label">STAGE 04 · 자동 연결</div>
+        <div class="stage-title">거래처 DB에 자동 표시 + 담당자 알림</div>
+        <div class="stage-channels">
+          <span class="channel" style="background:var(--forest-soft);border-color:var(--forest);">양방향 Relation</span>
+          <span class="channel" style="background:var(--forest-soft);border-color:var(--forest);">@멘션 알림</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Before / After 강조 -->
+    <div class="ba-section">
+      <div class="ba-col before">
+        <div class="ba-head">BEFORE</div>
+        <div class="ba-headline">미팅 후 정리에 30~60분</div>
+        <div class="ba-item">
+          <span class="ba-item-label">기록</span>
+          <span class="ba-item-text">담당자 노트북 / 메모장 / 카톡 — 흩어짐</span>
+        </div>
+        <div class="ba-item">
+          <span class="ba-item-label">공유</span>
+          <span class="ba-item-text">정리해서 슬랙에 다시 붙여넣기</span>
+        </div>
+        <div class="ba-item">
+          <span class="ba-item-label">거래처 연결</span>
+          <span class="ba-item-text">사람이 거래처 페이지 찾아 메모 붙여넣기</span>
+        </div>
+        <div class="ba-item">
+          <span class="ba-item-label">액션 추적</span>
+          <span class="ba-item-text">담당자 기억에만 의존 — 누락 빈번</span>
+        </div>
+      </div>
+      <div class="ba-divider"></div>
+      <div class="ba-col after">
+        <div class="ba-head">AFTER</div>
+        <div class="ba-headline">미팅 후 4분이면 끝</div>
+        <div class="ba-item">
+          <span class="ba-item-label">기록</span>
+          <span class="ba-item-text">/음성메모 → 한국어 자동 받아쓰기</span>
+        </div>
+        <div class="ba-item">
+          <span class="ba-item-label">정리</span>
+          <span class="ba-item-text">/AI → 등록된 지침대로 자동 요약</span>
+        </div>
+        <div class="ba-item">
+          <span class="ba-item-label">거래처 연결</span>
+          <span class="ba-item-text">거래처 선택만 하면 양방향 자동 동기화</span>
+        </div>
+        <div class="ba-item">
+          <span class="ba-item-label">액션 추적</span>
+          <span class="ba-item-text">@담당자 멘션 → 자동 알림 + DB 누적</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <div class="insight-mark">"</div>
+      <div>
+        <p class="insight-text">
+          기준이 없으면 사람마다 다르게 일한다.<br>
+          기준을 만들어도 <em>도구가 강제하지 않으면</em><br>
+          또 흩어진다.<br><br>
+          <em>받아쓰기 + AI 요약 지침</em>은<br>
+          기준을 도구에 박아 넣는 방식이다.
+        </p>
+        <div class="insight-attr">— Solution 02 · Meeting DB Design Principle</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!--
+  =================================================================
+  추가 안내 (선택)
+  =================================================================
+
+  발표 흐름이 더 강력해지려면, 위 두 슬라이드 뒤에
+  "이번 진단 → 다음 액션" 슬라이드를 하나 더 두는 게 좋습니다.
+
+  지금 6, 7번 슬라이드는 "이미 만든 것" (Past Tense Solutions)
+  그 다음 8번 슬라이드는 "남은 7가지 문제 우선순위" (Forward)
+  마지막 9번 슬라이드는 "이번 분기 목표" (Closing)
+
+  이렇게 가면 발표 끝이 강합니다:
+
+  [진단 5] 문제 본 사실
+       ↓
+  [솔루션 2] 이미 시작한 것 보여주기 (NEW: 6, 7)
+       ↓
+  [로드맵] 우선순위 (기존 슬라이드 활용)
+       ↓
+  [Closing] 이번 분기 목표
+  =================================================================
+-->

@@ -1,0 +1,305 @@
+<!--
+  =================================================================
+  메디앤메디 발표자료 — CEO 리뷰 개선안
+  =================================================================
+
+  4가지 개선:
+  1. [REPLACE] 커버 슬라이드 — 더 강한 hook
+  2. [INSERT] Slide 6 (폼) 위쪽 — "문제 → 해결" 연결 띠
+  3. [INSERT] Slide 7 (미팅 DB) 다음 — 실제 화면 시연 슬라이드
+  4. [REPLACE] 마지막 슬라이드 — 30/60/100일 행동 약속
+
+  사용법:
+  - 각 섹션을 해당 위치에 복사 / 교체
+  - 기존 CSS 그대로 작동, 추가 CSS 불필요
+  =================================================================
+-->
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     IMPROVEMENT 01 : COVER SLIDE — 더 강한 hook
+     기존 <section class="slide cover" id="s0">...</section> 전체 교체
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide cover" id="s0">
+  <div class="slide-inner">
+    <div class="cover-grid">
+      <div class="cover-left">
+        <div class="cover-tag">Internal Diagnosis Report · 2026.05.10</div>
+        <h1 class="cover-title">
+          <em>67%</em><br>
+          미이행<br>
+          그리고 <em>침묵</em>
+        </h1>
+        <p class="cover-sub">
+          어느 거래처와의 3개월 약정.<br>
+          임상 포스팅 6건 납품 약속, 실제 2건.<br><br>
+          <strong style="color:var(--rust);">아무도 미이행이라는 걸 몰랐다.</strong><br>
+          이 발표는 "왜 몰랐는가"에 대한 답이다.
+        </p>
+        <div class="cover-byline">전략기획팀 · 이종광 팀장</div>
+      </div>
+      <div class="cover-right">
+        <div class="cover-quote">
+          "기록되지 않은 일은<br>
+          존재하지 않은 일과 같다.<br>
+          시스템 위에 사람이 있고,<br>
+          사람 위에 <em>기준</em>이 있다."
+        </div>
+        <div class="cover-stats">
+          <div class="cstat">
+            <div class="cstat-val rust">3</div>
+            <div class="cstat-label">근본 계층</div>
+          </div>
+          <div class="cstat">
+            <div class="cstat-val ochre">2</div>
+            <div class="cstat-label">이미 시작</div>
+          </div>
+          <div class="cstat">
+            <div class="cstat-val indigo">100</div>
+            <div class="cstat-label">일 안에 해결</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cover-foot">
+    <span>MEDI&MEDI / DIAGNOSIS → ACTION</span>
+    <span>SCROLL TO BEGIN ↓</span>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     IMPROVEMENT 02 : Slide 6 (폼) 위쪽 — 문제→해결 연결 띠
+     기존 Slide 6의 .severity-bar 위에 삽입
+     ═══════════════════════════════════════════════════════════════ -->
+
+<!-- 이 블록을 Slide 6의 <p class="h-lede">...</p> 직후에 삽입 -->
+<div style="background:var(--ink);color:var(--paper);padding:28px 40px;margin-bottom:48px;border-radius:4px;display:grid;grid-template-columns:auto 1fr;gap:32px;align-items:center;">
+  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.2em;color:var(--ochre);text-transform:uppercase;writing-mode:vertical-rl;text-orientation:mixed;border-right:1px solid rgba(244,241,234,0.2);padding-right:24px;">
+    SOLVES
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ochre);letter-spacing:0.1em;margin-bottom:6px;">↳ Slide 02</div>
+      <div style="font-size:14px;font-weight:600;line-height:1.4;">기록되지 않는 채널<br>→ 폼이 첫 번째 채널</div>
+    </div>
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ochre);letter-spacing:0.1em;margin-bottom:6px;">↳ Slide 03 (No.01)</div>
+      <div style="font-size:14px;font-weight:600;line-height:1.4;">거래처 이름 표기 차이<br>→ 폼 입력 시점에 통일</div>
+    </div>
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ochre);letter-spacing:0.1em;margin-bottom:6px;">↳ Slide 03 (No.03)</div>
+      <div style="font-size:14px;font-weight:600;line-height:1.4;">신규 거래처 5단계 수작업<br>→ 폼 제출 1단계로 통합</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     IMPROVEMENT 03 : 시연 슬라이드 (NEW)
+     기존 Slide 7 (미팅 DB) 다음에 삽입
+     실제 화면 캡처를 추가하여 "정말 된다"를 보여줌
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="s8">
+  <div class="slide-inner">
+    <div class="slide-meta">
+      <span><span class="ch">Chapter 08</span> / 시연</span>
+      <span>EVIDENCE</span>
+    </div>
+
+    <span class="eyebrow">실제 화면</span>
+    <h2 class="h-display">
+      슬라이드가 아니라<br>
+      <em>지금 작동하는 시스템</em>이다
+    </h2>
+    <p class="h-lede">
+      말로만 "만들었다"가 아닙니다.<br>
+      <strong>지금 이 시간에 운영 중</strong>입니다. 화면으로 확인합니다.
+    </p>
+
+    <!-- 시연 그리드 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:40px;">
+
+      <!-- 폼 시연 -->
+      <div style="background:var(--paper-2);border:1px solid var(--line);border-radius:4px;padding:24px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;color:var(--rust);text-transform:uppercase;margin-bottom:12px;">
+          DEMO 01 · 신규개원 폼
+        </div>
+        <div style="background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:20px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);line-height:1.7;">
+          <div style="color:var(--ink);font-weight:500;font-size:13px;margin-bottom:8px;">신규개원 · Step 4/7 · 브랜딩 & 철학</div>
+          <div>┌────────────────────────────┐</div>
+          <div>│ ✓ 한줄소개  ✓ 진료철학        │</div>
+          <div>│ ✓ 타겟환자  ✓ 차별점         │</div>
+          <div>│ 📎 로고 업로드 · 12.4MB ✓     │</div>
+          <div>│ 📎 면허증 업로드 · 2.1MB ✓    │</div>
+          <div>│ 📎 인테리어 도면 · 38.5MB ✓   │</div>
+          <div>└────────────────────────────┘</div>
+          <div style="color:var(--forest);margin-top:8px;">[다음] 자동저장 완료 · 2분 전</div>
+        </div>
+        <div style="font-size:13px;color:var(--ink-3);line-height:1.6;">
+          원장님이 직접 7단계 입력. 자동 저장. 9개 카테고리 파일 첨부.<br>
+          <strong style="color:var(--ink);">제출 즉시 Notion 거래처 DB에 저장.</strong>
+        </div>
+      </div>
+
+      <!-- 미팅 받아쓰기 시연 -->
+      <div style="background:var(--paper-2);border:1px solid var(--line);border-radius:4px;padding:24px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;color:var(--rust);text-transform:uppercase;margin-bottom:12px;">
+          DEMO 02 · 미팅 받아쓰기 + AI 요약
+        </div>
+        <div style="background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:20px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);line-height:1.7;">
+          <div style="color:var(--ink);font-weight:500;font-size:13px;margin-bottom:8px;">왕편한플란트 6월 미팅 · 완료</div>
+          <div style="color:var(--rust);">🔴 받아쓰기 23분 · 자동 정리 완료</div>
+          <div style="margin-top:10px;color:var(--forest);">✅ 핵심 결정 5건 추출</div>
+          <div>  - 6/1, 22일 정기 휴진 확정</div>
+          <div>  - 임플란트 200만원대 프로모션</div>
+          <div style="margin-top:8px;color:var(--ochre);">📋 액션 아이템 자동 분배</div>
+          <div>  - @김민지 LP 5/25</div>
+          <div>  - @이하은 DID 영상 5/24</div>
+        </div>
+        <div style="font-size:13px;color:var(--ink-3);line-height:1.6;">
+          미팅 23분 → AI 요약 1분.<br>
+          <strong style="color:var(--ink);">담당자에게 자동 알림. 거래처 DB에 자동 연결.</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- 운영 통계 -->
+    <div class="severity-bar">
+      <div class="sev-grid">
+        <div class="sev-cell">
+          <div class="sev-label">배포 환경</div>
+          <div class="sev-num">100<span class="unit">%</span></div>
+          <div class="sev-desc">Vercel Production<br>자동 빌드 · 무중단 배포</div>
+        </div>
+        <div class="sev-cell">
+          <div class="sev-label">코드 품질</div>
+          <div class="sev-num">0<span class="unit">개</span></div>
+          <div class="sev-desc">ESLint 에러 · 빌드 에러<br>독립 보안 리뷰 통과</div>
+        </div>
+        <div class="sev-cell">
+          <div class="sev-label">파일 업로드</div>
+          <div class="sev-num">9<span class="unit">종</span></div>
+          <div class="sev-desc">로고 · 면허증 · 자격증<br>도면 · 사진 · 자료 카테고리</div>
+        </div>
+        <div class="sev-cell">
+          <div class="sev-label">미팅 DB 컬럼</div>
+          <div class="sev-num">14<span class="unit">개</span></div>
+          <div class="sev-desc">거래처 양방향 연결<br>AI 요약 지침 등록 완료</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     IMPROVEMENT 04 : CLOSING SLIDE — 30/60/100일 행동 약속
+     기존 마지막 슬라이드 교체 (closing 클래스)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide closing" id="s10">
+  <div class="slide-inner">
+    <div class="slide-meta">
+      <span><span class="ch">Chapter 10</span> / 행동 약속</span>
+      <span>100 DAY PLAN</span>
+    </div>
+
+    <h2 class="closing-display">
+      말이 아니라<br>
+      <em>날짜와 책임자</em>로<br>
+      끝내겠습니다
+    </h2>
+    <p class="closing-lede">
+      진단 발표는 종종 진단으로 끝납니다.<br>
+      이 발표는 <strong style="color:var(--ochre);">100일 안에 9개 문제 중 6개를 해결</strong>하는<br>
+      구체적 약속으로 끝냅니다. 책임자 명시, 진척 매주 공유.
+    </p>
+
+    <!-- 30일 -->
+    <div style="margin-bottom:48px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ochre);letter-spacing:0.2em;margin-bottom:16px;text-transform:uppercase;">
+        ⌘ 30일 · ~2026.06.10 · 즉시 해결
+      </div>
+      <div class="action-rail">
+        <span class="action-num">01</span>
+        <span class="action-text">OAuth 7일 만료 해결 — 프로덕션 검증 완료</span>
+        <span class="action-meta">@전략기획팀 · 1일</span>
+      </div>
+      <div class="action-rail">
+        <span class="action-num">02</span>
+        <span class="action-text">거래처 이름 표기 통일 — 자동 매칭 100% 복원</span>
+        <span class="action-meta">@전략기획팀 · 3일</span>
+      </div>
+      <div class="action-rail">
+        <span class="action-num">03</span>
+        <span class="action-text">노션 이중 운영 종료 — 단일 워크스페이스로 통합</span>
+        <span class="action-meta">@전략기획팀 + @영업팀 · 5일</span>
+      </div>
+    </div>
+
+    <!-- 60일 -->
+    <div style="margin-bottom:48px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ochre);letter-spacing:0.2em;margin-bottom:16px;text-transform:uppercase;">
+        ⌘ 60일 · ~2026.07.10 · 운영 안정화
+      </div>
+      <div class="action-rail">
+        <span class="action-num">04</span>
+        <span class="action-text">신규개원 폼 운영 정착 — 전 신규 거래처 폼 입력 100%</span>
+        <span class="action-meta">@영업팀 · 매주</span>
+      </div>
+      <div class="action-rail">
+        <span class="action-num">05</span>
+        <span class="action-text">미팅 DB 정착 — 모든 거래처 미팅 받아쓰기 + AI 요약</span>
+        <span class="action-meta">@전 부서 · 매주</span>
+      </div>
+      <div class="action-rail">
+        <span class="action-num">06</span>
+        <span class="action-text">외주사 17건 누락 데이터 보완 + SLA 협의</span>
+        <span class="action-meta">@마케팅팀 · 6/30까지</span>
+      </div>
+    </div>
+
+    <!-- 100일 -->
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ochre);letter-spacing:0.2em;margin-bottom:16px;text-transform:uppercase;">
+        ⌘ 100일 · ~2026.08.20 · 구조 변화
+      </div>
+      <div class="action-rail">
+        <span class="action-num">07</span>
+        <span class="action-text">팀별 SOP 4개 (콘텐츠/광고/디자인/영업) 1차 완성</span>
+        <span class="action-meta">@각 팀장 · 8/15까지</span>
+      </div>
+      <div class="action-rail">
+        <span class="action-num">08</span>
+        <span class="action-text">상품 정의서 v1.0 — 영업·콘텐츠·납품 기준 통일</span>
+        <span class="action-meta">@전략기획팀 · 8/10까지</span>
+      </div>
+      <div class="action-rail">
+        <span class="action-num">09</span>
+        <span class="action-text">거래처별 납품 추적 자동화 — "임상 6건 약정/2건 납품" 같은 사고 방지</span>
+        <span class="action-meta">@전략기획팀 · 8/20까지</span>
+      </div>
+    </div>
+
+    <!-- 미해결로 남는 1건 -->
+    <div style="margin-top:64px;padding:28px 32px;background:rgba(244,241,234,0.05);border-left:3px solid var(--rust);">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;color:var(--rust);margin-bottom:10px;">
+        100일 안에 해결 안 되는 1건
+      </div>
+      <div style="font-size:18px;font-weight:600;line-height:1.5;color:var(--paper);margin-bottom:8px;">
+        상품 분류 30+건 비즈니스 결정
+      </div>
+      <div style="font-size:14px;color:rgba(244,241,234,0.65);line-height:1.6;">
+        와이지 블로그 지수작업 19건 + 아이원 자동완성 10건. 자동화로 풀리지 않습니다.<br>
+        <strong style="color:var(--ochre);">대표/이사 의사결정이 필요한 건. 별도 안건으로 상정 예정.</strong>
+      </div>
+    </div>
+
+    <!-- 클로징 시그니처 -->
+    <div class="closing-foot">
+      <span>MEDI&MEDI · 2026.05.10</span>
+      <span>이종광 · 전략기획팀</span>
+    </div>
+  </div>
+</section>
