@@ -532,11 +532,11 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
   <div class="slide-inner">
     <div class="slide-meta"><span><span class="ch">Chapter 04</span> / 우리 위치</span><span>WHERE WE ARE</span></div>
     <span class="eyebrow">Current State · 현재 위치</span>
-    <h2 class="h-display">우리는 <em>이미</em><br>꽤 와 있다</h2>
+    <h2 class="h-display">우리는 이미 시작했다.<br><em>하지만 아직 멀었다</em></h2>
     <p class="h-lede">
       메디앤메디는 동종 업계 평균보다 앞서 있습니다.<br>
       <strong>DX 60% 완성, AX 5% 첫걸음</strong>을 뗀 상태.<br>
-      이제 DX를 마무리하고 AX로 한 단계 더 올라가는 시점입니다.
+      DX의 핵심 — <strong>기록과 DB</strong> — 부터 마무리해야 AX가 진짜로 일합니다.
     </p>
 
     <div class="position-bar">
@@ -598,15 +598,79 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
   </div>
 </section>
 
+<!-- ═══ SLIDE 4b : Field Notes — 보고서 자동화 개발 중 발견 ═══ -->
+<section class="slide" id="s4b">
+  <div class="slide-inner">
+    <div class="slide-meta"><span><span class="ch">Field Notes</span> / 보고서 자동화 개발 중 발견</span><span>DISCOVERY</span></div>
+    <span class="eyebrow">Discovery · 개발 중 마주한 진짜 문제</span>
+    <h2 class="h-display">보고서 자동화를 만들다,<br><em>DB·DX가 먼저</em>라는 걸 봤다</h2>
+    <p class="h-lede">
+      거래처 보고서 자동화를 개발하면서 발견한 것이 있습니다.<br>
+      자동화는 <strong>잘 정리된 데이터 위에서만 작동</strong>합니다.<br>
+      그런데 우리에겐 — 솔직히 — <strong>그 기반이 아직 없습니다.</strong>
+    </p>
+
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="pc-row"><span class="pc-num serif">발견 01</span><span class="pc-tag rust">DB 부재</span></div>
+        <span class="impact-tag" style="color:var(--rust);">단일 진실(Single Source of Truth) 없음</span>
+        <h3 class="pc-title">기록·업무범위·계약·진행현황이<br>한 곳에 모이지 않는다</h3>
+        <p class="pc-body">미팅 기록은 카톡·메모장·노션·구글닥에 흩어져 있고, 업무범위는 사람마다 기억이 다르며, 계약 내용은 PDF 어딘가에, 진행현황은 대시보드에 일부만. <strong>"이 거래처 지금 뭐가 진행 중이지?"에 한 번에 답할 수 있는 곳이 없습니다.</strong></p>
+        <div class="pc-data">현실 → 보고서 1편 위해 4~5곳을 헤맨다</div>
+      </div>
+      <div class="problem-card">
+        <div class="pc-row"><span class="pc-num serif">발견 02</span><span class="pc-tag rust">최신성 부족</span></div>
+        <span class="impact-tag" style="color:var(--rust);">데이터가 늘 한두 박자 늦다</span>
+        <h3 class="pc-title">존재하는 데이터도<br>최신 상태가 아니다</h3>
+        <p class="pc-body">계약 변경이 있어도 DB 반영은 며칠 뒤. 진료일정 변경이 들어와도 누군가 옮겨 적기 전까지 시스템은 옛 값. <strong>실시간이 아니라 "지난주 어느 시점" 데이터</strong>로 의사결정합니다.</p>
+        <div class="pc-data">결과 → 자동화가 옛 데이터로 보고서를 만든다</div>
+      </div>
+      <div class="problem-card">
+        <div class="pc-row"><span class="pc-num serif">발견 03</span><span class="pc-tag rust">외주 의존 + 비표준</span></div>
+        <span class="impact-tag" style="color:var(--rust);">기록 방식이 사람마다 다르다</span>
+        <h3 class="pc-title">외주사가 직접 작성·보고하고<br>양식이 제각각이다</h3>
+        <p class="pc-body">납품 결과, 작업 내역, 보고서 — 외주사가 각자 방식으로 작성해서 올립니다. 어떤 곳은 엑셀, 어떤 곳은 PPT, 어떤 곳은 카톡 텍스트. <strong>같은 정보가 다른 모양으로 들어오니, 합치고 비교하는 데만 시간이 다 갑니다.</strong></p>
+        <div class="pc-data">결과 → 자동 집계 불가 · 사람이 매번 재가공</div>
+      </div>
+      <div class="problem-card">
+        <div class="pc-row"><span class="pc-num serif">발견 04</span><span class="pc-tag ochre">진행 중</span></div>
+        <span class="impact-tag" style="color:var(--ochre);">정직하게 — 아직 완성 아님</span>
+        <h3 class="pc-title">보고서 자동화 자체도<br>아직 완성되지 않았다</h3>
+        <p class="pc-body">위 3가지가 정리되지 않은 상태에서는 자동화도 끝까지 못 갑니다. 부분적으로는 작동하지만, <strong>"보고서 한 번 돌리면 나오는" 수준은 아직</strong>입니다. 만들면서 알게 된 사실 — <strong>자동화는 마지막에 얹는 것, 기반이 먼저.</strong></p>
+        <div class="pc-data">현재 → 일부 작동 · 데이터 정합성 대기 중</div>
+      </div>
+    </div>
+
+    <div class="pain-banner" style="background:var(--forest);margin-top:48px;">
+      <div class="pain-icon serif">🌱</div>
+      <div class="pain-text"><div class="pain-label">중요한 전제 · 누구의 탓도 아닙니다</div><div class="pain-message">스타트업이라면 누구나 거치는 <strong>성장통</strong>입니다.<br>처음부터 완벽한 DB·표준·인프라를 갖춘 회사는 없습니다.<br>지금 이 모습은 <strong>여기까지 빠르게 달려온 증거</strong>이고, 다음 단계로 가는 출발선입니다.</div></div>
+      <div class="pain-stat"><div class="pain-stat-val serif" style="color:var(--paper);">정상</div><div class="pain-stat-label">성장 단계</div></div>
+    </div>
+
+    <div class="insight" style="margin-top:48px;">
+      <div class="insight-mark">"</div>
+      <div>
+        <p class="insight-text">
+          <em>1순위는 보고서 자동화가 아니라 DB와 DX다.</em><br><br>
+          기록이 한 곳에 모이고, 최신이고, 같은 양식이면 —<br>
+          그다음에 얹는 자동화는 자연스럽게 끝까지 작동합니다.<br><br>
+          그래서 우리는 <em>먼저 기반</em>을 정리합니다. 자동화는 그 위에 자동으로 따라옵니다.
+        </p>
+        <div class="insight-attr">— 순서를 지킨다</div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ═══ SLIDE 5 : 우리의 방향 (3단계 로드맵) ═══ -->
 <section class="slide" id="s5">
   <div class="slide-inner">
     <div class="slide-meta"><span><span class="ch">Chapter 05</span> / 가는 길</span><span>3 STAGES</span></div>
     <span class="eyebrow">Our Path · 우리가 갈 길</span>
-    <h2 class="h-display">3단계로 간다.<br><em>처음 두 단계는 이미 시작</em></h2>
+    <h2 class="h-display">순서가 있다.<br><em>DB·DX가 먼저</em>, AX는 그 위에</h2>
     <p class="h-lede">
-      해결 방향은 단순합니다. <strong>인입을 디지털로(DX), 처리를 AI로(AX), 의사결정을 데이터 기반으로.</strong><br>
-      이 중 1, 2단계는 이미 첫 도구를 만들었습니다. 다음 슬라이드부터 실물을 보여드립니다.
+      해결 방향은 단순합니다. <strong>1단계 인입을 디지털로(DX), 2단계 기록을 AI로(AX), 3단계 의사결정을 데이터 기반으로.</strong><br>
+      1·2단계 첫 도구는 만들었지만, <strong>지금 가장 중요한 건 그 도구를 통해 들어온 데이터가 "단일·최신·표준"이 되는 것</strong>입니다. 그게 1순위.
     </p>
 
     <div class="roadmap">
@@ -647,7 +711,7 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 
     <div class="insight">
       <div class="insight-mark">"</div>
-      <div><p class="insight-text"><em>큰 변화는 한 번에 오지 않는다.</em><br>하나씩 도구를 바꾸면, 어느새 일하는 방식이 바뀐다.<br><br>중요한 건 <em>지금 첫 도구를 잡았다는 사실</em>이다.</p><div class="insight-attr">— 변화는 도구의 누적</div></div>
+      <div><p class="insight-text"><em>자동화는 마지막에 얹는 것.</em><br>먼저 기록이 한 곳에, 최신으로, 같은 양식으로 모이게 만든다.<br>그다음에 AX와 자동화는 자연스럽게 따라온다.<br><br>중요한 건 <em>지금 순서를 지키는 것</em>이다.</p><div class="insight-attr">— DB·DX가 먼저, 자동화는 그 위에</div></div>
     </div>
   </div>
 </section>
