@@ -1,8 +1,5 @@
 {
   "framework": "nextjs",
   "buildCommand": "next build",
-  "installCommand": "npm install",
-  "engines": {
-    "node": "20.x"
-  }
+  "installCommand": "npm install"
 }
