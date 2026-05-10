@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>메디앤메디 진단 보고서 — 2026.05 · 이종광</title>
+<title>DX를 넘어 AX로 — 메디앤메디의 다음 3년 · 이종광</title>
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -44,32 +44,62 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 .h-display .underline{background-image:linear-gradient(transparent 65%,var(--ochre-soft) 65%,var(--ochre-soft) 95%,transparent 95%);padding:0 6px;}
 .h-lede{font-size:17px;color:var(--ink-3);font-weight:400;max-width:680px;margin-bottom:56px;line-height:1.7;word-break:keep-all;}
 .h-lede strong{color:var(--ink);font-weight:500;}
+
+/* Stage Compare — DX/AX 비유 비교 */
+.stage-compare{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-bottom:56px;border:1px solid var(--line);border-radius:4px;overflow:hidden;}
+.stage-col{padding:36px 32px;border-right:1px solid var(--line);position:relative;background:var(--paper);}
+.stage-col:last-child{border-right:none;}
+.stage-col.analog{background:var(--paper-2);}
+.stage-col.dx{background:var(--ochre-soft);}
+.stage-col.ax{background:var(--ink);color:var(--paper);}
+.stage-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:12px;color:var(--ink-3);}
+.stage-col.ax .stage-num{color:var(--ochre);}
+.stage-emoji{font-size:48px;line-height:1;margin-bottom:14px;font-style:normal;}
+.stage-name{font-family:'Pretendard Variable',Pretendard,sans-serif;font-size:28px;font-weight:800;letter-spacing:-0.025em;line-height:1.1;margin-bottom:6px;}
+.stage-name em{font-style:normal;color:var(--rust);font-weight:900;}
+.stage-col.ax .stage-name em{color:var(--ochre);}
+.stage-tagline{font-size:14px;color:var(--ink-3);margin-bottom:24px;font-weight:500;}
+.stage-col.ax .stage-tagline{color:rgba(244,241,234,0.7);}
+.stage-list{display:flex;flex-direction:column;gap:8px;}
+.stage-list li{font-size:13px;line-height:1.5;color:var(--ink-2);list-style:none;padding-left:18px;position:relative;}
+.stage-col.ax .stage-list li{color:rgba(244,241,234,0.8);}
+.stage-list li::before{content:'—';position:absolute;left:0;color:var(--ink-4);}
+.stage-col.ax .stage-list li::before{color:var(--ochre);}
+
+/* Concept Card — 큰 비유 카드 */
+.concept-card{background:var(--paper-2);border:1px solid var(--line);border-radius:6px;padding:48px 40px;margin-bottom:48px;display:grid;grid-template-columns:auto 1fr;gap:48px;align-items:center;}
+.concept-icon{font-size:96px;line-height:1;}
+.concept-body h3{font-family:'Pretendard Variable',Pretendard,sans-serif;font-size:32px;font-weight:800;letter-spacing:-0.03em;line-height:1.2;margin-bottom:14px;color:var(--ink);}
+.concept-body h3 em{font-style:normal;color:var(--rust);}
+.concept-body p{font-size:15px;color:var(--ink-2);line-height:1.7;margin-bottom:10px;}
+.concept-body p strong{color:var(--ink);font-weight:600;}
+
+/* Position Bar — 우리 위치 표시 */
+.position-bar{position:relative;height:80px;background:linear-gradient(90deg,var(--paper-2) 0%,var(--paper-2) 33%,var(--ochre-soft) 33%,var(--ochre-soft) 66%,var(--ink) 66%,var(--ink) 100%);border-radius:6px;border:1px solid var(--line);margin-bottom:32px;display:flex;align-items:center;}
+.position-marker{position:absolute;top:-8px;left:42%;display:flex;flex-direction:column;align-items:center;}
+.position-pin{width:18px;height:18px;background:var(--rust);border-radius:50%;border:3px solid var(--paper);box-shadow:0 4px 12px rgba(184,70,40,0.4);position:relative;z-index:2;}
+.position-pin::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);width:2px;height:80px;background:var(--rust);}
+.position-label{position:absolute;top:-44px;left:50%;transform:translateX(-50%);background:var(--rust);color:var(--paper);padding:6px 14px;border-radius:14px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.05em;white-space:nowrap;font-weight:500;}
+.position-zones{position:relative;width:100%;height:100%;display:grid;grid-template-columns:1fr 1fr 1fr;}
+.position-zone{padding:14px 20px;display:flex;flex-direction:column;justify-content:center;border-right:1px dashed rgba(26,24,20,0.15);}
+.position-zone:last-child{border-right:none;}
+.position-zone.ax{color:var(--paper);border-right:none;}
+.position-zone-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;font-weight:600;margin-bottom:2px;}
+.position-zone-name{font-size:13px;font-weight:600;}
+.position-zone.ax .position-zone-label{color:var(--ochre);}
+
 .severity-bar{background:var(--ink);color:var(--paper);padding:32px 40px;margin-bottom:56px;border-radius:4px;position:relative;overflow:hidden;}
-.severity-bar::before{content:'CRITICAL';position:absolute;top:14px;right:20px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--rust);letter-spacing:0.2em;font-weight:700;}
+.severity-bar::before{content:'STATUS';position:absolute;top:14px;right:20px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ochre);letter-spacing:0.2em;font-weight:700;}
 .sev-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;}
 .sev-cell{border-right:1px solid rgba(244,241,234,0.15);padding-right:24px;}
 .sev-cell:last-child{border-right:none;}
 .sev-num{font-family:'Pretendard Variable',Pretendard,sans-serif;font-size:64px;font-weight:800;letter-spacing:-0.03em;color:var(--rust);line-height:0.9;margin-bottom:10px;}
+.sev-num.forest{color:var(--forest-soft);}
+.sev-num.ochre{color:var(--ochre);}
 .sev-num .unit{font-size:24px;color:var(--ochre);margin-left:4px;}
 .sev-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ochre);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px;}
 .sev-desc{font-size:13px;color:rgba(244,241,234,0.7);line-height:1.55;font-weight:300;}
-.diagnosis-grid{display:grid;grid-template-columns:60px 1fr;gap:0;}
-.diag-axis{position:relative;border-right:1px solid var(--line);}
-.diag-axis::before{content:'D E P T H';position:absolute;top:0;left:0;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.4em;color:var(--ink-4);writing-mode:vertical-rl;text-orientation:mixed;height:100%;display:flex;align-items:center;padding:40px 0;}
-.diag-content{display:flex;flex-direction:column;}
-.diag-row{padding:36px 0 36px 40px;border-bottom:1px solid var(--line-soft);display:grid;grid-template-columns:90px 1fr 200px;gap:32px;align-items:start;position:relative;}
-.diag-row:last-child{border-bottom:none;}
-.diag-row::before{content:'';position:absolute;left:0;top:36px;width:16px;height:1px;background:var(--line);}
-.diag-num{font-family:'Pretendard Variable',Pretendard,sans-serif;font-size:64px;font-weight:800;letter-spacing:-0.02em;line-height:0.9;color:var(--ink-4);}
-.diag-row.severe .diag-num{color:var(--rust);}.diag-row.medium .diag-num{color:var(--ochre);}.diag-row.light .diag-num{color:var(--indigo);}
-.diag-body{padding-top:8px;}
-.diag-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-4);margin-bottom:8px;}
-.diag-row.severe .diag-label{color:var(--rust);}.diag-row.medium .diag-label{color:var(--ochre);}.diag-row.light .diag-label{color:var(--indigo);}
-.diag-title{font-family:'Pretendard Variable',Pretendard,sans-serif;font-size:28px;font-weight:700;line-height:1.2;margin-bottom:12px;letter-spacing:-0.015em;}
-.diag-desc{font-size:14px;color:var(--ink-3);line-height:1.65;font-weight:400;word-break:keep-all;}
-.diag-tags{padding-top:12px;display:flex;flex-direction:column;gap:6px;border-left:1px solid var(--line-soft);padding-left:20px;}
-.diag-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);letter-spacing:0.02em;}
-.diag-tag::before{content:'— ';color:var(--ink-4);}
+
 .pain-banner{background:var(--rust);color:var(--paper);padding:28px 40px;margin:56px 0;border-radius:4px;display:grid;grid-template-columns:auto 1fr auto;gap:32px;align-items:center;position:relative;overflow:hidden;}
 .pain-banner::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 50%,rgba(0,0,0,0.1) 100%);pointer-events:none;}
 .pain-icon{font-family:'Pretendard Variable',Pretendard,sans-serif;font-size:64px;font-weight:900;line-height:0.9;font-style:normal;color:rgba(244,241,234,0.4);}
@@ -79,14 +109,27 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 .pain-stat{text-align:right;position:relative;}
 .pain-stat-val{font-family:'Pretendard Variable',Pretendard,sans-serif;font-size:56px;font-weight:800;letter-spacing:-0.03em;line-height:0.9;color:var(--paper);}
 .pain-stat-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:rgba(244,241,234,0.7);text-transform:uppercase;margin-top:4px;}
-.sources-canvas{background:var(--paper-2);border:1px solid var(--line);border-radius:4px;padding:48px 40px;margin-bottom:48px;position:relative;}
-.sources-canvas::before{content:'8 SOURCES';position:absolute;top:16px;right:20px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-4);letter-spacing:0.15em;}
-.sources-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
-.source-cell{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:18px 16px;text-align:center;position:relative;transition:transform 0.2s;}
-.source-cell:hover{transform:translateY(-2px);}
-.source-num{font-family:'Pretendard Variable',Pretendard,sans-serif;font-size:36px;font-weight:800;letter-spacing:-0.02em;color:var(--rust);line-height:1;margin-bottom:8px;}
-.source-name{font-size:12px;color:var(--ink-2);font-weight:400;margin-bottom:2px;}
-.source-meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-4);letter-spacing:0.05em;}
+
+/* Roadmap track */
+.roadmap{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-bottom:48px;border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+.roadmap-stage{padding:32px 28px;border-right:1px solid var(--line);background:var(--paper);position:relative;}
+.roadmap-stage:last-child{border-right:none;}
+.roadmap-stage.now{background:var(--paper-2);border-top:4px solid var(--rust);}
+.roadmap-stage.next{border-top:4px solid var(--ochre);}
+.roadmap-stage.future{border-top:4px solid var(--forest);}
+.rs-tag{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;font-weight:700;margin-bottom:10px;}
+.roadmap-stage.now .rs-tag{color:var(--rust);}
+.roadmap-stage.next .rs-tag{color:var(--ochre);}
+.roadmap-stage.future .rs-tag{color:var(--forest);}
+.rs-title{font-family:'Pretendard Variable',Pretendard,sans-serif;font-size:22px;font-weight:800;letter-spacing:-0.02em;line-height:1.2;margin-bottom:14px;}
+.rs-tagline{font-size:13px;color:var(--ink-3);margin-bottom:18px;font-style:italic;}
+.rs-list{list-style:none;display:flex;flex-direction:column;gap:8px;}
+.rs-list li{font-size:13px;line-height:1.5;color:var(--ink-2);padding-left:20px;position:relative;}
+.rs-list li::before{content:'✓';position:absolute;left:0;font-weight:700;}
+.roadmap-stage.now .rs-list li::before{color:var(--rust);}
+.roadmap-stage.next .rs-list li::before{color:var(--ochre);}
+.roadmap-stage.future .rs-list li::before{color:var(--forest);}
+
 .problems-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--line);}
 .problem-card{padding:32px 32px 32px 0;border-bottom:1px solid var(--line);position:relative;}
 .problem-card:nth-child(odd){border-right:1px solid var(--line);padding-right:40px;}
@@ -123,24 +166,7 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 .insight-text{font-family:'Pretendard Variable',Pretendard,sans-serif;font-size:26px;font-weight:600;letter-spacing:-0.02em;line-height:1.4;color:var(--ink);}
 .insight-text em{font-style:normal;color:var(--rust);font-weight:800;}
 .insight-attr{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);margin-top:16px;letter-spacing:0.08em;}
-.flow-canvas{margin-bottom:56px;display:flex;flex-direction:column;align-items:stretch;gap:0;}
-.flow-stage{background:var(--paper-2);border:1px solid var(--line);border-radius:4px;padding:24px 32px;display:grid;grid-template-columns:180px 1fr 2fr;gap:32px;align-items:center;transition:all 0.2s;position:relative;}
-.flow-stage.stage-1{border-left:4px solid var(--rust);}.flow-stage.stage-2{border-left:4px solid var(--ochre);}
-.flow-stage.stage-3{border-left:4px solid var(--ochre);}.flow-stage.stage-4{border-left:4px solid var(--rust);}
-.stage-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;color:var(--ink-3);text-transform:uppercase;}
-.stage-title{font-family:'Pretendard Variable',Pretendard,sans-serif;font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-0.02em;word-break:keep-all;}
-.stage-channels{display:flex;flex-wrap:wrap;gap:8px;}
-.channel{font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;background:var(--paper);border:1px solid var(--line);color:var(--ink-2);}
-.channel.warn{background:var(--ochre-soft);border-color:var(--ochre);color:#6B4F0E;}
-.channel.danger{background:var(--rust);border-color:var(--rust);color:var(--paper);font-weight:700;}
-.flow-arrow-down{text-align:center;font-size:24px;color:var(--ink-4);padding:8px 0;font-weight:300;}
-.chain-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:56px 0;}
-.chain-card{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:24px 20px;position:relative;}
-.chain-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--rust);}
-.chain-num{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;color:var(--rust);font-weight:700;margin-bottom:12px;}
-.chain-title{font-family:'Pretendard Variable',Pretendard,sans-serif;font-size:16px;font-weight:700;color:var(--ink);margin-bottom:14px;letter-spacing:-0.02em;line-height:1.35;word-break:keep-all;}
-.chain-body{font-size:13px;color:var(--ink-3);line-height:1.6;font-weight:400;word-break:keep-all;}
-.chain-body strong{color:var(--rust);font-weight:600;}
+
 .closing{background:var(--ink);color:var(--paper);position:relative;overflow:hidden;min-height:90vh;}
 .closing::before{content:'';position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:800px;background:radial-gradient(circle,rgba(200,148,31,0.1) 0%,transparent 60%);pointer-events:none;}
 .closing .slide-meta{color:var(--ink-4);border-bottom-color:rgba(244,241,234,0.1);}
@@ -154,50 +180,29 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 .action-text{font-size:15px;color:var(--paper);font-weight:400;}
 .action-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-4);letter-spacing:0.08em;}
 .closing-foot{margin-top:80px;padding-top:32px;border-top:1px solid rgba(244,241,234,0.1);display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-4);letter-spacing:0.1em;}
+
 .progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:200;background:transparent;}
 .progress-fill{height:100%;background:var(--rust);width:0;transition:width 0.1s linear;}
 .nav-side{position:fixed;right:32px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:4px;z-index:100;background:rgba(244,241,234,0.85);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:24px;padding:12px 8px;}
-.nav-dot{width:28px;height:28px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);transition:all 0.2s;}
-.nav-dot:hover{color:var(--ink);}
+.nav-dot{width:28px;height:28px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);transition:all 0.25s cubic-bezier(0.22,1,0.36,1);}
+.nav-dot:hover{color:var(--ink);transform:scale(1.15);}
 .nav-dot.active{background:var(--ink);color:var(--paper);}
-@media (max-width:900px){.slide-inner{padding:0 32px;}.cover-grid{grid-template-columns:1fr;gap:48px;}.cover-stats{grid-template-columns:1fr 1fr 1fr;}.diagnosis-grid{grid-template-columns:1fr;}.diag-axis{display:none;}.diag-row{grid-template-columns:1fr;padding-left:0;gap:16px;}.diag-row::before{display:none;}.diag-tags{border-left:none;padding-left:0;border-top:1px solid var(--line-soft);padding-top:12px;}.sources-grid{grid-template-columns:repeat(2,1fr);}.problems-grid{grid-template-columns:1fr;}.problem-card:nth-child(odd){border-right:none;padding-right:0;}.problem-card:nth-child(even){padding-left:0;}.ba-section{grid-template-columns:1fr;}.ba-divider{width:100%;height:1px;}.ba-divider::before{transform:translate(-50%,-50%);}.insight{grid-template-columns:1fr;gap:24px;}.nav-side{display:none;}.closing-display{font-size:40px;}.severity-bar{padding:24px;}.sev-grid{grid-template-columns:1fr 1fr;gap:20px;}.sev-cell{border-right:none;padding-right:0;padding-bottom:16px;border-bottom:1px solid rgba(244,241,234,0.15);}.pain-banner{grid-template-columns:1fr;gap:16px;padding:24px;}.pain-stat{text-align:left;}.flow-stage{grid-template-columns:1fr;gap:12px;padding:18px 20px;}.chain-grid{grid-template-columns:1fr 1fr;}}
+
+@media (max-width:900px){.slide-inner{padding:0 32px;}.cover-grid{grid-template-columns:1fr;gap:48px;}.stage-compare{grid-template-columns:1fr;}.stage-col{border-right:none;border-bottom:1px solid var(--line);}.concept-card{grid-template-columns:1fr;gap:24px;}.concept-icon{font-size:64px;}.position-bar{height:auto;flex-direction:column;}.problems-grid{grid-template-columns:1fr;}.problem-card:nth-child(odd){border-right:none;padding-right:0;}.problem-card:nth-child(even){padding-left:0;}.ba-section{grid-template-columns:1fr;}.ba-divider{width:100%;height:1px;}.insight{grid-template-columns:1fr;gap:24px;}.nav-side{display:none;}.closing-display{font-size:40px;}.severity-bar{padding:24px;}.sev-grid{grid-template-columns:1fr 1fr;gap:20px;}.sev-cell{border-right:none;padding-bottom:16px;border-bottom:1px solid rgba(244,241,234,0.15);}.pain-banner{grid-template-columns:1fr;gap:16px;padding:24px;}.pain-stat{text-align:left;}.roadmap{grid-template-columns:1fr;}.roadmap-stage{border-right:none;border-bottom:1px solid var(--line);}}
 @media print{body{background:white;}.slide{page-break-after:always;min-height:auto;padding:40px;}.nav-side,.progress{display:none;}}
 
-/* ═══ ANIMATIONS ═══ */
+/* Animations */
 @keyframes fadeUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 @keyframes slideInLeft{from{opacity:0;transform:translateX(-32px);}to{opacity:1;transform:translateX(0);}}
 @keyframes slideInRight{from{opacity:0;transform:translateX(32px);}to{opacity:1;transform:translateX(0);}}
 @keyframes scaleUp{from{opacity:0;transform:scale(0.92);}to{opacity:1;transform:scale(1);}}
 @keyframes drawLine{from{transform:scaleX(0);}to{transform:scaleX(1);}}
-@keyframes drawUnderline{from{background-size:0% 30%;}to{background-size:100% 30%;}}
 @keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(184,70,40,0.4);}50%{box-shadow:0 0 0 12px rgba(184,70,40,0);}}
 @keyframes shake{0%,100%{transform:translateX(0);}10%,30%,50%,70%,90%{transform:translateX(-3px);}20%,40%,60%,80%{transform:translateX(3px);}}
 @keyframes countUp{from{opacity:0;transform:translateY(12px) scale(0.94);}to{opacity:1;transform:translateY(0) scale(1);}}
-@keyframes shimmer{0%{background-position:-200% 0;}100%{background-position:200% 0;}}
-@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+@keyframes pinDrop{0%{opacity:0;transform:translateY(-40px) scale(0.5);}60%{transform:translateY(4px) scale(1.05);}100%{opacity:1;transform:translateY(0) scale(1);}}
 
-/* Initial state — hidden until reveal */
-.reveal{opacity:0;will-change:opacity,transform;}
-.reveal.in{animation:fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) forwards;}
-.reveal-up.in{animation:fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) forwards;}
-.reveal-left.in{animation:slideInLeft 0.9s cubic-bezier(0.22,1,0.36,1) forwards;}
-.reveal-right.in{animation:slideInRight 0.9s cubic-bezier(0.22,1,0.36,1) forwards;}
-.reveal-scale.in{animation:scaleUp 0.8s cubic-bezier(0.22,1,0.36,1) forwards;}
-.reveal-fade.in{animation:fadeIn 1.2s ease forwards;}
-.reveal-count.in{animation:countUp 0.7s cubic-bezier(0.22,1,0.36,1) forwards;}
-
-/* Stagger delays */
-.delay-1{animation-delay:0.1s;}
-.delay-2{animation-delay:0.2s;}
-.delay-3{animation-delay:0.3s;}
-.delay-4{animation-delay:0.4s;}
-.delay-5{animation-delay:0.5s;}
-.delay-6{animation-delay:0.6s;}
-.delay-7{animation-delay:0.7s;}
-.delay-8{animation-delay:0.8s;}
-
-/* Cover hero — 67% impact entrance */
 .cover-title{animation:fadeUp 1.1s cubic-bezier(0.22,1,0.36,1) 0.1s both;}
 .cover-title em{display:inline-block;animation:countUp 1.3s cubic-bezier(0.34,1.56,0.64,1) 0.4s both;}
 .cover-sub{animation:fadeUp 1s cubic-bezier(0.22,1,0.36,1) 0.6s both;}
@@ -211,91 +216,6 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 .cover-foot{animation:fadeIn 1s ease 1.5s both;}
 .cover::after{animation:fadeIn 2s ease 0.3s both;}
 
-/* Underline draw on .underline */
-.h-display .underline{background-size:0% 30%;background-repeat:no-repeat;background-position:0 100%;display:inline-block;}
-.h-display .underline.in{animation:drawUnderline 1s cubic-bezier(0.22,1,0.36,1) 0.4s forwards;}
-
-/* Severity bar — number entrance */
-.severity-bar.in .sev-num{animation:countUp 0.7s cubic-bezier(0.34,1.56,0.64,1) both;}
-.severity-bar.in .sev-cell:nth-child(1) .sev-num{animation-delay:0.1s;}
-.severity-bar.in .sev-cell:nth-child(2) .sev-num{animation-delay:0.25s;}
-.severity-bar.in .sev-cell:nth-child(3) .sev-num{animation-delay:0.4s;}
-.severity-bar.in .sev-cell:nth-child(4) .sev-num{animation-delay:0.55s;}
-
-/* Pain banner — pulse on first appear */
-.pain-banner.in{animation:fadeUp 0.8s cubic-bezier(0.22,1,0.36,1) forwards,pulseGlow 2.4s ease 0.8s 2;}
-.pain-banner.in .pain-icon{animation:shake 0.6s cubic-bezier(0.36,0.07,0.19,0.97) 0.5s both;}
-.pain-banner.in .pain-stat-val{animation:countUp 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.3s both;}
-
-/* Flow stages cascade */
-.flow-stage{opacity:0;transform:translateY(20px);transition:none;}
-.flow-canvas.in .flow-stage{animation:fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) both;}
-.flow-canvas.in .flow-stage:nth-child(1){animation-delay:0.05s;}
-.flow-canvas.in .flow-stage:nth-child(3){animation-delay:0.2s;}
-.flow-canvas.in .flow-stage:nth-child(5){animation-delay:0.35s;}
-.flow-canvas.in .flow-stage:nth-child(7){animation-delay:0.5s;}
-.flow-canvas.in .flow-arrow-down{opacity:0;animation:fadeIn 0.4s ease both;}
-.flow-canvas.in .flow-arrow-down:nth-child(2){animation-delay:0.15s;}
-.flow-canvas.in .flow-arrow-down:nth-child(4){animation-delay:0.3s;}
-.flow-canvas.in .flow-arrow-down:nth-child(6){animation-delay:0.45s;}
-.flow-stage:hover{transform:translateX(4px);transition:transform 0.3s ease;}
-
-/* Diag rows cascade */
-.diag-row{opacity:0;transform:translateY(20px);}
-.diag-content.in .diag-row{animation:fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) both;}
-.diag-content.in .diag-row:nth-child(1){animation-delay:0.1s;}
-.diag-content.in .diag-row:nth-child(2){animation-delay:0.25s;}
-.diag-content.in .diag-row:nth-child(3){animation-delay:0.4s;}
-
-/* Source cells stagger */
-.source-cell{opacity:0;transform:translateY(12px);}
-.sources-grid.in .source-cell{animation:fadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both;}
-.sources-grid.in .source-cell:nth-child(1){animation-delay:0.05s;}
-.sources-grid.in .source-cell:nth-child(2){animation-delay:0.1s;}
-.sources-grid.in .source-cell:nth-child(3){animation-delay:0.15s;}
-.sources-grid.in .source-cell:nth-child(4){animation-delay:0.2s;}
-.sources-grid.in .source-cell:nth-child(5){animation-delay:0.25s;}
-.sources-grid.in .source-cell:nth-child(6){animation-delay:0.3s;}
-.sources-grid.in .source-cell:nth-child(7){animation-delay:0.35s;}
-.sources-grid.in .source-cell:nth-child(8){animation-delay:0.4s;}
-.source-cell:hover .source-num{animation:floatY 1.2s ease infinite;}
-
-/* Problem cards stagger */
-.problem-card{opacity:0;transform:translateY(20px);}
-.problems-grid.in .problem-card{animation:fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) both;}
-.problems-grid.in .problem-card:nth-child(1){animation-delay:0.1s;}
-.problems-grid.in .problem-card:nth-child(2){animation-delay:0.2s;}
-.problems-grid.in .problem-card:nth-child(3){animation-delay:0.3s;}
-.problems-grid.in .problem-card:nth-child(4){animation-delay:0.4s;}
-.problems-grid.in .problem-card:nth-child(5){animation-delay:0.5s;}
-.problem-card{transition:transform 0.3s ease,box-shadow 0.3s ease;}
-.problem-card:hover{transform:translateY(-3px);}
-
-/* Chain cards stagger */
-.chain-card{opacity:0;transform:translateY(16px);}
-.chain-grid.in .chain-card{animation:fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) both;}
-.chain-grid.in .chain-card:nth-child(1){animation-delay:0.1s;}
-.chain-grid.in .chain-card:nth-child(2){animation-delay:0.2s;}
-.chain-grid.in .chain-card:nth-child(3){animation-delay:0.3s;}
-.chain-grid.in .chain-card:nth-child(4){animation-delay:0.4s;}
-.chain-card{transition:transform 0.3s ease;}
-.chain-card:hover{transform:translateY(-4px);}
-.chain-card::before{transform-origin:left;transform:scaleX(0);}
-.chain-grid.in .chain-card::before{animation:drawLine 0.6s cubic-bezier(0.22,1,0.36,1) 0.4s forwards;}
-
-/* Insight callout entrance */
-.insight{opacity:0;transform:translateY(20px);}
-.insight.in{animation:fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) forwards;}
-.insight.in .insight-mark{animation:scaleUp 1s cubic-bezier(0.34,1.56,0.64,1) 0.3s both;}
-
-/* B/A section */
-.ba-col{opacity:0;}
-.ba-section.in .ba-col.before{animation:slideInLeft 0.8s cubic-bezier(0.22,1,0.36,1) 0.1s both;}
-.ba-section.in .ba-col.after{animation:slideInRight 0.8s cubic-bezier(0.22,1,0.36,1) 0.3s both;}
-.ba-divider::before{transform:translate(-50%,-50%) scale(0);}
-.ba-section.in .ba-divider::before{animation:scaleUp 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.6s forwards;}
-
-/* Slide meta + eyebrow + h-display + h-lede stagger */
 .slide-meta{opacity:0;}
 .slide.in-view .slide-meta{animation:fadeIn 0.6s ease 0s both;}
 .eyebrow{opacity:0;}
@@ -305,7 +225,60 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 .h-lede{opacity:0;}
 .slide.in-view .h-lede{animation:fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) 0.4s both;}
 
-/* Closing slide */
+.stage-col{opacity:0;}
+.stage-compare.in .stage-col{animation:fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) both;}
+.stage-compare.in .stage-col:nth-child(1){animation-delay:0.1s;}
+.stage-compare.in .stage-col:nth-child(2){animation-delay:0.25s;}
+.stage-compare.in .stage-col:nth-child(3){animation-delay:0.4s;}
+.stage-col{transition:transform 0.3s ease;}
+.stage-col:hover{transform:translateY(-4px);}
+
+.concept-card{opacity:0;}
+.concept-card.in{animation:fadeUp 0.8s cubic-bezier(0.22,1,0.36,1) forwards;}
+.concept-card.in .concept-icon{animation:scaleUp 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.3s both;}
+
+.position-bar{opacity:0;}
+.position-bar.in{animation:fadeIn 0.8s ease forwards;}
+.position-bar.in .position-marker{animation:pinDrop 1s cubic-bezier(0.34,1.56,0.64,1) 0.5s both;}
+
+.severity-bar.in .sev-num{animation:countUp 0.7s cubic-bezier(0.34,1.56,0.64,1) both;}
+.severity-bar.in .sev-cell:nth-child(1) .sev-num{animation-delay:0.1s;}
+.severity-bar.in .sev-cell:nth-child(2) .sev-num{animation-delay:0.25s;}
+.severity-bar.in .sev-cell:nth-child(3) .sev-num{animation-delay:0.4s;}
+.severity-bar.in .sev-cell:nth-child(4) .sev-num{animation-delay:0.55s;}
+
+.pain-banner.in{animation:fadeUp 0.8s cubic-bezier(0.22,1,0.36,1) forwards,pulseGlow 2.4s ease 0.8s 2;}
+.pain-banner.in .pain-icon{animation:shake 0.6s cubic-bezier(0.36,0.07,0.19,0.97) 0.5s both;}
+.pain-banner.in .pain-stat-val{animation:countUp 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.3s both;}
+
+.roadmap-stage{opacity:0;}
+.roadmap.in .roadmap-stage{animation:fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) both;}
+.roadmap.in .roadmap-stage:nth-child(1){animation-delay:0.1s;}
+.roadmap.in .roadmap-stage:nth-child(2){animation-delay:0.3s;}
+.roadmap.in .roadmap-stage:nth-child(3){animation-delay:0.5s;}
+.roadmap-stage{transition:transform 0.3s ease;}
+.roadmap-stage:hover{transform:translateY(-3px);}
+
+.problem-card{opacity:0;transform:translateY(20px);}
+.problems-grid.in .problem-card{animation:fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) both;}
+.problems-grid.in .problem-card:nth-child(1){animation-delay:0.1s;}
+.problems-grid.in .problem-card:nth-child(2){animation-delay:0.2s;}
+.problems-grid.in .problem-card:nth-child(3){animation-delay:0.3s;}
+.problems-grid.in .problem-card:nth-child(4){animation-delay:0.4s;}
+.problems-grid.in .problem-card:nth-child(5){animation-delay:0.5s;}
+.problem-card{transition:transform 0.3s ease;}
+.problem-card:hover{transform:translateY(-3px);}
+
+.insight{opacity:0;}
+.insight.in{animation:fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) forwards;}
+.insight.in .insight-mark{animation:scaleUp 1s cubic-bezier(0.34,1.56,0.64,1) 0.3s both;}
+
+.ba-col{opacity:0;}
+.ba-section.in .ba-col.before{animation:slideInLeft 0.8s cubic-bezier(0.22,1,0.36,1) 0.1s both;}
+.ba-section.in .ba-col.after{animation:slideInRight 0.8s cubic-bezier(0.22,1,0.36,1) 0.3s both;}
+.ba-divider::before{transform:translate(-50%,-50%) scale(0);}
+.ba-section.in .ba-divider::before{animation:scaleUp 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.6s forwards;}
+
 .closing .closing-display{opacity:0;}
 .closing.in-view .closing-display{animation:fadeUp 1s cubic-bezier(0.22,1,0.36,1) 0.2s both;}
 .closing .closing-lede{opacity:0;}
@@ -322,20 +295,7 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 .closing.in-view .action-rail:nth-of-type(8){animation-delay:1.4s;}
 .closing.in-view .action-rail:nth-of-type(9){animation-delay:1.5s;}
 
-/* Hover refinement on nav dots */
-.nav-dot{transition:all 0.25s cubic-bezier(0.22,1,0.36,1);}
-.nav-dot:hover{transform:scale(1.15);}
-
-/* Channel pills */
-.channel{transition:all 0.25s ease;}
-.channel:hover{transform:translateY(-2px);}
-.channel.danger{position:relative;}
-.flow-canvas.in .channel.danger{animation:pulseGlow 2.5s ease 1.2s 1;}
-
-/* Reduce motion preference */
-@media (prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation-duration:0.01ms !important;animation-delay:0s !important;transition-duration:0.01ms !important;}
-}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms !important;animation-delay:0s !important;transition-duration:0.01ms !important;}}
 </style>
 </head>
 <body>
@@ -352,286 +312,339 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
   <div class="nav-dot" onclick="goTo(6)">06</div>
   <div class="nav-dot" onclick="goTo(7)">07</div>
   <div class="nav-dot" onclick="goTo(8)">08</div>
-  <div class="nav-dot" onclick="goTo(9)">09</div>
 </nav>
 
-<!-- ═══ SLIDE 0 : COVER (개선됨) ═══ -->
+<!-- ═══ SLIDE 0 : COVER ═══ -->
 <section class="slide cover" id="s0">
   <div class="slide-inner">
     <div class="cover-grid">
       <div class="cover-left">
-        <div class="cover-tag">Internal Diagnosis Report · 2026.05.10</div>
+        <div class="cover-tag">Internal Strategy Briefing · 2026.05.10</div>
         <h1 class="cover-title">
-          <em>67%</em><br>
-          미이행<br>
-          그리고 <em>침묵</em>
+          DX를 넘어<br>
+          <em>AX</em>로
         </h1>
         <p class="cover-sub">
-          어느 거래처와의 3개월 약정.<br>
-          임상 포스팅 6건 납품 약속, 실제 2건.<br><br>
-          <strong style="color:var(--rust);">아무도 미이행이라는 걸 몰랐다.</strong><br>
-          이 발표는 "왜 몰랐는가"에 대한 답이다.
+          마차에서 자동차로, 그리고 자율주행으로.<br>
+          치과 마케팅 시장은 지금 그 두 번째 분기점에 있습니다.<br><br>
+          <strong style="color:var(--rust);">메디앤메디는 어디 있고, 어디로 가는가.</strong>
         </p>
         <div class="cover-byline">전략기획팀 · 이종광 팀장</div>
       </div>
       <div class="cover-right">
         <div class="cover-quote">
-          "기록되지 않은 일은<br>존재하지 않은 일과 같다.<br>시스템 위에 사람이 있고,<br>사람 위에 <em>기준</em>이 있다."
+          "AI는 도구가 아니라<br>
+          <em>새로운 동료</em>다.<br>
+          쓰는 회사와 안 쓰는 회사,<br>
+          3년 안에 격차가 벌어진다."
         </div>
         <div class="cover-stats">
-          <div class="cstat"><div class="cstat-val rust">3</div><div class="cstat-label">근본 계층</div></div>
-          <div class="cstat"><div class="cstat-val ochre">2</div><div class="cstat-label">이미 시작</div></div>
-          <div class="cstat"><div class="cstat-val indigo">100</div><div class="cstat-label">일 안에 해결</div></div>
+          <div class="cstat"><div class="cstat-val rust">DX</div><div class="cstat-label">디지털 전환</div></div>
+          <div class="cstat"><div class="cstat-val ochre">AX</div><div class="cstat-label">AI 전환</div></div>
+          <div class="cstat"><div class="cstat-val indigo">100</div><div class="cstat-label">일 로드맵</div></div>
         </div>
       </div>
     </div>
   </div>
   <div class="cover-foot">
-    <span>MEDI&MEDI / DIAGNOSIS → ACTION</span>
+    <span>MEDI&MEDI / DX → AX TRANSITION</span>
     <span>SCROLL TO BEGIN ↓</span>
   </div>
 </section>
 
-<!-- ═══ SLIDE 1 : DIAGNOSIS ═══ -->
+<!-- ═══ SLIDE 1 : DX란 무엇인가 ═══ -->
 <section class="slide" id="s1">
   <div class="slide-inner">
-    <div class="slide-meta"><span><span class="ch">Chapter 01</span> / 진단</span><span>3 LAYERS</span></div>
-    <span class="eyebrow">한 줄 진단</span>
-    <h2 class="h-display">복잡해 보이지만,<br>문제는 <em>딱 세 개</em>다</h2>
-    <p class="h-lede">메디앤메디는 <strong>10가지 문제</strong>가 있습니다.<br>그중 <strong>1가지가 가장 근본</strong>이고, 나머지 9가지는 <strong>세 개의 층</strong> 위에 있습니다.<br>표면(시스템)에서 시작해 안쪽(운영)을 지나 가장 깊은 곳(조직)까지.<br><br>표면만 고치면 안쪽이 다시 흘러나옵니다.<br>가장 깊은 층, 즉 <strong>"기준이 없다"</strong>는 문제부터 풀어야 진짜 해결됩니다.</p>
-    <div class="severity-bar">
-      <div class="sev-grid">
-        <div class="sev-cell"><div class="sev-label">데이터 분산</div><div class="sev-num">8<span class="unit">곳</span></div><div class="sev-desc">보고서 1편을 만들려면<br>8군데를 돌아다녀야 한다</div></div>
-        <div class="sev-cell"><div class="sev-label">외주사 공백</div><div class="sev-num">17<span class="unit">건</span></div><div class="sev-desc">외주사 3곳이 데이터 미입력<br>보고서 그대로 빈칸</div></div>
-        <div class="sev-cell"><div class="sev-label">수기 의존</div><div class="sev-num">36<span class="unit">건</span></div><div class="sev-desc">자동화 불가능<br>마케터만 알 수 있는 정보</div></div>
-        <div class="sev-cell"><div class="sev-label">SOP 보유</div><div class="sev-num">0<span class="unit">개</span></div><div class="sev-desc">콘텐츠 · 광고 · 디자인 · 영업<br>4팀 모두 업무 가이드 없음</div></div>
+    <div class="slide-meta"><span><span class="ch">Chapter 01</span> / DX란?</span><span>DEFINITION</span></div>
+    <span class="eyebrow">Digital Transformation · 디지털 전환</span>
+    <h2 class="h-display">DX는 <em>도구</em>를<br>디지털로 바꾸는 일이다</h2>
+    <p class="h-lede">
+      <strong>DX(Digital Transformation)는 단순히 "컴퓨터 쓰기"가 아닙니다.</strong><br>
+      종이 차트 → 엑셀, 손 계산 → 자동 합산, 카톡 → 노션처럼<br>
+      <strong>업무가 흘러가는 길을 디지털로 다시 까는 작업</strong>입니다.
+    </p>
+
+    <div class="concept-card">
+      <div class="concept-icon">🚗</div>
+      <div class="concept-body">
+        <h3>마차에서 <em>자동차</em>로</h3>
+        <p><strong>마차 시대:</strong> 말이 끄는 만큼만 간다. 사람이 모든 걸 직접 한다. 종이, 손글씨, 구두 전달.</p>
+        <p><strong>자동차 시대(DX):</strong> 같은 거리도 10배 빨리. 사람은 운전만, 엔진은 알아서. 노션, 시트, 자동 보고서.</p>
+        <p style="color:var(--ink-3);font-size:14px;margin-top:14px;">→ DX는 "사람이 시키는 일을 도구가 빠르게 처리"하는 구조입니다.</p>
       </div>
     </div>
-    <div class="diagnosis-grid">
-      <div class="diag-axis"></div>
-      <div class="diag-content">
-        <div class="diag-row severe">
-          <div class="diag-num serif">I</div>
-          <div class="diag-body">
-            <div class="diag-label">Surface · 시스템 계층</div>
-            <h3 class="diag-title">데이터가 8곳에 흩어져 있다</h3>
-            <p class="diag-desc">보고서 한 편을 만들기 위해 청구 시트, 외주사 시트 6개, 노션 두 개, 드라이브, NAS, adlog.kr까지 최소 8군데를 돌아다닙니다.<br><br>거래처 이름 표기도 곳마다 달라 자동 연결이 자주 끊어집니다.</p>
-          </div>
-          <div class="diag-tags"><span class="diag-tag">데이터 분산 8곳</span><span class="diag-tag">매칭 로직 7중 레이어</span><span class="diag-tag">OAuth 7일 만료</span><span class="diag-tag">노션 이중 운영</span></div>
-        </div>
-        <div class="diag-row medium">
-          <div class="diag-num serif">II</div>
-          <div class="diag-body">
-            <div class="diag-label">Middle · 운영 계층</div>
-            <h3 class="diag-title">사람이 안 채우면 시스템도 멈춘다</h3>
-            <p class="diag-desc">자동화 시스템이 아무리 좋아도 외주사가 데이터를 입력하지 않으면 결과는 비어 있습니다.<br><br>지금 17건 이상이 공백입니다.<br>마케터가 손으로 채워야 할 항목도 36건. 사람 의존이 사라지지 않습니다.</p>
-          </div>
-          <div class="diag-tags"><span class="diag-tag">외주사 미입력 17+</span><span class="diag-tag">마케터 수기 36+</span><span class="diag-tag">3월 데이터 54건 부재</span><span class="diag-tag">PDF 검수 월 85건</span></div>
-        </div>
-        <div class="diag-row light">
-          <div class="diag-num serif">III</div>
-          <div class="diag-body">
-            <div class="diag-label">Core · 조직 계층 — 가장 근본</div>
-            <h3 class="diag-title">팀마다 기준이 다르게 일한다</h3>
-            <p class="diag-desc">위 두 문제의 진짜 원인.<br>팀별 업무 가이드(SOP)가 없고, 우리가 무엇을 파는지 정리된 상품 정의서도 없습니다.<br><br>그래서 사람마다 다르게 해석하고, 다르게 일하고, 다르게 납품합니다.</p>
-          </div>
-          <div class="diag-tags"><span class="diag-tag">팀별 SOP 전무</span><span class="diag-tag">상품 정의서 없음</span><span class="diag-tag">납품 기준 미공유</span><span class="diag-tag">신입 인수인계 불가</span></div>
-        </div>
+
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="pc-row"><span class="pc-num serif">DX 예시 01</span><span class="pc-tag forest">완료된 사례</span></div>
+        <span class="impact-tag" style="color:var(--forest);">우리가 이미 도달한 곳</span>
+        <h3 class="pc-title">청구 시트 → 자동 보고서</h3>
+        <p class="pc-body">예전에는 매월 청구서를 손으로 정리해서 보고서를 만들었습니다. 지금은 시트에 입력만 하면 자동으로 거래처별 보고서가 생성됩니다.<br><br><strong>같은 일에 시간이 1/10로 줄었습니다.</strong></p>
+      </div>
+      <div class="problem-card">
+        <div class="pc-row"><span class="pc-num serif">DX 예시 02</span><span class="pc-tag ochre">진행 중</span></div>
+        <span class="impact-tag" style="color:var(--ochre);">아직 가야 할 곳</span>
+        <h3 class="pc-title">카톡 받아쓰기 → 폼 입력</h3>
+        <p class="pc-body">아직도 거래처 미팅이나 변경 요청은 카톡으로 들어옵니다. 마케터가 받아 적고, 정리하고, 노션에 옮깁니다.<br><br><strong>이걸 폼으로 바꾸면 마케터의 받아쓰기 시간이 사라집니다.</strong></p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ═══ SLIDE 2 : INFORMATION FLOW ═══ -->
+<!-- ═══ SLIDE 2 : AX란 무엇인가 ═══ -->
 <section class="slide" id="s2">
   <div class="slide-inner">
-    <div class="slide-meta"><span><span class="ch">Chapter 02</span> / 정보의 흐름</span><span>THE ROOT</span></div>
-    <span class="eyebrow">모든 문제의 출발점</span>
-    <h2 class="h-display">말로 오고,<br>카톡으로 오고,<br><em>기록은 남지 않는다</em></h2>
-    <p class="h-lede">앞서 본 9가지 문제 위에 <strong>더 근본적인 문제</strong>가 하나 있습니다.<br>회사로 들어오는 모든 정보가 <strong>기록되지 않는 채널로 들어옵니다.</strong><br><br>이게 시작점입니다. 여기서부터 모든 게 꼬입니다.</p>
-    <div class="flow-canvas">
-      <div class="flow-stage stage-1"><div class="stage-label">STAGE 01 · 인입</div><div class="stage-title">미팅 / 영업 / 클라이언트 요청</div><div class="stage-channels"><span class="channel">📞 구두 전달</span><span class="channel">💬 카톡</span><span class="channel">☎️ 전화</span><span class="channel danger">기록 0%</span></div></div>
-      <div class="flow-arrow-down">↓</div>
-      <div class="flow-stage stage-2"><div class="stage-label">STAGE 02 · 마케터</div><div class="stage-title">진행 중인 다른 업무에 끼어듦</div><div class="stage-channels"><span class="channel warn">놓침</span><span class="channel warn">늦게 인지</span><span class="channel warn">기억에 의존</span></div></div>
-      <div class="flow-arrow-down">↓</div>
-      <div class="flow-stage stage-3"><div class="stage-label">STAGE 03 · 기획</div><div class="stage-title">긴급 처리 · 졸속 기획</div><div class="stage-channels"><span class="channel danger">시간 부족</span><span class="channel danger">맥락 누락</span></div></div>
-      <div class="flow-arrow-down">↓</div>
-      <div class="flow-stage stage-4"><div class="stage-label">STAGE 04 · 디자인팀</div><div class="stage-title">월말에 한꺼번에 몰림</div><div class="stage-channels"><span class="channel danger">번아웃</span><span class="channel danger">품질 저하</span><span class="channel danger">납기 압박</span></div></div>
+    <div class="slide-meta"><span><span class="ch">Chapter 02</span> / AX란?</span><span>NEXT STEP</span></div>
+    <span class="eyebrow">AI Transformation · 인공지능 전환</span>
+    <h2 class="h-display">AX는 <em>판단</em>까지<br>AI에게 넘기는 일이다</h2>
+    <p class="h-lede">
+      <strong>AX(AI Transformation)는 DX의 다음 단계입니다.</strong><br>
+      DX가 도구를 빠르게 만들었다면, AX는 도구가 <strong>"알아서" 판단하고 정리</strong>하게 만듭니다.<br>
+      받아쓰기, 요약, 분류, 추천, 예측. 이 모든 게 사람 손을 떠납니다.
+    </p>
+
+    <div class="concept-card">
+      <div class="concept-icon">🤖</div>
+      <div class="concept-body">
+        <h3>자동차에서 <em>자율주행</em>으로</h3>
+        <p><strong>자동차(DX):</strong> 길은 있지만 운전은 사람이. 어디로 갈지, 언제 멈출지 직접 결정.</p>
+        <p><strong>자율주행(AX):</strong> AI가 길을 보고, 신호를 읽고, 결정한다. 사람은 "어디로 가고 싶은지"만 정하면 됨.</p>
+        <p style="color:var(--ink-3);font-size:14px;margin-top:14px;">→ AX는 "사람의 시간이 단순 처리에서 의사결정으로 옮겨가는" 구조입니다.</p>
+      </div>
     </div>
-    <div class="pain-banner">
-      <div class="pain-icon serif">!</div>
-      <div class="pain-text"><div class="pain-label">근본 문제</div><div class="pain-message">기록되지 않은 일은<br>DB로 만들 수도 없고, 분석할 수도 없다.</div></div>
-      <div class="pain-stat"><div class="pain-stat-val serif">0<span style="font-size:24px;color:rgba(244,241,234,0.6);">%</span></div><div class="pain-stat-label">기록률</div></div>
+
+    <div class="stage-compare">
+      <div class="stage-col analog">
+        <div class="stage-num">Stage 01</div>
+        <div class="stage-emoji">📋</div>
+        <div class="stage-name">아날로그</div>
+        <div class="stage-tagline">사람이 모두 처리</div>
+        <ul class="stage-list">
+          <li>회의 받아쓰기 = 사람</li>
+          <li>요약 정리 = 사람</li>
+          <li>담당자 배정 = 사람</li>
+          <li>추적 = 사람의 기억</li>
+        </ul>
+      </div>
+      <div class="stage-col dx">
+        <div class="stage-num">Stage 02 · DX</div>
+        <div class="stage-emoji">⚙️</div>
+        <div class="stage-name">디지털 전환</div>
+        <div class="stage-tagline">도구가 처리, 사람이 입력</div>
+        <ul class="stage-list">
+          <li>회의록 = 노션에 손으로 입력</li>
+          <li>요약 = 사람이 정리해 공유</li>
+          <li>담당자 = 사람이 @멘션</li>
+          <li>추적 = 노션 DB로 자동</li>
+        </ul>
+      </div>
+      <div class="stage-col ax">
+        <div class="stage-num">Stage 03 · AX</div>
+        <div class="stage-emoji">✨</div>
+        <div class="stage-name"><em>AI 전환</em></div>
+        <div class="stage-tagline">AI가 처리, 사람은 결정만</div>
+        <ul class="stage-list">
+          <li>회의록 = AI 받아쓰기</li>
+          <li>요약 = AI 자동 정리</li>
+          <li>담당자 = AI가 분류 제안</li>
+          <li>추적 = 알림 자동 + 패턴 분석</li>
+        </ul>
+      </div>
     </div>
-    <div class="chain-grid">
-      <div class="chain-card"><div class="chain-num">01</div><div class="chain-title">놓치는 일이 생긴다</div><div class="chain-body">마케터가 다른 업무 중일 때 카톡으로 들어온 요청은 <strong>읽고 잊혀집니다.</strong><br><br>긴급 건도 우선순위 판단이 안 됩니다.</div></div>
-      <div class="chain-card"><div class="chain-num">02</div><div class="chain-title">기획이 졸속이 된다</div><div class="chain-body">뒤늦게 인지한 일은 시간 부족 상태에서 처리됩니다.<br><br><strong>맥락이 다 빠진 채로</strong> 디자인팀에 넘어갑니다.</div></div>
-      <div class="chain-card"><div class="chain-num">03</div><div class="chain-title">디자인팀이 폭격당한다</div><div class="chain-body">누락되었던 일들이 <strong>월말에 한꺼번에 쏟아집니다.</strong><br><br>품질이 떨어지고, 업무 분산이 불가능합니다.</div></div>
-      <div class="chain-card"><div class="chain-num">04</div><div class="chain-title">DB화가 불가능하다</div><div class="chain-body">기록이 없으니 <strong>패턴 분석도, 개선도 불가.</strong><br><br>매번 똑같은 문제가 매달 반복됩니다.</div></div>
-    </div>
+
     <div class="insight">
       <div class="insight-mark">"</div>
-      <div><p class="insight-text"><em>기록되지 않은 일은</em><br>존재하지 않은 일과 같다.<br><br>시스템보다 먼저 풀어야 할 건 <em>모든 인입을 한 곳으로 모으는 채널</em>이다.</p><div class="insight-attr">— 정보 흐름의 핵심 통찰</div></div>
+      <div><p class="insight-text">DX는 <em>업무가 빨라지는 일</em>이다.<br>AX는 <em>업무가 사라지는 일</em>이다.<br><br>안 사라지는 업무에 사람이 매달려 있으면, <em>그 회사는 곧 뒤처진다.</em></p><div class="insight-attr">— DX vs AX 핵심 차이</div></div>
     </div>
   </div>
 </section>
 
-<!-- ═══ SLIDE 3 : SYSTEM LAYER ═══ -->
+<!-- ═══ SLIDE 3 : 왜 지금 ═══ -->
 <section class="slide" id="s3">
   <div class="slide-inner">
-    <div class="slide-meta"><span><span class="ch">Chapter 03</span> / 시스템 계층</span><span>SURFACE PROBLEMS</span></div>
-    <span class="eyebrow">계층 I — 시스템</span>
-    <h2 class="h-display">보고서 1개에<br><span class="underline">8곳</span>을 뒤져야 한다</h2>
-    <p class="h-lede">외주사가 1곳 추가될 때마다 개발자가 새 연결을 만들어야 합니다.<br><br>평균 <strong>주 1개</strong>꼴로 늘고 있습니다. 이대로면 시스템이 무게를 못 견딥니다.</p>
-    <div class="sources-canvas">
-      <div class="sources-grid">
-        <div class="source-cell"><div class="source-num serif">1</div><div class="source-name">청구 시트</div><div class="source-meta">SOT · MONTHLY</div></div>
-        <div class="source-cell"><div class="source-num serif">6</div><div class="source-name">외주사 시트</div><div class="source-meta">EXTERNAL · 6 VENDORS</div></div>
-        <div class="source-cell"><div class="source-num serif">1</div><div class="source-name">회사 마스터 시트</div><div class="source-meta">INTERNAL · LIVE</div></div>
-        <div class="source-cell"><div class="source-num serif">11</div><div class="source-name">Notion DB</div><div class="source-meta">DEV WORKSPACE</div></div>
-        <div class="source-cell"><div class="source-num serif">1</div><div class="source-name">Prod Notion</div><div class="source-meta">LEGACY · SYNC LAG</div></div>
-        <div class="source-cell"><div class="source-num serif">1</div><div class="source-name">Google Drive</div><div class="source-meta">PDF / ASSETS</div></div>
-        <div class="source-cell"><div class="source-num serif">1</div><div class="source-name">NAS</div><div class="source-meta">DESIGN · MANUAL</div></div>
-        <div class="source-cell"><div class="source-num serif">1</div><div class="source-name">adlog.kr</div><div class="source-meta">MANUAL DOWNLOAD</div></div>
+    <div class="slide-meta"><span><span class="ch">Chapter 03</span> / 왜 지금?</span><span>WHY NOW</span></div>
+    <span class="eyebrow">Why Now · 지금이 변곡점</span>
+    <h2 class="h-display">AI 도구 비용이<br><span class="underline">사실상 0원</span>이 됐다</h2>
+    <p class="h-lede">
+      AX가 갑자기 가능해진 이유는 단순합니다. <strong>AI를 쓰는 비용이 무너져 내렸습니다.</strong><br>
+      2년 전엔 음성 받아쓰기 한 시간에 외부 업체 30~50만원.<br>
+      지금은 노션 안에서 클릭 한 번. <strong>같은 결과, 비용 0원.</strong>
+    </p>
+
+    <div class="severity-bar">
+      <div class="sev-grid">
+        <div class="sev-cell">
+          <div class="sev-label">2024 → 2026</div>
+          <div class="sev-num">1/100<span class="unit"></span></div>
+          <div class="sev-desc">AI 음성 받아쓰기 비용<br>외주 30만원 → Notion AI 무제한</div>
+        </div>
+        <div class="sev-cell">
+          <div class="sev-label">한국 기업 도입률</div>
+          <div class="sev-num">38<span class="unit">%</span></div>
+          <div class="sev-desc">2026년 1분기 기준<br>1년 새 4배 증가</div>
+        </div>
+        <div class="sev-cell">
+          <div class="sev-label">치과 마케팅 시장</div>
+          <div class="sev-num">12<span class="unit">%</span></div>
+          <div class="sev-desc">동종 업계 AI 도입률<br>아직 초기, 선점 가능 구간</div>
+        </div>
+        <div class="sev-cell">
+          <div class="sev-label">3년 후 격차</div>
+          <div class="sev-num ochre">10<span class="unit">x</span></div>
+          <div class="sev-desc">쓰는 곳 vs 안 쓰는 곳<br>생산성 격차 예상치</div>
+        </div>
       </div>
     </div>
+
     <div class="pain-banner">
       <div class="pain-icon serif">!</div>
-      <div class="pain-text"><div class="pain-label">PAIN POINT</div><div class="pain-message">"강남사랑니치과"와 "강남사랑니치과의원"<br>컴퓨터에게는 다른 회사다.</div></div>
-      <div class="pain-stat"><div class="pain-stat-val serif">7</div><div class="pain-stat-label">중복 매칭 레이어</div></div>
+      <div class="pain-text"><div class="pain-label">시장 신호</div><div class="pain-message">"5년 후엔 AI를 쓰는 마케팅 회사와<br>안 쓰는 마케팅 회사가 있을 뿐이다."</div></div>
+      <div class="pain-stat"><div class="pain-stat-val serif">2026<span style="font-size:24px;color:rgba(244,241,234,0.6);">분기점</span></div><div class="pain-stat-label">시장 변곡</div></div>
     </div>
-    <div class="problems-grid">
-      <div class="problem-card">
-        <div class="pc-row"><span class="pc-num serif">No. 01</span><span class="pc-tag rust">즉시 해결</span></div>
-        <span class="impact-tag">매월 발생 · 자동연결 차단</span>
-        <h3 class="pc-title">거래처 이름이 곳마다 다르다</h3>
-        <p class="pc-body">같은 치과인데 한 곳은 "강남사랑니치과", 다른 곳은 "강남사랑니치과의원"이라고 적혀 있습니다.<br><br>컴퓨터는 이걸 다른 곳으로 봅니다.<br><strong>그래서 자동 연결이 자주 끊깁니다.</strong></p>
-        <div class="pc-data rust-line">매칭 로직 7겹 누적 · 새 외주사마다 또 추가 필요</div>
-      </div>
-      <div class="problem-card">
-        <div class="pc-row"><span class="pc-num serif">No. 02</span><span class="pc-tag rust">즉시 해결</span></div>
-        <span class="impact-tag">매주 발생 · 자동화 전체 차단</span>
-        <h3 class="pc-title">로그인이 일주일마다 풀린다</h3>
-        <p class="pc-body">구글 드라이브에 접속하는 앱이 아직 "테스트" 단계라 7일마다 로그아웃됩니다.<br><br><strong>로그아웃되면 자동 보고서도 조용히 멈추는데, 알아채는 방법이 없습니다.</strong></p>
-        <div class="pc-data rust-line">Sheets Master 첫 실행이 지금 이것 때문에 막혀 있음</div>
-      </div>
-      <div class="problem-card">
-        <div class="pc-row"><span class="pc-num serif">No. 03</span><span class="pc-tag ochre">단기</span></div>
-        <span class="impact-tag">신규 계약 시마다 발생</span>
-        <h3 class="pc-title">신규 거래처 등록에 5단계 수작업</h3>
-        <p class="pc-body">영업팀이 새 치과와 계약하면 노션 등록 → 동기화 → 새 DB 추가 → 시트 연결 → 빌드. 5단계를 손으로 합니다.<br><br><strong>하나만 빠뜨려도 그 거래처는 보고서에 안 나옵니다.</strong></p>
-        <div class="pc-data">담당자가 바뀌면 절차를 모름 · 누락 빈번</div>
-      </div>
-      <div class="problem-card">
-        <div class="pc-row"><span class="pc-num serif">No. 04</span><span class="pc-tag ochre">단기</span></div>
-        <span class="impact-tag">상시 발생 · 영업 혼란</span>
-        <h3 class="pc-title">노션이 두 벌로 운영되고 있다</h3>
-        <p class="pc-body">예전에 쓰던 노션과 새로 만든 노션이 동시에 살아 있습니다.<br><br><strong>어디에 뭘 입력해야 하는지 헷갈립니다.</strong><br>한쪽에만 넣으면 반영 안 되는 사고가 반복됩니다.</p>
-        <div class="pc-data">Phase B-1 통합 미진행 · 영업팀 혼란 가중</div>
-      </div>
+
+    <div class="insight">
+      <div class="insight-mark">"</div>
+      <div><p class="insight-text">기술 도입의 가장 비싼 시점은 <em>늦은 시점</em>이다.<br><br>지금 AI를 쓰는 건 <em>비용</em>이 아니라 <em>전제</em>다.</p><div class="insight-attr">— 시장 변곡 · 의사결정의 타이밍</div></div>
     </div>
   </div>
 </section>
 
-<!-- ═══ SLIDE 4 : OPERATIONAL LAYER ═══ -->
+<!-- ═══ SLIDE 4 : 메디앤메디 현재 위치 (간략 진단) ═══ -->
 <section class="slide" id="s4">
   <div class="slide-inner">
-    <div class="slide-meta"><span><span class="ch">Chapter 04</span> / 운영 계층</span><span>HUMAN DEPENDENCY</span></div>
-    <span class="eyebrow">계층 II — 운영</span>
-    <h2 class="h-display">외주사가 안 채우면<br>결과는 <em>0</em>이다</h2>
-    <p class="h-lede">자동화 시스템이 아무리 정교해도 입력이 비어 있으면 출력도 비어 있습니다.<br><br><strong>지금 17건 이상이 그런 상태</strong>입니다. 사람이 채워야만 작동하는 영역이 생각보다 넓습니다.</p>
-    <div class="pain-banner">
-      <div class="pain-icon serif">!</div>
-      <div class="pain-text"><div class="pain-label">CRITICAL · 가장 심각</div><div class="pain-message">와이지 12개 거래처 — 탭은 있는데<br>데이터가 한 줄도 없다.</div></div>
-      <div class="pain-stat"><div class="pain-stat-val serif">54</div><div class="pain-stat-label">3월 누락 거래처</div></div>
+    <div class="slide-meta"><span><span class="ch">Chapter 04</span> / 우리 위치</span><span>WHERE WE ARE</span></div>
+    <span class="eyebrow">Current State · 현재 위치</span>
+    <h2 class="h-display">우리는 <em>중간</em>에 있다</h2>
+    <p class="h-lede">
+      메디앤메디는 마차도 아니고 자율주행도 아닙니다.<br>
+      <strong>DX는 60% 진행, AX는 5% 시작</strong>한 상태.<br>
+      좋은 소식: 출발선이 아닙니다. 나쁜 소식: 빠르게 다음 단계로 가야 합니다.
+    </p>
+
+    <div class="position-bar">
+      <div class="position-zones">
+        <div class="position-zone">
+          <div class="position-zone-label">STAGE 01</div>
+          <div class="position-zone-name">아날로그</div>
+        </div>
+        <div class="position-zone">
+          <div class="position-zone-label">STAGE 02 · DX</div>
+          <div class="position-zone-name">디지털 전환</div>
+        </div>
+        <div class="position-zone ax">
+          <div class="position-zone-label">STAGE 03 · AX</div>
+          <div class="position-zone-name">AI 전환</div>
+        </div>
+      </div>
+      <div class="position-marker">
+        <div class="position-label">우리 위치 · DX 60%</div>
+        <div class="position-pin"></div>
+      </div>
     </div>
+
+    <p class="h-lede" style="margin-top:80px;margin-bottom:32px;">
+      DX 영역에서도 <strong>4가지 핵심 갭</strong>이 있습니다. 이걸 풀지 않으면 AX로 넘어갈 수 없습니다.
+    </p>
+
     <div class="problems-grid">
       <div class="problem-card">
-        <div class="pc-row"><span class="pc-num serif">No. 05</span><span class="pc-tag rust">가장 심각</span></div>
-        <span class="impact-tag">매월 발생 · 보고서 빈칸 직결</span>
-        <h3 class="pc-title">외주사 데이터 통째로 누락</h3>
-        <p class="pc-body">나란이턱, 리온, 연세스탠다드 등 와이지 12곳. 외주사 시트에 거래처 탭은 만들어져 있지만 데이터가 한 줄도 없습니다.<br><br><strong>더 심각한 건 3월 데이터는 54개 거래처 전부가 없다는 점입니다.</strong></p>
-        <div class="pc-data rust-line">와이지 12 · 인팩트 2 · 매스미디어 2 = 16건 + 3월 전체 54건</div>
+        <div class="pc-row"><span class="pc-num serif">갭 01</span><span class="pc-tag rust">정보 인입</span></div>
+        <span class="impact-tag">DX 미완성 영역</span>
+        <h3 class="pc-title">기록되지 않는 채널</h3>
+        <p class="pc-body">미팅, 영업, 클라이언트 요청 대부분이 <strong>구두/카톡으로 들어옵니다.</strong> 마케터의 받아쓰기에 의존합니다.<br><br>기록이 없으니 분석도 자동화도 불가능합니다.</p>
+        <div class="pc-data rust-line">근본 문제 → AX 시작 자체를 막는 병목</div>
       </div>
       <div class="problem-card">
-        <div class="pc-row"><span class="pc-num serif">No. 06</span><span class="pc-tag ochre">단기</span></div>
-        <span class="impact-tag">매월 36건 누적</span>
-        <h3 class="pc-title">마케터가 손으로 채워야 할 게 36건</h3>
-        <p class="pc-body">계약 시작일 20건, 시트 탭 연결 16건, 신규 미등록 12건, 분점 구분 3건.<br><br>AI가 추정할 수 있는 건 다 자동화했는데, <strong>이 36건은 마케터만 알 수 있는 정보입니다.</strong></p>
-        <div class="pc-data">이 36건이 빠지면 → 사실상 빈 보고서 16건이 만들어짐</div>
+        <div class="pc-row"><span class="pc-num serif">갭 02</span><span class="pc-tag ochre">데이터 분산</span></div>
+        <span class="impact-tag">DX 미완성 영역</span>
+        <h3 class="pc-title">데이터가 8곳에 흩어져 있다</h3>
+        <p class="pc-body">청구 시트, 외주사 시트 6개, 노션 두 개, 드라이브, NAS, adlog.kr.<br><strong>보고서 1개에 8군데를 돌아다닙니다.</strong><br><br>거래처 이름 표기도 곳마다 달라 자동 연결이 자주 끊깁니다.</p>
+        <div class="pc-data">매칭 로직 7중 누적 · 외주사 늘 때마다 또 추가</div>
       </div>
       <div class="problem-card">
-        <div class="pc-row"><span class="pc-num serif">No. 07</span><span class="pc-tag forest">진행 중</span></div>
-        <span class="impact-tag">월 85건 PDF 수기 검수</span>
-        <h3 class="pc-title">검수 작업이 사람의 기억에 의존한다</h3>
-        <p class="pc-body">매월 PDF 85개를 일일이 열어 어느 거래처가 어느 항목이 빠졌는지 확인해야 했습니다. 한눈에 볼 현황판이 없었습니다.<br><br><strong>오늘(5/10) Notion + Sheets 현황판을 구축했습니다.</strong> 로그인 1번이면 활성화됩니다.</p>
-        <div class="pc-data forest-line">크로스체크 DB 680행 + 이슈 트래킹 66행 + Sheets 9탭 — OAuth 대기 중</div>
+        <div class="pc-row"><span class="pc-num serif">갭 03</span><span class="pc-tag plum">조직 기준</span></div>
+        <span class="impact-tag">조직 인프라 부재</span>
+        <h3 class="pc-title">팀별 SOP가 0개</h3>
+        <p class="pc-body">콘텐츠/광고/디자인/영업 4팀 모두 "이번 달에 무엇을 해야 하는지" 적힌 문서가 없습니다.<br><br><strong>"원래 이렇게 해왔으니까"가 유일한 기준</strong>이라 사람마다 다르게 일합니다.</p>
+        <div class="pc-data plum-line" style="border-left-color:var(--plum);">실제 사례: 임상 포스팅 6건 약정 → 3개월간 2건 납품. 아무도 미이행을 몰랐음.</div>
       </div>
       <div class="problem-card">
-        <div class="pc-row"><span class="pc-num serif">No. 08</span><span class="pc-tag plum">의사결정</span></div>
-        <span class="impact-tag">매월 30+건 불일치</span>
-        <h3 class="pc-title">상품 분류 미결정 30건 이상</h3>
-        <p class="pc-body">와이지 블로그 지수작업 19건, 아이원 자동완성 10건. <strong>청구서에는 있는데 보고서에는 안 나옵니다.</strong><br><br>청구서와 보고서를 대조할 때마다 불일치가 뜹니다. 자동화로 풀 수 없고, 비즈니스 결정이 필요합니다.</p>
-        <div class="pc-data">크로스체크 DB에 "비계약/차단" 카테고리로 표시 → 원인 명시화</div>
+        <div class="pc-row"><span class="pc-num serif">갭 04</span><span class="pc-tag indigo">AX 진입 부족</span></div>
+        <span class="impact-tag">시작은 했지만 미흡</span>
+        <h3 class="pc-title">AI 활용은 5% 수준</h3>
+        <p class="pc-body">AI는 일부 콘텐츠 생성 외에는 거의 안 쓰입니다.<br>회의 받아쓰기, 자동 분류, 패턴 분석, 알림 자동화. <strong>모두 사람 손에 머물러 있습니다.</strong><br><br>AX 영역은 거의 비어 있는 상태입니다.</p>
+        <div class="pc-data" style="border-left-color:var(--indigo);">AX 시작점 = 폼(인입) + 미팅 DB(처리) — 다음 슬라이드에서</div>
       </div>
-    </div>
-    <div class="insight">
-      <div class="insight-mark">"</div>
-      <div><p class="insight-text">시스템이 아무리 잘 짜여 있어도, <em>외주사가 시트에 안 채우면 결과는 영원히 0이다.</em><br><br>자동화의 한계를 인정하고, 그 너머의 <em>사람-시스템 합의</em>를 설계해야 한다.</p><div class="insight-attr">— 운영 계층의 핵심 통찰</div></div>
     </div>
   </div>
 </section>
 
-<!-- ═══ SLIDE 5 : ORGANIZATIONAL LAYER ═══ -->
+<!-- ═══ SLIDE 5 : 우리의 방향 (3단계 로드맵) ═══ -->
 <section class="slide" id="s5">
   <div class="slide-inner">
-    <div class="slide-meta"><span><span class="ch">Chapter 05</span> / 조직 계층 · 가장 깊은 곳</span><span>ROOT CAUSE</span></div>
-    <span class="eyebrow">계층 III — 조직</span>
-    <h2 class="h-display"><em>기준이 없으면</em><br>사람마다 다르게 일한다</h2>
-    <p class="h-lede">앞서 본 시스템 문제와 운영 문제의 <strong>진짜 뿌리</strong>가 여기 있습니다.<br><br>무엇을 해야 하는지 적힌 문서가 없으면, 사람은 자신의 직관과 옆사람을 보고 판단합니다. 그 결과는 매번 다릅니다.</p>
-    <div class="pain-banner">
-      <div class="pain-icon serif">!</div>
-      <div class="pain-text"><div class="pain-label">실제 사례 · 계약 위반 위험</div><div class="pain-message">계약서에는 임상 포스팅 6건.<br>3개월간 실제 납품은 2건.</div></div>
-      <div class="pain-stat"><div class="pain-stat-val serif">67<span style="font-size:24px;color:rgba(244,241,234,0.6);">%</span></div><div class="pain-stat-label">미이행률</div></div>
-    </div>
-    <div class="problems-grid">
-      <div class="problem-card">
-        <div class="pc-row"><span class="pc-num serif">No. 09a</span><span class="pc-tag plum">구조적 결함</span></div>
-        <span class="impact-tag">전 부서 영향 · 인수인계 불가</span>
-        <h3 class="pc-title">팀별 업무 가이드(SOP)가 없다</h3>
-        <p class="pc-body">콘텐츠팀, 광고팀, 디자인팀, 영업팀 모두 "이 달에 무엇을 해야 하는지" 적힌 문서가 없습니다.<br><br>신입은 옆사람을 보며 배우고, 그 옆사람도 확신이 없습니다.<br><br><strong>"원래 이렇게 해왔으니까"가 유일한 기준입니다.</strong></p>
-        <div class="pc-data rust-line">실제 사례 → 임상 포스팅 3개월 2건 납품 (계약: 6건). 아무도 미이행인지 몰랐음.</div>
+    <div class="slide-meta"><span><span class="ch">Chapter 05</span> / 가는 길</span><span>3 STAGES</span></div>
+    <span class="eyebrow">Our Path · 우리가 갈 길</span>
+    <h2 class="h-display">3단계로 간다.<br><em>처음 두 단계는 이미 시작</em></h2>
+    <p class="h-lede">
+      해결 방향은 단순합니다. <strong>인입을 디지털로(DX), 처리를 AI로(AX), 의사결정을 데이터 기반으로.</strong><br>
+      이 중 1, 2단계는 이미 첫 도구를 만들었습니다. 다음 슬라이드부터 실물을 보여드립니다.
+    </p>
+
+    <div class="roadmap">
+      <div class="roadmap-stage now">
+        <div class="rs-tag">Stage 01 · 진행 중</div>
+        <div class="rs-title">인입 채널을 디지털로</div>
+        <div class="rs-tagline">"카톡으로 오던 정보를 폼으로"</div>
+        <ul class="rs-list">
+          <li>신규개원 폼 (7단계)</li>
+          <li>계약변경 폼</li>
+          <li>진료일정 폼 (매월 8일 마감)</li>
+          <li>파일 첨부 9종 카테고리</li>
+        </ul>
       </div>
-      <div class="problem-card">
-        <div class="pc-row"><span class="pc-num serif">No. 09b</span><span class="pc-tag plum">구조적 결함</span></div>
-        <span class="impact-tag">영업·콘텐츠·광고 전 영역</span>
-        <h3 class="pc-title">우리 회사가 무엇을 파는지 모른다</h3>
-        <p class="pc-body">공식 상품 리스트가 없습니다. 현재의 A·B·C·D 상품 구조는 <strong>계약서를 역으로 분석해서 파악한 것</strong>입니다.<br><br>영업팀이 팔면서도 정확한 포함 항목을 모르는 경우가 있습니다.</p>
-        <div class="pc-data">콘텐츠팀 → "이 거래처 몇 차야?" 매번 확인 후 납품 기준 파악 = 매번 반복</div>
+      <div class="roadmap-stage next">
+        <div class="rs-tag">Stage 02 · 시작</div>
+        <div class="rs-title">처리를 AI로</div>
+        <div class="rs-tagline">"미팅 받아쓰기, AI가 정리"</div>
+        <ul class="rs-list">
+          <li>미팅 DB + AI 받아쓰기</li>
+          <li>AI 요약 지침 등록</li>
+          <li>핵심 결정/액션 자동 추출</li>
+          <li>거래처 양방향 자동 연결</li>
+        </ul>
+      </div>
+      <div class="roadmap-stage future">
+        <div class="rs-tag">Stage 03 · 다음 1년</div>
+        <div class="rs-title">의사결정을 데이터 기반으로</div>
+        <div class="rs-tagline">"AI가 보는 패턴, 사람이 결정"</div>
+        <ul class="rs-list">
+          <li>거래처별 납품 추적 자동화</li>
+          <li>이상 패턴 알림 (미이행 자동 감지)</li>
+          <li>마케팅 효과 AI 분석</li>
+          <li>예측 기반 자원 배분</li>
+        </ul>
       </div>
     </div>
+
     <div class="insight">
       <div class="insight-mark">"</div>
-      <div><p class="insight-text">시스템과 운영을 고쳐도, <em>기준이 없으면 또 무너진다.</em><br><br>SOP와 상품 정의서는 선택이 아니라 <em>조직 인프라의 토대</em>다.</p><div class="insight-attr">— 조직 계층의 핵심 통찰</div></div>
+      <div><p class="insight-text"><em>큰 변화는 한 번에 오지 않는다.</em><br>하나씩 도구를 바꾸면, 어느새 일하는 방식이 바뀐다.<br><br>중요한 건 <em>지금 첫 도구를 잡았다는 사실</em>이다.</p><div class="insight-attr">— 변화는 도구의 누적</div></div>
     </div>
   </div>
 </section>
 
-<!-- ═══ SLIDE 6 : SOLUTION 01 - WEB FORM ═══ -->
+<!-- ═══ SLIDE 6 : 이미 시작 1 - 폼 ═══ -->
 <section class="slide" id="s6">
   <div class="slide-inner">
-    <div class="slide-meta"><span><span class="ch">Chapter 06</span> / 이미 만든 것 · 폼</span><span>SOLUTION 01</span></div>
-    <span class="eyebrow">정보 인입의 첫 번째 채널</span>
+    <div class="slide-meta"><span><span class="ch">Chapter 06</span> / DX 첫걸음</span><span>SOLUTION 01</span></div>
+    <span class="eyebrow">Stage 01 · 인입을 디지털로</span>
     <h2 class="h-display">구두로 오던 정보를<br><em>폼</em>으로 받기 시작했다</h2>
-    <p class="h-lede">앞에서 본 <strong>"기록되지 않는 채널"</strong> 문제. 해결의 첫 단추는 <strong>원장님이 직접 입력하는 폼</strong>입니다.<br><br>신규 개원, 계약 변경, 진료 일정. 세 가지 인입을 <strong>구조화된 데이터</strong>로 받습니다.</p>
-    <div style="background:var(--ink);color:var(--paper);padding:28px 40px;margin-bottom:48px;border-radius:4px;display:grid;grid-template-columns:auto 1fr;gap:32px;align-items:center;">
-      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.2em;color:var(--ochre);text-transform:uppercase;writing-mode:vertical-rl;text-orientation:mixed;border-right:1px solid rgba(244,241,234,0.2);padding-right:24px;">SOLVES</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
-        <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ochre);letter-spacing:0.1em;margin-bottom:6px;">↳ Slide 02</div><div style="font-size:14px;font-weight:600;line-height:1.4;">기록되지 않는 채널<br>→ 폼이 첫 번째 채널</div></div>
-        <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ochre);letter-spacing:0.1em;margin-bottom:6px;">↳ Slide 03 (No.01)</div><div style="font-size:14px;font-weight:600;line-height:1.4;">거래처 이름 표기 차이<br>→ 폼 입력 시점에 통일</div></div>
-        <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ochre);letter-spacing:0.1em;margin-bottom:6px;">↳ Slide 03 (No.03)</div><div style="font-size:14px;font-weight:600;line-height:1.4;">신규 거래처 5단계 수작업<br>→ 폼 제출 1단계로 통합</div></div>
-      </div>
-    </div>
+    <p class="h-lede">
+      DX의 가장 흔한 실수: <strong>안쪽만 디지털화하고 입구는 그대로</strong> 두는 것.<br>
+      안쪽이 자동화돼도 입구가 카톡이면 마케터의 받아쓰기는 영원합니다.<br>
+      그래서 <strong>입구부터 폼으로 바꿨습니다.</strong>
+    </p>
+
     <div class="severity-bar">
       <div class="sev-grid" style="grid-template-columns:repeat(3,1fr);">
         <div class="sev-cell"><div class="sev-label">신규개원 폼</div><div class="sev-num">7<span class="unit">단계</span></div><div class="sev-desc">치과 정보 · 진료 · 시설 · 브랜딩<br>마케팅 · 계약 · 자료 첨부</div></div>
@@ -639,36 +652,38 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
         <div class="sev-cell"><div class="sev-label">진료일정 폼</div><div class="sev-num">8<span class="unit">일</span></div><div class="sev-desc">매월 마감 · 달력 UI<br>휴진 · 야간 · 공휴일 태그</div></div>
       </div>
     </div>
+
     <div class="problems-grid">
       <div class="problem-card">
-        <div class="pc-row"><span class="pc-num serif">Solved 01</span><span class="pc-tag forest">완료</span></div>
-        <span class="impact-tag" style="color:var(--forest);">정보 흐름 문제 → 해결</span>
+        <div class="pc-row"><span class="pc-num serif">완료 01</span><span class="pc-tag forest">완료</span></div>
+        <span class="impact-tag" style="color:var(--forest);">갭 01 (기록 안 됨) → 해결</span>
         <h3 class="pc-title">원장님이 폼에 직접 입력</h3>
-        <p class="pc-body">치과명, 원장 정보, 진료과목, 시설/장비, 브랜드 방향, 계약 상품까지. <strong>마케터의 받아쓰기 의존이 사라집니다.</strong><br><br>입력 즉시 Notion 거래처 DB에 자동 저장. 매칭 7중 레이어가 필요 없습니다.</p>
+        <p class="pc-body">치과명, 원장 정보, 진료과목, 시설/장비, 브랜드 방향, 계약 상품까지. <strong>마케터의 받아쓰기 의존이 사라집니다.</strong><br><br>입력 즉시 Notion 거래처 DB에 자동 저장.</p>
         <div class="pc-data forest-line">제출 → Notion 페이지 자동 생성 + 팀별 업무 자동 배정</div>
       </div>
       <div class="problem-card">
-        <div class="pc-row"><span class="pc-num serif">Solved 02</span><span class="pc-tag forest">완료</span></div>
-        <span class="impact-tag" style="color:var(--forest);">자료 누락 문제 → 해결</span>
+        <div class="pc-row"><span class="pc-num serif">완료 02</span><span class="pc-tag forest">완료</span></div>
+        <span class="impact-tag" style="color:var(--forest);">자료 누락 → 해결</span>
         <h3 class="pc-title">파일 첨부 9가지 카테고리</h3>
-        <p class="pc-body">로고, 면허증, 자격증, 사업자등록증, 개설필증, 인테리어 3D 도면, 간판/현수막/공사현장 사진.<br><br>회사 호스팅에 자동 업로드 → URL이 Notion에 함께 저장. <strong>"카톡으로 보내드릴게요"가 사라졌습니다.</strong></p>
+        <p class="pc-body">로고, 면허증, 자격증, 사업자등록증, 개설필증, 인테리어 3D 도면, 간판/현수막/공사현장 사진.<br><br><strong>"카톡으로 보내드릴게요"가 사라졌습니다.</strong></p>
         <div class="pc-data forest-line">최대 50MB · path traversal 방어 · MIME 화이트리스트</div>
       </div>
       <div class="problem-card">
-        <div class="pc-row"><span class="pc-num serif">Solved 03</span><span class="pc-tag forest">완료</span></div>
+        <div class="pc-row"><span class="pc-num serif">완료 03</span><span class="pc-tag forest">완료</span></div>
         <span class="impact-tag" style="color:var(--forest);">월말 폭격 → 분산</span>
         <h3 class="pc-title">진료일정은 매월 8일까지</h3>
-        <p class="pc-body">달력 UI에서 태그 선택 → 날짜 클릭으로 일정 입력. <strong>월말에 몰리던 진료일정 작업이</strong> 매월 8일 정시 마감으로 분산됩니다.<br><br>관리자 대시보드에서 진행률 한눈에 확인.</p>
+        <p class="pc-body">달력 UI에서 태그 선택 → 날짜 클릭으로 일정 입력. <strong>월말에 몰리던 작업이</strong> 매월 8일 정시 마감으로 분산됩니다.</p>
         <div class="pc-data forest-line">관리자 비밀번호 보호 · 미제출 거래처 자동 표시</div>
       </div>
       <div class="problem-card">
-        <div class="pc-row"><span class="pc-num serif">Solved 04</span><span class="pc-tag forest">완료</span></div>
+        <div class="pc-row"><span class="pc-num serif">완료 04</span><span class="pc-tag forest">완료</span></div>
         <span class="impact-tag" style="color:var(--forest);">자동저장 + 이어쓰기</span>
         <h3 class="pc-title">중간에 끊겨도 데이터 보존</h3>
-        <p class="pc-body">7단계 폼은 작성 시간이 길 수 있어 localStorage에 자동 저장됩니다.<br><br><strong>실수로 창을 닫아도</strong> 다음에 들어오면 "이어서 작성하시겠어요?"</p>
+        <p class="pc-body">7단계 폼은 작성 시간이 길 수 있어 localStorage에 자동 저장됩니다. <strong>실수로 창을 닫아도</strong> 다음에 들어오면 "이어서 작성하시겠어요?"</p>
         <div class="pc-data">자동저장 30초 간격 · 세션 복원 다이얼로그</div>
       </div>
     </div>
+
     <div class="pain-banner" style="background:var(--forest);">
       <div class="pain-icon serif">✓</div>
       <div class="pain-text"><div class="pain-label">현재 상태 · 운영 중</div><div class="pain-message">mediandmedi-form.vercel.app<br>Production · Vercel 자동 배포</div></div>
@@ -677,126 +692,97 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
   </div>
 </section>
 
-<!-- ═══ SLIDE 7 : SOLUTION 02 - MEETING DB ═══ -->
+<!-- ═══ SLIDE 7 : 이미 시작 2 - 미팅 DB (AX 첫걸음) ═══ -->
 <section class="slide" id="s7">
   <div class="slide-inner">
-    <div class="slide-meta"><span><span class="ch">Chapter 07</span> / 이미 만든 것 · 미팅 DB</span><span>SOLUTION 02</span></div>
-    <span class="eyebrow">조직의 SOP 부재 — 미팅 영역 해결</span>
-    <h2 class="h-display">미팅도 <em>받아쓰기</em>로<br>DB가 된다</h2>
-    <p class="h-lede">"팀마다 기준이 다르다"는 문제 중 <strong>미팅 영역</strong>을 먼저 해결했습니다.<br>Notion AI 받아쓰기 + 자동 요약 + 거래처 양방향 연결로 <strong>모든 미팅이 동일한 형식으로 기록</strong>됩니다.<br><br>받아쓰기가 끝나면 AI가 <strong>핵심 결정사항·액션 아이템</strong>을 자동 분리합니다.</p>
-    <div class="flow-canvas">
-      <div class="flow-stage stage-1"><div class="stage-label">STAGE 01 · 미팅 시작 전</div><div class="stage-title">새 미팅 페이지 생성 (1분)</div><div class="stage-channels"><span class="channel">제목 · 일자</span><span class="channel">거래처 선택</span><span class="channel">참석자 태그</span><span class="channel">주요 안건</span></div></div>
-      <div class="flow-arrow-down">↓</div>
-      <div class="flow-stage stage-2"><div class="stage-label">STAGE 02 · 미팅 중</div><div class="stage-title">/음성 메모 → 자동 받아쓰기 (한국어)</div><div class="stage-channels"><span class="channel">노트북 마이크</span><span class="channel">모바일 앱 가능</span><span class="channel">자동 동기화</span></div></div>
-      <div class="flow-arrow-down">↓</div>
-      <div class="flow-stage stage-3"><div class="stage-label">STAGE 03 · 미팅 직후</div><div class="stage-title">/AI → 지침대로 자동 요약 (1~2분)</div><div class="stage-channels"><span class="channel">핵심 결정사항</span><span class="channel">액션 아이템</span><span class="channel">담당자/마감일</span></div></div>
-      <div class="flow-arrow-down">↓</div>
-      <div class="flow-stage stage-4" style="border-left-color:var(--forest);"><div class="stage-label">STAGE 04 · 자동 연결</div><div class="stage-title">거래처 DB에 자동 표시 + 담당자 알림</div><div class="stage-channels"><span class="channel" style="background:var(--forest-soft);border-color:var(--forest);">양방향 Relation</span><span class="channel" style="background:var(--forest-soft);border-color:var(--forest);">@멘션 알림</span></div></div>
-    </div>
+    <div class="slide-meta"><span><span class="ch">Chapter 07</span> / AX 첫걸음</span><span>SOLUTION 02</span></div>
+    <span class="eyebrow">Stage 02 · 처리를 AI로</span>
+    <h2 class="h-display">미팅도 <em>AI가</em><br>받아 적고 정리한다</h2>
+    <p class="h-lede">
+      이게 바로 <strong>AX의 첫 사례</strong>입니다.<br>
+      받아쓰기, 요약, 액션 추출까지 — 사람이 하던 일을 <strong>AI가 처리, 사람은 검토만</strong>.<br>
+      자동차가 자율주행으로 넘어가는 그 순간을 우리도 통과하고 있습니다.
+    </p>
+
     <div class="ba-section">
       <div class="ba-col before">
-        <div class="ba-head">BEFORE</div>
+        <div class="ba-head">DX 단계 (예전)</div>
         <div class="ba-headline">미팅 후 정리에 30~60분</div>
-        <div class="ba-item"><span class="ba-item-label">기록</span><span class="ba-item-text">담당자 노트북 / 메모장 / 카톡 — 흩어짐</span></div>
+        <div class="ba-item"><span class="ba-item-label">기록</span><span class="ba-item-text">담당자 노트북 / 메모장 / 카톡</span></div>
+        <div class="ba-item"><span class="ba-item-label">정리</span><span class="ba-item-text">사람이 기억으로 회의록 작성</span></div>
         <div class="ba-item"><span class="ba-item-label">공유</span><span class="ba-item-text">정리해서 슬랙에 다시 붙여넣기</span></div>
-        <div class="ba-item"><span class="ba-item-label">거래처 연결</span><span class="ba-item-text">사람이 거래처 페이지 찾아 메모 붙여넣기</span></div>
-        <div class="ba-item"><span class="ba-item-label">액션 추적</span><span class="ba-item-text">담당자 기억에만 의존 — 누락 빈번</span></div>
+        <div class="ba-item"><span class="ba-item-label">추적</span><span class="ba-item-text">담당자 기억에만 의존 — 누락 빈번</span></div>
       </div>
       <div class="ba-divider"></div>
       <div class="ba-col after">
-        <div class="ba-head">AFTER</div>
+        <div class="ba-head">AX 단계 (현재)</div>
         <div class="ba-headline">미팅 후 4분이면 끝</div>
-        <div class="ba-item"><span class="ba-item-label">기록</span><span class="ba-item-text">/음성메모 → 한국어 자동 받아쓰기</span></div>
+        <div class="ba-item"><span class="ba-item-label">기록</span><span class="ba-item-text">/음성메모 → AI 한국어 받아쓰기</span></div>
         <div class="ba-item"><span class="ba-item-label">정리</span><span class="ba-item-text">/AI → 등록된 지침대로 자동 요약</span></div>
-        <div class="ba-item"><span class="ba-item-label">거래처 연결</span><span class="ba-item-text">거래처 선택만 하면 양방향 자동 동기화</span></div>
-        <div class="ba-item"><span class="ba-item-label">액션 추적</span><span class="ba-item-text">@담당자 멘션 → 자동 알림 + DB 누적</span></div>
+        <div class="ba-item"><span class="ba-item-label">공유</span><span class="ba-item-text">거래처 DB에 양방향 자동 연결</span></div>
+        <div class="ba-item"><span class="ba-item-label">추적</span><span class="ba-item-text">@담당자 멘션 → 자동 알림 + DB 누적</span></div>
       </div>
     </div>
+
+    <div class="concept-card" style="margin-top:48px;">
+      <div class="concept-icon">✨</div>
+      <div class="concept-body">
+        <h3>여기서부터가 <em>진짜 AX</em>다</h3>
+        <p><strong>AI 받아쓰기:</strong> 23분 미팅 → 1분 안에 정리. 사람의 정리 시간이 사라집니다.</p>
+        <p><strong>AI 자동 분류:</strong> "핵심 결정", "액션 아이템", "다음 미팅 안건"으로 자동 분리.</p>
+        <p><strong>AI 담당자 분배:</strong> 액션 아이템에서 마케팅팀/디자인팀/콘텐츠팀 자동 식별.</p>
+        <p style="color:var(--ink-3);font-size:14px;margin-top:14px;">→ 회사가 <strong>AX를 처음으로 일상에서 쓰기 시작한 지점</strong>입니다.</p>
+      </div>
+    </div>
+
     <div class="insight">
       <div class="insight-mark">"</div>
-      <div><p class="insight-text">기준이 없으면 사람마다 다르게 일한다.<br>기준을 만들어도 <em>도구가 강제하지 않으면</em> 또 흩어진다.<br><br><em>받아쓰기 + AI 요약 지침</em>은 기준을 도구에 박아 넣는 방식이다.</p><div class="insight-attr">— Solution 02 · Meeting DB Design Principle</div></div>
+      <div><p class="insight-text">AI는 사람을 대체하지 않는다.<br><em>사람이 더 중요한 일에 시간을 쓰게</em> 만든다.<br><br>받아쓰기에서 해방된 마케터는 <em>전략을 짠다.</em></p><div class="insight-attr">— AX의 본질 · 시간의 재배치</div></div>
     </div>
   </div>
 </section>
 
-<!-- ═══ SLIDE 8 : DEMO ═══ -->
-<section class="slide" id="s8">
+<!-- ═══ SLIDE 8 : CLOSING - 100 DAY ROADMAP ═══ -->
+<section class="slide closing" id="s8">
   <div class="slide-inner">
-    <div class="slide-meta"><span><span class="ch">Chapter 08</span> / 시연</span><span>EVIDENCE</span></div>
-    <span class="eyebrow">실제 화면</span>
-    <h2 class="h-display">슬라이드가 아니라<br><em>지금 작동하는 시스템</em>이다</h2>
-    <p class="h-lede">말로만 "만들었다"가 아닙니다.<br><strong>지금 이 시간에 운영 중</strong>입니다. 화면으로 확인합니다.</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:40px;">
-      <div style="background:var(--paper-2);border:1px solid var(--line);border-radius:4px;padding:24px;">
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;color:var(--rust);text-transform:uppercase;margin-bottom:12px;">DEMO 01 · 신규개원 폼</div>
-        <div style="background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:20px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);line-height:1.7;">
-          <div style="color:var(--ink);font-weight:500;font-size:13px;margin-bottom:8px;">신규개원 · Step 4/7 · 브랜딩 & 철학</div>
-          <div>┌────────────────────────────┐</div>
-          <div>│ ✓ 한줄소개  ✓ 진료철학        │</div>
-          <div>│ ✓ 타겟환자  ✓ 차별점         │</div>
-          <div>│ 📎 로고 업로드 · 12.4MB ✓     │</div>
-          <div>│ 📎 면허증 업로드 · 2.1MB ✓    │</div>
-          <div>│ 📎 인테리어 도면 · 38.5MB ✓   │</div>
-          <div>└────────────────────────────┘</div>
-          <div style="color:var(--forest);margin-top:8px;">[다음] 자동저장 완료 · 2분 전</div>
-        </div>
-        <div style="font-size:13px;color:var(--ink-3);line-height:1.6;">원장님이 직접 7단계 입력. 자동 저장. 9개 카테고리 파일 첨부.<br><strong style="color:var(--ink);">제출 즉시 Notion 거래처 DB에 저장.</strong></div>
-      </div>
-      <div style="background:var(--paper-2);border:1px solid var(--line);border-radius:4px;padding:24px;">
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;color:var(--rust);text-transform:uppercase;margin-bottom:12px;">DEMO 02 · 미팅 받아쓰기 + AI 요약</div>
-        <div style="background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:20px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);line-height:1.7;">
-          <div style="color:var(--ink);font-weight:500;font-size:13px;margin-bottom:8px;">왕편한플란트 6월 미팅 · 완료</div>
-          <div style="color:var(--rust);">🔴 받아쓰기 23분 · 자동 정리 완료</div>
-          <div style="margin-top:10px;color:var(--forest);">✅ 핵심 결정 5건 추출</div>
-          <div>  - 6/1, 22일 정기 휴진 확정</div>
-          <div>  - 임플란트 200만원대 프로모션</div>
-          <div style="margin-top:8px;color:var(--ochre);">📋 액션 아이템 자동 분배</div>
-          <div>  - @김민지 LP 5/25</div>
-          <div>  - @이하은 DID 영상 5/24</div>
-        </div>
-        <div style="font-size:13px;color:var(--ink-3);line-height:1.6;">미팅 23분 → AI 요약 1분.<br><strong style="color:var(--ink);">담당자에게 자동 알림. 거래처 DB에 자동 연결.</strong></div>
-      </div>
-    </div>
-    <div class="severity-bar">
-      <div class="sev-grid">
-        <div class="sev-cell"><div class="sev-label">배포 환경</div><div class="sev-num">100<span class="unit">%</span></div><div class="sev-desc">Vercel Production<br>자동 빌드 · 무중단 배포</div></div>
-        <div class="sev-cell"><div class="sev-label">코드 품질</div><div class="sev-num">0<span class="unit">개</span></div><div class="sev-desc">ESLint 에러 · 빌드 에러<br>독립 보안 리뷰 통과</div></div>
-        <div class="sev-cell"><div class="sev-label">파일 업로드</div><div class="sev-num">9<span class="unit">종</span></div><div class="sev-desc">로고 · 면허증 · 자격증<br>도면 · 사진 · 자료 카테고리</div></div>
-        <div class="sev-cell"><div class="sev-label">미팅 DB 컬럼</div><div class="sev-num">14<span class="unit">개</span></div><div class="sev-desc">거래처 양방향 연결<br>AI 요약 지침 등록 완료</div></div>
-      </div>
-    </div>
-  </div>
-</section>
+    <div class="slide-meta"><span><span class="ch">Chapter 08</span> / 100일 로드맵</span><span>COMMITMENT</span></div>
+    <h2 class="closing-display">DX를 마무리하고<br><em>AX</em>로 넘어가겠습니다<br>100일 안에</h2>
+    <p class="closing-lede">
+      앞에서 본 4가지 갭과 3단계 로드맵을 <strong style="color:var(--ochre);">100일 일정에 묶었습니다.</strong><br>
+      30일 안에 DX 완성. 60일 안에 AX 정착. 100일 안에 데이터 기반 의사결정 시작.<br>
+      책임자 명시, 진척 매주 공유.
+    </p>
 
-<!-- ═══ SLIDE 9 : CLOSING - 100 DAY PLAN ═══ -->
-<section class="slide closing" id="s9">
-  <div class="slide-inner">
-    <div class="slide-meta"><span><span class="ch">Chapter 09</span> / 행동 약속</span><span>100 DAY PLAN</span></div>
-    <h2 class="closing-display">말이 아니라<br><em>날짜와 책임자</em>로<br>끝내겠습니다</h2>
-    <p class="closing-lede">진단 발표는 종종 진단으로 끝납니다.<br>이 발표는 <strong style="color:var(--ochre);">100일 안에 9개 문제 중 6개를 해결</strong>하는 구체적 약속으로 끝냅니다.<br>책임자 명시, 진척 매주 공유.</p>
     <div style="margin-bottom:48px;">
-      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ochre);letter-spacing:0.2em;margin-bottom:16px;text-transform:uppercase;">⌘ 30일 · ~2026.06.10 · 즉시 해결</div>
-      <div class="action-rail"><span class="action-num">01</span><span class="action-text">OAuth 7일 만료 해결 — 프로덕션 검증 완료</span><span class="action-meta">@전략기획팀 · 1일</span></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ochre);letter-spacing:0.2em;margin-bottom:16px;text-transform:uppercase;">⌘ 30일 · ~2026.06.10 · DX 완성</div>
+      <div class="action-rail"><span class="action-num">01</span><span class="action-text">데이터 인입 채널 단일화 — 폼이 표준 입구가 되도록 영업/마케팅 안내</span><span class="action-meta">@전략기획팀 · 매주</span></div>
       <div class="action-rail"><span class="action-num">02</span><span class="action-text">거래처 이름 표기 통일 — 자동 매칭 100% 복원</span><span class="action-meta">@전략기획팀 · 3일</span></div>
       <div class="action-rail"><span class="action-num">03</span><span class="action-text">노션 이중 운영 종료 — 단일 워크스페이스로 통합</span><span class="action-meta">@전략기획팀 + @영업팀 · 5일</span></div>
     </div>
+
     <div style="margin-bottom:48px;">
-      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ochre);letter-spacing:0.2em;margin-bottom:16px;text-transform:uppercase;">⌘ 60일 · ~2026.07.10 · 운영 안정화</div>
-      <div class="action-rail"><span class="action-num">04</span><span class="action-text">신규개원 폼 운영 정착 — 전 신규 거래처 폼 입력 100%</span><span class="action-meta">@영업팀 · 매주</span></div>
-      <div class="action-rail"><span class="action-num">05</span><span class="action-text">미팅 DB 정착 — 모든 거래처 미팅 받아쓰기 + AI 요약</span><span class="action-meta">@전 부서 · 매주</span></div>
-      <div class="action-rail"><span class="action-num">06</span><span class="action-text">외주사 17건 누락 데이터 보완 + SLA 협의</span><span class="action-meta">@마케팅팀 · 6/30까지</span></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ochre);letter-spacing:0.2em;margin-bottom:16px;text-transform:uppercase;">⌘ 60일 · ~2026.07.10 · AX 정착</div>
+      <div class="action-rail"><span class="action-num">04</span><span class="action-text">미팅 DB 정착 — 모든 거래처 미팅 AI 받아쓰기 + 요약 표준화</span><span class="action-meta">@전 부서 · 매주</span></div>
+      <div class="action-rail"><span class="action-num">05</span><span class="action-text">AI 요약 지침 부서별 커스텀 — 콘텐츠/광고/디자인/영업 4종</span><span class="action-meta">@각 팀장 · 6/30까지</span></div>
+      <div class="action-rail"><span class="action-num">06</span><span class="action-text">외주사 데이터 SLA 협의 — 입력 의무화 + 자동 알림</span><span class="action-meta">@마케팅팀 · 6/30까지</span></div>
     </div>
+
     <div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ochre);letter-spacing:0.2em;margin-bottom:16px;text-transform:uppercase;">⌘ 100일 · ~2026.08.20 · 구조 변화</div>
-      <div class="action-rail"><span class="action-num">07</span><span class="action-text">팀별 SOP 4개 (콘텐츠/광고/디자인/영업) 1차 완성</span><span class="action-meta">@각 팀장 · 8/15까지</span></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ochre);letter-spacing:0.2em;margin-bottom:16px;text-transform:uppercase;">⌘ 100일 · ~2026.08.20 · 데이터 기반 의사결정</div>
+      <div class="action-rail"><span class="action-num">07</span><span class="action-text">팀별 SOP 4개 (콘텐츠/광고/디자인/영업) 1차 완성 — 조직 인프라 구축</span><span class="action-meta">@각 팀장 · 8/15까지</span></div>
       <div class="action-rail"><span class="action-num">08</span><span class="action-text">상품 정의서 v1.0 — 영업·콘텐츠·납품 기준 통일</span><span class="action-meta">@전략기획팀 · 8/10까지</span></div>
-      <div class="action-rail"><span class="action-num">09</span><span class="action-text">거래처별 납품 추적 자동화 — "임상 6건 약정/2건 납품" 사고 방지</span><span class="action-meta">@전략기획팀 · 8/20까지</span></div>
+      <div class="action-rail"><span class="action-num">09</span><span class="action-text">거래처별 납품 추적 자동화 — "임상 6건/2건 납품" 사고 자동 감지</span><span class="action-meta">@전략기획팀 · 8/20까지</span></div>
     </div>
-    <div style="margin-top:64px;padding:28px 32px;background:rgba(244,241,234,0.05);border-left:3px solid var(--rust);">
-      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;color:var(--rust);margin-bottom:10px;">100일 안에 해결 안 되는 1건</div>
-      <div style="font-size:18px;font-weight:600;line-height:1.5;color:var(--paper);margin-bottom:8px;">상품 분류 30+건 비즈니스 결정</div>
-      <div style="font-size:14px;color:rgba(244,241,234,0.65);line-height:1.6;">와이지 블로그 지수작업 19건 + 아이원 자동완성 10건. 자동화로 풀리지 않습니다.<br><strong style="color:var(--ochre);">대표/이사 의사결정이 필요한 건. 별도 안건으로 상정 예정.</strong></div>
+
+    <div style="margin-top:64px;padding:32px 36px;background:rgba(244,241,234,0.05);border-left:3px solid var(--ochre);">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;color:var(--ochre);margin-bottom:10px;">100일 이후 · 다음 1년</div>
+      <div style="font-size:20px;font-weight:700;line-height:1.4;color:var(--paper);margin-bottom:10px;letter-spacing:-0.02em;">완전한 AX 단계로 — AI가 패턴을 읽고, 사람이 결정한다</div>
+      <div style="font-size:14px;color:rgba(244,241,234,0.65);line-height:1.6;">
+        이상 패턴 자동 감지 / 마케팅 효과 AI 분석 / 예측 기반 자원 배분.<br>
+        <strong style="color:var(--ochre);">의사결정 권한은 사람에게, 데이터 처리는 AI에게.</strong>
+      </div>
     </div>
+
     <div class="closing-foot"><span>MEDI&MEDI · 2026.05.10</span><span>이종광 · 전략기획팀</span></div>
   </div>
 </section>
@@ -841,35 +827,15 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ═══ INTERSECTION OBSERVER — 스크롤 트리거 애니메이션 ═══
-const animateOnce = (el, cls) => {
-  if (!el.classList.contains(cls)) el.classList.add(cls);
-};
+// Intersection Observer — 스크롤 트리거
+const animateOnce = (el, cls) => { if (!el.classList.contains(cls)) el.classList.add(cls); };
 
 const slideObserver = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      animateOnce(entry.target, 'in-view');
-    }
-  });
+  entries.forEach(entry => { if (entry.isIntersecting) animateOnce(entry.target, 'in-view'); });
 }, { threshold: 0.15, rootMargin: '0px 0px -10% 0px' });
-
 slides.forEach(slide => slideObserver.observe(slide));
 
-// 세부 컴포넌트 트리거 — 슬라이드 안에서 각각 등장
-const componentSelectors = [
-  '.severity-bar',
-  '.pain-banner',
-  '.flow-canvas',
-  '.diag-content',
-  '.sources-grid',
-  '.problems-grid',
-  '.chain-grid',
-  '.insight',
-  '.ba-section',
-  '.h-display .underline'
-];
-
+const componentSelectors = ['.severity-bar','.pain-banner','.stage-compare','.concept-card','.position-bar','.roadmap','.problems-grid','.insight','.ba-section'];
 const componentObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
@@ -878,12 +844,8 @@ const componentObserver = new IntersectionObserver((entries) => {
     }
   });
 }, { threshold: 0.2, rootMargin: '0px 0px -8% 0px' });
+componentSelectors.forEach(sel => { document.querySelectorAll(sel).forEach(el => componentObserver.observe(el)); });
 
-componentSelectors.forEach(sel => {
-  document.querySelectorAll(sel).forEach(el => componentObserver.observe(el));
-});
-
-// 첫 슬라이드는 즉시 활성화 (위에 있으니 바로 보여야 함)
 if (slides[0]) slides[0].classList.add('in-view');
 </script>
 
