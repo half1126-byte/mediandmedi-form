@@ -296,6 +296,23 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 .closing.in-view .action-rail:nth-of-type(9){animation-delay:1.5s;}
 
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms !important;animation-delay:0s !important;transition-duration:0.01ms !important;}}
+
+/* Demo CTA buttons */
+.demo-row{display:flex;flex-wrap:wrap;gap:12px;margin:32px 0 48px 0;padding:24px 28px;background:var(--paper-2);border:1px solid var(--line);border-radius:6px;align-items:center;}
+.demo-row-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--rust);font-weight:700;margin-right:8px;display:flex;align-items:center;gap:8px;}
+.demo-row-label::before{content:'';width:8px;height:8px;background:var(--rust);border-radius:50%;animation:livePulse 2s ease infinite;}
+@keyframes livePulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(1.3);}}
+.demo-cta{display:inline-flex;align-items:center;gap:10px;padding:12px 20px;background:var(--ink);color:var(--paper);border-radius:4px;font-family:'Pretendard Variable',Pretendard,sans-serif;font-size:14px;font-weight:600;letter-spacing:-0.01em;text-decoration:none;transition:all 0.3s ease;border:1px solid var(--ink);}
+.demo-cta:hover{background:var(--rust);border-color:var(--rust);transform:translateY(-2px);box-shadow:0 6px 16px rgba(184,70,40,0.3);}
+.demo-cta-icon{font-size:16px;}
+.demo-cta-arrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;opacity:0.7;}
+.demo-cta.outline{background:var(--paper);color:var(--ink);border:1px solid var(--ink);}
+.demo-cta.outline:hover{background:var(--ink);color:var(--paper);}
+.demo-cta.ochre{background:var(--ochre);border-color:var(--ochre);}
+.demo-cta.ochre:hover{background:#A87919;border-color:#A87919;}
+.demo-cta.forest{background:var(--forest);border-color:var(--forest);}
+.demo-cta.forest:hover{background:#3A5530;border-color:#3A5530;}
+@media (max-width:900px){.demo-row{flex-direction:column;align-items:stretch;}.demo-cta{justify-content:center;}}
 </style>
 </head>
 <body>
@@ -691,6 +708,30 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
       <div class="pain-text"><div class="pain-label">현재 상태 · 운영 중</div><div class="pain-message">mediandmedi-form.vercel.app<br>Production · Vercel 자동 배포</div></div>
       <div class="pain-stat"><div class="pain-stat-val serif">3<span style="font-size:24px;color:rgba(244,241,234,0.7);">개</span></div><div class="pain-stat-label">폼 운영 중</div></div>
     </div>
+
+    <div class="demo-row">
+      <span class="demo-row-label">LIVE 시연</span>
+      <a href="https://mediandmedi-form-leejongkwangs-projects.vercel.app/" target="_blank" rel="noopener" class="demo-cta">
+        <span class="demo-cta-icon">🏠</span>
+        <span>폼 메인 화면</span>
+        <span class="demo-cta-arrow">↗</span>
+      </a>
+      <a href="https://mediandmedi-form-leejongkwangs-projects.vercel.app/new-clinic" target="_blank" rel="noopener" class="demo-cta outline">
+        <span class="demo-cta-icon">📝</span>
+        <span>신규개원 폼</span>
+        <span class="demo-cta-arrow">↗</span>
+      </a>
+      <a href="https://mediandmedi-form-leejongkwangs-projects.vercel.app/schedule-change" target="_blank" rel="noopener" class="demo-cta outline">
+        <span class="demo-cta-icon">📅</span>
+        <span>진료일정 폼</span>
+        <span class="demo-cta-arrow">↗</span>
+      </a>
+      <a href="https://mediandmedi-form-leejongkwangs-projects.vercel.app/admin/schedule" target="_blank" rel="noopener" class="demo-cta ochre">
+        <span class="demo-cta-icon">🔒</span>
+        <span>관리자 대시보드</span>
+        <span class="demo-cta-arrow">↗</span>
+      </a>
+    </div>
   </div>
 </section>
 
@@ -735,6 +776,30 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
         <p><strong>AI 담당자 분배:</strong> 액션 아이템에서 마케팅팀/디자인팀/콘텐츠팀 자동 식별.</p>
         <p style="color:var(--ink-3);font-size:14px;margin-top:14px;">→ 회사가 <strong>AX를 처음으로 일상에서 쓰기 시작한 지점</strong>입니다.</p>
       </div>
+    </div>
+
+    <div class="demo-row">
+      <span class="demo-row-label">LIVE 시연</span>
+      <a href="https://www.notion.so/f7b5f3e9ce2142599d0eedda716e588a" target="_blank" rel="noopener" class="demo-cta">
+        <span class="demo-cta-icon">📋</span>
+        <span>미팅 기록 DB</span>
+        <span class="demo-cta-arrow">↗</span>
+      </a>
+      <a href="https://www.notion.so/35c9a82db9c48168b36ac28db3d6e292" target="_blank" rel="noopener" class="demo-cta outline">
+        <span class="demo-cta-icon">📝</span>
+        <span>샘플 미팅 페이지</span>
+        <span class="demo-cta-arrow">↗</span>
+      </a>
+      <a href="https://www.notion.so/35c9a82db9c4818c8875dfe7c2eec1ca" target="_blank" rel="noopener" class="demo-cta outline">
+        <span class="demo-cta-icon">📌</span>
+        <span>받아쓰기 지침</span>
+        <span class="demo-cta-arrow">↗</span>
+      </a>
+      <a href="https://www.notion.so/35c9a82db9c481a89c70f27fb647bc20" target="_blank" rel="noopener" class="demo-cta ochre">
+        <span class="demo-cta-icon">🎯</span>
+        <span>AI 요약 지침</span>
+        <span class="demo-cta-arrow">↗</span>
+      </a>
     </div>
 
     <div class="insight">
@@ -831,6 +896,30 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
           <div style="font-size:13px;color:rgba(244,241,234,0.85);line-height:1.55;">제안서 작성, 거래처 히스토리 요약, 미팅 시뮬레이션, 사후 정리</div>
         </div>
       </div>
+    </div>
+
+    <div class="demo-row">
+      <span class="demo-row-label">LIVE 시연 · AI 도구</span>
+      <a href="https://chatgpt.com" target="_blank" rel="noopener" class="demo-cta">
+        <span class="demo-cta-icon">💬</span>
+        <span>ChatGPT</span>
+        <span class="demo-cta-arrow">↗</span>
+      </a>
+      <a href="https://claude.ai" target="_blank" rel="noopener" class="demo-cta outline">
+        <span class="demo-cta-icon">🧠</span>
+        <span>Claude</span>
+        <span class="demo-cta-arrow">↗</span>
+      </a>
+      <a href="https://gemini.google.com" target="_blank" rel="noopener" class="demo-cta outline">
+        <span class="demo-cta-icon">✨</span>
+        <span>Gemini</span>
+        <span class="demo-cta-arrow">↗</span>
+      </a>
+      <a href="https://www.notion.so/2ad9a82db9c483b5bb998193c941c8fa" target="_blank" rel="noopener" class="demo-cta forest">
+        <span class="demo-cta-icon">📚</span>
+        <span>팀 워크스페이스</span>
+        <span class="demo-cta-arrow">↗</span>
+      </a>
     </div>
 
     <div class="insight">
