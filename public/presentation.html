@@ -162,6 +162,180 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 .nav-dot.active{background:var(--ink);color:var(--paper);}
 @media (max-width:900px){.slide-inner{padding:0 32px;}.cover-grid{grid-template-columns:1fr;gap:48px;}.cover-stats{grid-template-columns:1fr 1fr 1fr;}.diagnosis-grid{grid-template-columns:1fr;}.diag-axis{display:none;}.diag-row{grid-template-columns:1fr;padding-left:0;gap:16px;}.diag-row::before{display:none;}.diag-tags{border-left:none;padding-left:0;border-top:1px solid var(--line-soft);padding-top:12px;}.sources-grid{grid-template-columns:repeat(2,1fr);}.problems-grid{grid-template-columns:1fr;}.problem-card:nth-child(odd){border-right:none;padding-right:0;}.problem-card:nth-child(even){padding-left:0;}.ba-section{grid-template-columns:1fr;}.ba-divider{width:100%;height:1px;}.ba-divider::before{transform:translate(-50%,-50%);}.insight{grid-template-columns:1fr;gap:24px;}.nav-side{display:none;}.closing-display{font-size:40px;}.severity-bar{padding:24px;}.sev-grid{grid-template-columns:1fr 1fr;gap:20px;}.sev-cell{border-right:none;padding-right:0;padding-bottom:16px;border-bottom:1px solid rgba(244,241,234,0.15);}.pain-banner{grid-template-columns:1fr;gap:16px;padding:24px;}.pain-stat{text-align:left;}.flow-stage{grid-template-columns:1fr;gap:12px;padding:18px 20px;}.chain-grid{grid-template-columns:1fr 1fr;}}
 @media print{body{background:white;}.slide{page-break-after:always;min-height:auto;padding:40px;}.nav-side,.progress{display:none;}}
+
+/* ═══ ANIMATIONS ═══ */
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes slideInLeft{from{opacity:0;transform:translateX(-32px);}to{opacity:1;transform:translateX(0);}}
+@keyframes slideInRight{from{opacity:0;transform:translateX(32px);}to{opacity:1;transform:translateX(0);}}
+@keyframes scaleUp{from{opacity:0;transform:scale(0.92);}to{opacity:1;transform:scale(1);}}
+@keyframes drawLine{from{transform:scaleX(0);}to{transform:scaleX(1);}}
+@keyframes drawUnderline{from{background-size:0% 30%;}to{background-size:100% 30%;}}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(184,70,40,0.4);}50%{box-shadow:0 0 0 12px rgba(184,70,40,0);}}
+@keyframes shake{0%,100%{transform:translateX(0);}10%,30%,50%,70%,90%{transform:translateX(-3px);}20%,40%,60%,80%{transform:translateX(3px);}}
+@keyframes countUp{from{opacity:0;transform:translateY(12px) scale(0.94);}to{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes shimmer{0%{background-position:-200% 0;}100%{background-position:200% 0;}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+
+/* Initial state — hidden until reveal */
+.reveal{opacity:0;will-change:opacity,transform;}
+.reveal.in{animation:fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) forwards;}
+.reveal-up.in{animation:fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) forwards;}
+.reveal-left.in{animation:slideInLeft 0.9s cubic-bezier(0.22,1,0.36,1) forwards;}
+.reveal-right.in{animation:slideInRight 0.9s cubic-bezier(0.22,1,0.36,1) forwards;}
+.reveal-scale.in{animation:scaleUp 0.8s cubic-bezier(0.22,1,0.36,1) forwards;}
+.reveal-fade.in{animation:fadeIn 1.2s ease forwards;}
+.reveal-count.in{animation:countUp 0.7s cubic-bezier(0.22,1,0.36,1) forwards;}
+
+/* Stagger delays */
+.delay-1{animation-delay:0.1s;}
+.delay-2{animation-delay:0.2s;}
+.delay-3{animation-delay:0.3s;}
+.delay-4{animation-delay:0.4s;}
+.delay-5{animation-delay:0.5s;}
+.delay-6{animation-delay:0.6s;}
+.delay-7{animation-delay:0.7s;}
+.delay-8{animation-delay:0.8s;}
+
+/* Cover hero — 67% impact entrance */
+.cover-title{animation:fadeUp 1.1s cubic-bezier(0.22,1,0.36,1) 0.1s both;}
+.cover-title em{display:inline-block;animation:countUp 1.3s cubic-bezier(0.34,1.56,0.64,1) 0.4s both;}
+.cover-sub{animation:fadeUp 1s cubic-bezier(0.22,1,0.36,1) 0.6s both;}
+.cover-quote{animation:slideInRight 1s cubic-bezier(0.22,1,0.36,1) 0.5s both;}
+.cover-stats{animation:fadeUp 1s cubic-bezier(0.22,1,0.36,1) 0.9s both;}
+.cstat:nth-child(1) .cstat-val{animation:countUp 0.8s cubic-bezier(0.34,1.56,0.64,1) 1.1s both;}
+.cstat:nth-child(2) .cstat-val{animation:countUp 0.8s cubic-bezier(0.34,1.56,0.64,1) 1.25s both;}
+.cstat:nth-child(3) .cstat-val{animation:countUp 0.8s cubic-bezier(0.34,1.56,0.64,1) 1.4s both;}
+.cover-byline{animation:fadeIn 1.2s ease 1s both;}
+.cover-tag{animation:fadeIn 1s ease 0s both;}
+.cover-foot{animation:fadeIn 1s ease 1.5s both;}
+.cover::after{animation:fadeIn 2s ease 0.3s both;}
+
+/* Underline draw on .underline */
+.h-display .underline{background-size:0% 30%;background-repeat:no-repeat;background-position:0 100%;display:inline-block;}
+.h-display .underline.in{animation:drawUnderline 1s cubic-bezier(0.22,1,0.36,1) 0.4s forwards;}
+
+/* Severity bar — number entrance */
+.severity-bar.in .sev-num{animation:countUp 0.7s cubic-bezier(0.34,1.56,0.64,1) both;}
+.severity-bar.in .sev-cell:nth-child(1) .sev-num{animation-delay:0.1s;}
+.severity-bar.in .sev-cell:nth-child(2) .sev-num{animation-delay:0.25s;}
+.severity-bar.in .sev-cell:nth-child(3) .sev-num{animation-delay:0.4s;}
+.severity-bar.in .sev-cell:nth-child(4) .sev-num{animation-delay:0.55s;}
+
+/* Pain banner — pulse on first appear */
+.pain-banner.in{animation:fadeUp 0.8s cubic-bezier(0.22,1,0.36,1) forwards,pulseGlow 2.4s ease 0.8s 2;}
+.pain-banner.in .pain-icon{animation:shake 0.6s cubic-bezier(0.36,0.07,0.19,0.97) 0.5s both;}
+.pain-banner.in .pain-stat-val{animation:countUp 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.3s both;}
+
+/* Flow stages cascade */
+.flow-stage{opacity:0;transform:translateY(20px);transition:none;}
+.flow-canvas.in .flow-stage{animation:fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) both;}
+.flow-canvas.in .flow-stage:nth-child(1){animation-delay:0.05s;}
+.flow-canvas.in .flow-stage:nth-child(3){animation-delay:0.2s;}
+.flow-canvas.in .flow-stage:nth-child(5){animation-delay:0.35s;}
+.flow-canvas.in .flow-stage:nth-child(7){animation-delay:0.5s;}
+.flow-canvas.in .flow-arrow-down{opacity:0;animation:fadeIn 0.4s ease both;}
+.flow-canvas.in .flow-arrow-down:nth-child(2){animation-delay:0.15s;}
+.flow-canvas.in .flow-arrow-down:nth-child(4){animation-delay:0.3s;}
+.flow-canvas.in .flow-arrow-down:nth-child(6){animation-delay:0.45s;}
+.flow-stage:hover{transform:translateX(4px);transition:transform 0.3s ease;}
+
+/* Diag rows cascade */
+.diag-row{opacity:0;transform:translateY(20px);}
+.diag-content.in .diag-row{animation:fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) both;}
+.diag-content.in .diag-row:nth-child(1){animation-delay:0.1s;}
+.diag-content.in .diag-row:nth-child(2){animation-delay:0.25s;}
+.diag-content.in .diag-row:nth-child(3){animation-delay:0.4s;}
+
+/* Source cells stagger */
+.source-cell{opacity:0;transform:translateY(12px);}
+.sources-grid.in .source-cell{animation:fadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both;}
+.sources-grid.in .source-cell:nth-child(1){animation-delay:0.05s;}
+.sources-grid.in .source-cell:nth-child(2){animation-delay:0.1s;}
+.sources-grid.in .source-cell:nth-child(3){animation-delay:0.15s;}
+.sources-grid.in .source-cell:nth-child(4){animation-delay:0.2s;}
+.sources-grid.in .source-cell:nth-child(5){animation-delay:0.25s;}
+.sources-grid.in .source-cell:nth-child(6){animation-delay:0.3s;}
+.sources-grid.in .source-cell:nth-child(7){animation-delay:0.35s;}
+.sources-grid.in .source-cell:nth-child(8){animation-delay:0.4s;}
+.source-cell:hover .source-num{animation:floatY 1.2s ease infinite;}
+
+/* Problem cards stagger */
+.problem-card{opacity:0;transform:translateY(20px);}
+.problems-grid.in .problem-card{animation:fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) both;}
+.problems-grid.in .problem-card:nth-child(1){animation-delay:0.1s;}
+.problems-grid.in .problem-card:nth-child(2){animation-delay:0.2s;}
+.problems-grid.in .problem-card:nth-child(3){animation-delay:0.3s;}
+.problems-grid.in .problem-card:nth-child(4){animation-delay:0.4s;}
+.problems-grid.in .problem-card:nth-child(5){animation-delay:0.5s;}
+.problem-card{transition:transform 0.3s ease,box-shadow 0.3s ease;}
+.problem-card:hover{transform:translateY(-3px);}
+
+/* Chain cards stagger */
+.chain-card{opacity:0;transform:translateY(16px);}
+.chain-grid.in .chain-card{animation:fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) both;}
+.chain-grid.in .chain-card:nth-child(1){animation-delay:0.1s;}
+.chain-grid.in .chain-card:nth-child(2){animation-delay:0.2s;}
+.chain-grid.in .chain-card:nth-child(3){animation-delay:0.3s;}
+.chain-grid.in .chain-card:nth-child(4){animation-delay:0.4s;}
+.chain-card{transition:transform 0.3s ease;}
+.chain-card:hover{transform:translateY(-4px);}
+.chain-card::before{transform-origin:left;transform:scaleX(0);}
+.chain-grid.in .chain-card::before{animation:drawLine 0.6s cubic-bezier(0.22,1,0.36,1) 0.4s forwards;}
+
+/* Insight callout entrance */
+.insight{opacity:0;transform:translateY(20px);}
+.insight.in{animation:fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) forwards;}
+.insight.in .insight-mark{animation:scaleUp 1s cubic-bezier(0.34,1.56,0.64,1) 0.3s both;}
+
+/* B/A section */
+.ba-col{opacity:0;}
+.ba-section.in .ba-col.before{animation:slideInLeft 0.8s cubic-bezier(0.22,1,0.36,1) 0.1s both;}
+.ba-section.in .ba-col.after{animation:slideInRight 0.8s cubic-bezier(0.22,1,0.36,1) 0.3s both;}
+.ba-divider::before{transform:translate(-50%,-50%) scale(0);}
+.ba-section.in .ba-divider::before{animation:scaleUp 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.6s forwards;}
+
+/* Slide meta + eyebrow + h-display + h-lede stagger */
+.slide-meta{opacity:0;}
+.slide.in-view .slide-meta{animation:fadeIn 0.6s ease 0s both;}
+.eyebrow{opacity:0;}
+.slide.in-view .eyebrow{animation:fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both;}
+.h-display{opacity:0;}
+.slide.in-view .h-display{animation:fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) 0.2s both;}
+.h-lede{opacity:0;}
+.slide.in-view .h-lede{animation:fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) 0.4s both;}
+
+/* Closing slide */
+.closing .closing-display{opacity:0;}
+.closing.in-view .closing-display{animation:fadeUp 1s cubic-bezier(0.22,1,0.36,1) 0.2s both;}
+.closing .closing-lede{opacity:0;}
+.closing.in-view .closing-lede{animation:fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both;}
+.action-rail{opacity:0;transform:translateX(-12px);}
+.closing.in-view .action-rail{animation:slideInLeft 0.6s cubic-bezier(0.22,1,0.36,1) both;}
+.closing.in-view .action-rail:nth-of-type(1){animation-delay:0.7s;}
+.closing.in-view .action-rail:nth-of-type(2){animation-delay:0.8s;}
+.closing.in-view .action-rail:nth-of-type(3){animation-delay:0.9s;}
+.closing.in-view .action-rail:nth-of-type(4){animation-delay:1.0s;}
+.closing.in-view .action-rail:nth-of-type(5){animation-delay:1.1s;}
+.closing.in-view .action-rail:nth-of-type(6){animation-delay:1.2s;}
+.closing.in-view .action-rail:nth-of-type(7){animation-delay:1.3s;}
+.closing.in-view .action-rail:nth-of-type(8){animation-delay:1.4s;}
+.closing.in-view .action-rail:nth-of-type(9){animation-delay:1.5s;}
+
+/* Hover refinement on nav dots */
+.nav-dot{transition:all 0.25s cubic-bezier(0.22,1,0.36,1);}
+.nav-dot:hover{transform:scale(1.15);}
+
+/* Channel pills */
+.channel{transition:all 0.25s ease;}
+.channel:hover{transform:translateY(-2px);}
+.channel.danger{position:relative;}
+.flow-canvas.in .channel.danger{animation:pulseGlow 2.5s ease 1.2s 1;}
+
+/* Reduce motion preference */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:0.01ms !important;animation-delay:0s !important;transition-duration:0.01ms !important;}
+}
 </style>
 </head>
 <body>
@@ -666,6 +840,51 @@ document.addEventListener('keydown', (e) => {
     if (current > 0) goTo(current - 1);
   }
 });
+
+// ═══ INTERSECTION OBSERVER — 스크롤 트리거 애니메이션 ═══
+const animateOnce = (el, cls) => {
+  if (!el.classList.contains(cls)) el.classList.add(cls);
+};
+
+const slideObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      animateOnce(entry.target, 'in-view');
+    }
+  });
+}, { threshold: 0.15, rootMargin: '0px 0px -10% 0px' });
+
+slides.forEach(slide => slideObserver.observe(slide));
+
+// 세부 컴포넌트 트리거 — 슬라이드 안에서 각각 등장
+const componentSelectors = [
+  '.severity-bar',
+  '.pain-banner',
+  '.flow-canvas',
+  '.diag-content',
+  '.sources-grid',
+  '.problems-grid',
+  '.chain-grid',
+  '.insight',
+  '.ba-section',
+  '.h-display .underline'
+];
+
+const componentObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      animateOnce(entry.target, 'in');
+      componentObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.2, rootMargin: '0px 0px -8% 0px' });
+
+componentSelectors.forEach(sel => {
+  document.querySelectorAll(sel).forEach(el => componentObserver.observe(el));
+});
+
+// 첫 슬라이드는 즉시 활성화 (위에 있으니 바로 보여야 함)
+if (slides[0]) slides[0].classList.add('in-view');
 </script>
 
 </body>
