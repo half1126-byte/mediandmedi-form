@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Client } from '@notionhq/client';
 
-const MEETING_DB_ID = '73219abe-2f01-40d3-9ced-da8afb3e3213';
+const MEETING_DB_ID = 'f7b5f3e9-ce21-4259-9d0e-edda716e588a';
 const MEETING_DB_FALLBACK_URL = 'https://www.notion.so/f7b5f3e9ce2142599d0eedda716e588a';
 
 export async function POST() {
