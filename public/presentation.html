@@ -315,16 +315,17 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 @media (max-width:900px){.demo-row{flex-direction:column;align-items:stretch;}.demo-cta{justify-content:center;}}
 
 /* Issues Table — DX 우선 이유 */
-.issues-table{width:100%;border-collapse:collapse;font-size:13px;margin:32px 0 16px;line-height:1.5;}
-.issues-table th{text-align:left;padding:14px 14px;background:var(--paper-2);border-bottom:2px solid var(--ink);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-2);font-weight:600;}
-.issues-table td{padding:13px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+.issues-table{width:100%;border-collapse:collapse;font-size:14px;margin:32px 0 16px;line-height:1.65;word-break:keep-all;}
+.issues-table th{text-align:left;padding:16px 16px;background:var(--paper-2);border-bottom:2px solid var(--ink);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-2);font-weight:600;}
+.issues-table td{padding:18px 16px;border-bottom:1px solid var(--line);vertical-align:top;}
 .issues-table tbody tr:hover td{background:var(--paper-2);}
-.issues-table .issue-id{display:inline-block;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--rust);margin-right:6px;font-size:12px;}
-.issues-table .issue-title{font-weight:600;color:var(--ink);font-size:13px;line-height:1.45;}
-.issues-table .col-area{color:var(--ink-3);font-size:12px;width:16%;}
-.issues-table .col-impact{color:var(--ink-3);font-size:12px;width:28%;}
-.issues-table .col-status{width:14%;font-size:12px;font-weight:600;letter-spacing:-0.01em;}
-.issues-table .col-issue{width:42%;}
+.issues-table .issue-id{display:inline-block;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--rust);margin-right:8px;font-size:13px;}
+.issues-table .issue-title{font-weight:600;color:var(--ink);font-size:14px;line-height:1.55;display:inline;}
+.issues-table .issue-sub{display:block;margin-top:8px;font-size:12px;color:var(--ink-4);line-height:1.6;font-weight:400;}
+.issues-table .col-area{color:var(--ink-3);font-size:13px;width:16%;line-height:1.5;}
+.issues-table .col-impact{color:var(--ink-3);font-size:13px;width:26%;line-height:1.55;}
+.issues-table .col-status{width:14%;font-size:13px;font-weight:600;letter-spacing:-0.01em;}
+.issues-table .col-issue{width:44%;}
 .status-fixed{color:var(--forest);}
 .status-fixed::before{content:'✓ ';font-weight:700;}
 .status-progress{color:var(--ochre);}
@@ -653,67 +654,67 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
       </thead>
       <tbody>
         <tr>
-          <td><span class="issue-id">A</span><span class="issue-title">거래처명이 5+곳에서 다른 표기로 사용</span><br><span style="font-size:11px;color:var(--ink-4);">노션 / 와이지 / 인팩트 / 회사 시트 / Gmail 모두 다름</span></td>
+          <td><span class="issue-id">A</span><span class="issue-title">거래처명이 5+곳에서 다른 표기로 사용</span><span class="issue-sub">노션 / 와이지 / 인팩트 / 회사 시트 / Gmail 모두 다름</span></td>
           <td class="col-area">데이터 표준</td>
           <td class="col-impact">매칭 실패 → 데이터 누락</td>
           <td class="col-status status-progress">진행 중</td>
         </tr>
         <tr>
-          <td><span class="issue-id">B</span><span class="issue-title">"카페" 한 단어 = 외주사 카페바이럴 vs 사내 카페제휴</span><br><span style="font-size:11px;color:var(--ink-4);">같은 이름, 다른 업무 — 반복 문의 발생</span></td>
+          <td><span class="issue-id">B</span><span class="issue-title">"카페" 한 단어 = 외주사 카페바이럴 vs 사내 카페제휴</span><span class="issue-sub">같은 이름, 다른 업무 — 반복 문의 발생</span></td>
           <td class="col-area">분류 표준</td>
           <td class="col-impact">운영 혼선 · 반복 문의</td>
           <td class="col-status status-progress">진행 중</td>
         </tr>
         <tr>
-          <td><span class="issue-id">C</span><span class="issue-title">외주사/사내/협력사 3 layer가 한 컬럼에 섞임</span><br><span style="font-size:11px;color:var(--ink-4);">contracts 382건 중 56%가 vendors DB에 매칭 안 됨</span></td>
+          <td><span class="issue-id">C</span><span class="issue-title">외주사/사내/협력사 3 layer가 한 컬럼에 섞임</span><span class="issue-sub">contracts 382건 중 56%가 vendors DB에 매칭 안 됨</span></td>
           <td class="col-area">데이터 구조</td>
           <td class="col-impact">잘못된 집계 · 매출 오산</td>
           <td class="col-status status-progress">진행 중</td>
         </tr>
         <tr>
-          <td><span class="issue-id">D</span><span class="issue-title">한 거래처 보고서 위해 5+ 데이터 source 헤맴</span><br><span style="font-size:11px;color:var(--ink-4);">와이지 / 인팩트 / 빅스 / blogManagement / Datalab ...</span></td>
+          <td><span class="issue-id">D</span><span class="issue-title">한 거래처 보고서 위해 5+ 데이터 source 헤맴</span><span class="issue-sub">와이지 / 인팩트 / 빅스 / blogManagement / Datalab ...</span></td>
           <td class="col-area">정보 분산</td>
           <td class="col-impact">보고서 1편 = 5곳 헤맴</td>
           <td class="col-status status-progress">진행 중</td>
         </tr>
         <tr>
-          <td><span class="issue-id">E</span><span class="issue-title">빈 row가 PDF에 가짜 글로 표시됨</span><br><span style="font-size:11px;color:var(--ink-4);">"발행 안 됐는데 5건?" 같은 혼란 → 검증 로직 보강</span></td>
+          <td><span class="issue-id">E</span><span class="issue-title">빈 row가 PDF에 가짜 글로 표시됨</span><span class="issue-sub">"발행 안 됐는데 5건?" 같은 혼란 → 검증 로직 보강</span></td>
           <td class="col-area">데이터 검증</td>
           <td class="col-impact">사용자 혼란 · 신뢰도 ↓</td>
           <td class="col-status status-fixed">5/11 해결</td>
         </tr>
         <tr>
-          <td><span class="issue-id">F</span><span class="issue-title">와이지 당근작업 탭에 거래처 컬럼 없음</span><br><span style="font-size:11px;color:var(--ink-4);">한 탭에 모든 거래처 글 섞여서 매칭 어려움</span></td>
+          <td><span class="issue-id">F</span><span class="issue-title">와이지 당근작업 탭에 거래처 컬럼 없음</span><span class="issue-sub">한 탭에 모든 거래처 글 섞여서 매칭 어려움</span></td>
           <td class="col-area">시트 구조</td>
           <td class="col-impact">parser 매칭 실패</td>
           <td class="col-status status-ops">외주사 협의</td>
         </tr>
         <tr>
-          <td><span class="issue-id">G</span><span class="issue-title">와이지 시트 3월 row 자체가 부재 (54 거래처)</span><br><span style="font-size:11px;color:var(--ink-4);">메디앤메디 코드 문제 X — 외주사 입력 영역</span></td>
+          <td><span class="issue-id">G</span><span class="issue-title">와이지 시트 3월 row 자체가 부재 (54 거래처)</span><span class="issue-sub">메디앤메디 코드 문제 X — 외주사 입력 영역</span></td>
           <td class="col-area">데이터 누락</td>
           <td class="col-impact">3월 카페·당근 데이터 빈</td>
           <td class="col-status status-ops">외주사 영역</td>
         </tr>
         <tr>
-          <td><span class="issue-id">H</span><span class="issue-title">UTC 날짜 기준 → 자정~9시 KST 시각 인식 오류</span><br><span style="font-size:11px;color:var(--ink-4);">어제 파일 이름으로 생성 → +9h 통일 완료</span></td>
+          <td><span class="issue-id">H</span><span class="issue-title">UTC 날짜 기준 → 자정~9시 KST 시각 인식 오류</span><span class="issue-sub">어제 파일 이름으로 생성 → +9h 통일 완료</span></td>
           <td class="col-area">시간대</td>
           <td class="col-impact">새벽 시간대 파일 이름 오류</td>
           <td class="col-status status-fixed">5/11 해결</td>
         </tr>
         <tr>
-          <td><span class="issue-id">I</span><span class="issue-title">외주사 6곳 노션 미등록</span><br><span style="font-size:11px;color:var(--ink-4);">스토리슈페너·매스미디어·이피알몰·애드서프·비블레스·에이트믹스</span></td>
+          <td><span class="issue-id">I</span><span class="issue-title">외주사 6곳 노션 미등록</span><span class="issue-sub">스토리슈페너·매스미디어·이피알몰·애드서프·비블레스·에이트믹스</span></td>
           <td class="col-area">마스터 데이터</td>
           <td class="col-impact">알림 누락 · 자동화 빠짐</td>
           <td class="col-status status-fixed">5/11 해결</td>
         </tr>
         <tr>
-          <td><span class="issue-id">J</span><span class="issue-title">계정정보 거래처 relation 21% 빠짐 (148/692)</span><br><span style="font-size:11px;color:var(--ink-4);">PW 등록 시 거래처 연결 누락 — 운영 정리 필요</span></td>
+          <td><span class="issue-id">J</span><span class="issue-title">계정정보 거래처 relation 21% 빠짐 (148/692)</span><span class="issue-sub">PW 등록 시 거래처 연결 누락 — 운영 정리 필요</span></td>
           <td class="col-area">데이터 연결</td>
           <td class="col-impact">거래처별 계정 조회 일부 누락</td>
           <td class="col-status status-ops">운영 정리</td>
         </tr>
         <tr>
-          <td><span class="issue-id">K</span><span class="issue-title">blogManagement 시트 5가지 컬럼 구조 (A~E)</span><br><span style="font-size:11px;color:var(--ink-4);">동적 컬럼 매핑 + 메타 라벨 strip 적용</span></td>
+          <td><span class="issue-id">K</span><span class="issue-title">blogManagement 시트 5가지 컬럼 구조 (A~E)</span><span class="issue-sub">동적 컬럼 매핑 + 메타 라벨 strip 적용</span></td>
           <td class="col-area">스키마 표준</td>
           <td class="col-impact">파싱 오류 · 분류 "기타" 다수</td>
           <td class="col-status status-fixed">5/2 해결</td>
@@ -1281,13 +1282,31 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 
     <p class="closing-lede">
       메디앤메디는 이미 빠르게 성장했습니다.<br>
-      짧은 시간 안에 많은 거래처와 함께하고 있다는 건, <strong style="color:var(--ochre);">우리가 분명히 잘 달려왔다</strong>는 뜻입니다.<br><br>
-      하지만 앞으로 더 큰 회사가 되려면 사람의 기억과 노력만으로 버티는 방식에서 조금씩 벗어나야 합니다.<br>
-      요청은 기록으로 남고, 미팅은 DB로 쌓이고, 변경사항은 시스템에 반영되어야 합니다.<br><br>
-      그리고 꼭 당부드리고 싶은 건 — <strong style="color:var(--ochre);">AI를 각자 한 번씩은 직접 써보셨으면 한다</strong>는 점입니다.<br>
-      직접 써봐야 내 업무에 어떻게 활용할 수 있는지 알 수 있고, 그 경험이 쌓여야 내 역량이 됩니다.<br><br>
-      <strong style="color:var(--paper);">AI를 직접 써본 사람은 그 시스템 안에서 더 빠르게 성장할 수 있습니다.</strong><br>
-      처음부터 완벽할 필요는 없습니다. <strong style="color:var(--ochre);">오늘부터 각자의 작은 기록과 작은 AI 활용 경험</strong>으로 함께 시작해보면 좋겠습니다.
+      짧은 시간 안에 많은 거래처와 함께하고 있다는 건,<br>
+      <strong style="color:var(--ochre);">우리가 분명히 잘 달려왔다</strong>는 뜻입니다.
+    </p>
+
+    <p class="closing-lede" style="margin-top:32px;">
+      하지만 앞으로 더 큰 회사가 되려면<br>
+      사람의 기억과 노력만으로 버티는 방식에서<br>
+      조금씩 벗어나야 합니다.<br><br>
+      요청은 <strong style="color:var(--paper);">기록</strong>으로 남고,<br>
+      미팅은 <strong style="color:var(--paper);">DB</strong>로 쌓이고,<br>
+      변경사항은 <strong style="color:var(--paper);">시스템</strong>에 반영되어야 합니다.
+    </p>
+
+    <p class="closing-lede" style="margin-top:32px;">
+      그리고 꼭 당부드리고 싶은 건 —<br>
+      <strong style="color:var(--ochre);">AI를 각자 한 번씩은 직접 써보셨으면 한다</strong>는 점입니다.<br><br>
+      직접 써봐야 내 업무에 어떻게 활용할 수 있는지 알 수 있고,<br>
+      그 경험이 쌓여야 <strong style="color:var(--paper);">내 역량</strong>이 됩니다.
+    </p>
+
+    <p class="closing-lede" style="margin-top:32px;">
+      <strong style="color:var(--paper);">AI를 직접 써본 사람은<br>그 시스템 안에서 더 빠르게 성장할 수 있습니다.</strong><br><br>
+      처음부터 완벽할 필요는 없습니다.<br>
+      <strong style="color:var(--ochre);">오늘부터 각자의 작은 기록과 작은 AI 활용 경험</strong>으로<br>
+      함께 시작해보면 좋겠습니다.
     </p>
 
     <div class="closing-foot"><span>MEDI&MEDI · 2026.05</span><span>이종광 · 전략기획팀</span></div>
