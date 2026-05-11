@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>이번 주 받아야 할 것 — 2026.05.11 ~ 17 · DX·AX 전환 1주차</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4F1EA;--paper-2:#ECE7DC;--ink:#1A1814;--ink-2:#3A362E;--ink-3:#6B6558;--ink-4:#9A9486;
+  --line:rgba(26,24,20,0.12);--line-soft:rgba(26,24,20,0.06);
+  --rust:#B84628;--rust-soft:#E8D5CC;--rust-deep:#8C2F18;
+  --ochre:#C8941F;--ochre-soft:#EFE2C2;
+  --forest:#4A6B3A;--forest-soft:#D5DEC9;
+  --indigo:#2D3B6B;--indigo-soft:#C9D0E0;
+  --plum:#6B3A52;--plum-soft:#E0CCD7;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--paper);color:var(--ink);font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-weight:400;line-height:1.6;-webkit-font-smoothing:antialiased;word-break:keep-all;}
+.mono{font-family:'JetBrains Mono',monospace;}
+
+.wrap{max-width:1160px;margin:0 auto;padding:60px 40px 100px;}
+
+/* Header */
+.tag{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.15em;color:var(--rust);text-transform:uppercase;margin-bottom:18px;display:inline-block;}
+.title{font-size:clamp(36px,5vw,56px);font-weight:800;letter-spacing:-0.04em;line-height:1.1;margin-bottom:18px;}
+.title em{font-style:normal;color:var(--rust);font-weight:900;}
+.lede{font-size:16px;color:var(--ink-3);max-width:720px;line-height:1.7;margin-bottom:14px;}
+.lede strong{color:var(--ink);font-weight:600;}
+.period{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink-2);background:var(--paper-2);padding:8px 14px;border-radius:4px;display:inline-block;margin-top:8px;letter-spacing:0.04em;}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin:48px 0;background:var(--ink);color:var(--paper);border-radius:6px;overflow:hidden;}
+.stat{padding:24px 28px;border-right:1px solid rgba(244,241,234,0.12);}
+.stat:last-child{border-right:none;}
+.stat-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:var(--ochre);text-transform:uppercase;margin-bottom:8px;}
+.stat-val{font-size:36px;font-weight:800;letter-spacing:-0.03em;line-height:1;}
+.stat-val .unit{font-size:18px;color:rgba(244,241,234,0.6);margin-left:4px;font-weight:600;}
+.stat-desc{font-size:12px;color:rgba(244,241,234,0.65);margin-top:8px;line-height:1.5;}
+
+/* Legend */
+.legend{display:flex;gap:24px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px;flex-wrap:wrap;}
+.legend span{display:flex;align-items:center;gap:6px;}
+.legend .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+.dot.high{background:var(--rust);}
+.dot.mid{background:var(--ochre);}
+.dot.low{background:var(--forest);}
+
+/* Section */
+.section{margin:56px 0 0;}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:22px;flex-wrap:wrap;}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.15em;color:var(--rust);text-transform:uppercase;}
+.section-title{font-size:26px;font-weight:800;letter-spacing:-0.03em;line-height:1.2;}
+.section-title em{font-style:normal;color:var(--rust);}
+.section-owner{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);letter-spacing:0.04em;}
+
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:14px;line-height:1.55;}
+.tbl th{text-align:left;padding:14px 14px;background:var(--paper-2);border-bottom:2px solid var(--ink);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-2);font-weight:600;}
+.tbl td{padding:16px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+.tbl tbody tr:hover td{background:var(--paper-2);}
+.tbl .label{font-weight:600;color:var(--ink);font-size:14px;display:block;margin-bottom:4px;}
+.tbl .sub{font-size:12px;color:var(--ink-4);line-height:1.55;display:block;}
+.tbl .col-key{width:32%;}
+.tbl .col-detail{width:48%;color:var(--ink-2);font-size:13px;line-height:1.6;}
+.tbl .col-detail strong{color:var(--ink);font-weight:600;}
+.tbl .col-pri{width:10%;}
+.tbl .col-due{width:10%;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-3);letter-spacing:0.04em;}
+
+.pri{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:0.04em;font-family:'JetBrains Mono',monospace;text-transform:uppercase;}
+.pri::before{content:'';width:8px;height:8px;border-radius:50%;}
+.pri.high{color:var(--rust);}.pri.high::before{background:var(--rust);}
+.pri.mid{color:var(--ochre);}.pri.mid::before{background:var(--ochre);}
+.pri.low{color:var(--forest);}.pri.low::before{background:var(--forest);}
+
+/* Outcome card */
+.outcome{margin-top:64px;padding:36px 40px;background:var(--ink);color:var(--paper);border-radius:6px;}
+.outcome-tag{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.15em;color:var(--ochre);text-transform:uppercase;margin-bottom:14px;}
+.outcome-title{font-size:24px;font-weight:800;letter-spacing:-0.03em;margin-bottom:20px;line-height:1.3;}
+.outcome-title em{font-style:normal;color:var(--ochre);}
+.outcome-list{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:14px 28px;}
+.outcome-list li{padding-left:22px;position:relative;font-size:14px;color:rgba(244,241,234,0.85);line-height:1.55;}
+.outcome-list li::before{content:'→';position:absolute;left:0;color:var(--ochre);font-weight:700;}
+.outcome-list li strong{color:var(--paper);font-weight:600;}
+
+/* Foot */
+.foot{margin-top:64px;padding-top:32px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:18px;}
+.foot-text{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-4);letter-spacing:0.08em;}
+.foot-links{display:flex;gap:16px;}
+.foot-links a{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:var(--ink);color:var(--paper);text-decoration:none;border-radius:4px;font-size:13px;font-weight:500;font-family:'Pretendard Variable',Pretendard,sans-serif;transition:all 0.2s;}
+.foot-links a:hover{background:var(--rust);}
+.foot-links a.outline{background:transparent;color:var(--ink);border:1px solid var(--ink);}
+.foot-links a.outline:hover{background:var(--ink);color:var(--paper);}
+
+/* Notes (DX 발견 근거) */
+.note{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--rust);background:var(--rust-soft);padding:3px 8px;border-radius:3px;letter-spacing:0.05em;text-transform:uppercase;display:inline-block;margin-left:6px;font-weight:600;}
+
+/* Responsive */
+@media (max-width:900px){
+  .wrap{padding:40px 20px 80px;}
+  .stats{grid-template-columns:repeat(2,1fr);}
+  .stat{border-right:none;border-bottom:1px solid rgba(244,241,234,0.12);}
+  .outcome-list{grid-template-columns:1fr;}
+  .tbl{font-size:13px;}
+  .tbl .col-pri,.tbl .col-due{display:none;}
+  .tbl .col-key{width:42%;}.tbl .col-detail{width:58%;}
+  .tbl th,.tbl td{padding:12px 10px;}
+}
+
+@media print{
+  body{background:white;}
+  .foot-links{display:none;}
+  .tbl tbody tr:hover td{background:transparent;}
+  .stats,.outcome{background:white;color:black;border:1px solid black;}
+  .stat-val,.outcome-title em,.outcome-list li::before{color:black !important;}
+  .outcome-list li,.stat-desc,.outcome-title{color:black !important;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="tag">DX·AX 전환 1주차 · INTERNAL CHECKLIST</div>
+<h1 class="title">이번 주에 <em>받아야 할 것</em></h1>
+<p class="lede">
+  발표자료 <strong>"왜 DX가 먼저인가"</strong>의 11가지 발견을 기반으로,
+  이번 주 안에 각 팀·외주사로부터 받아야 할 자료·결정·정리 항목을 매트릭스로 정리했습니다.<br>
+  <strong>완벽하지 않아도 됩니다 — 일단 1차로 모으는 것</strong>이 목적입니다.
+</p>
+<div class="period mono">PERIOD · 2026.05.11 (월) ~ 05.17 (일)</div>
+
+<!-- 요약 통계 -->
+<div class="stats">
+  <div class="stat">
+    <div class="stat-label">총 영역</div>
+    <div class="stat-val">6<span class="unit">개</span></div>
+    <div class="stat-desc">외주사 / 마케팅 / 콘텐츠 / 디자인 / 영업 / 팀장급</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">우선순위 높음</div>
+    <div class="stat-val">9<span class="unit">건</span></div>
+    <div class="stat-desc">5/15 (금)까지 — 데이터 통일 핵심</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">중·일반</div>
+    <div class="stat-val">13<span class="unit">건</span></div>
+    <div class="stat-desc">5/17 (일)까지 — 양식·프로세스 1차</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">목표</div>
+    <div class="stat-val">매칭<span class="unit"> 80%+</span></div>
+    <div class="stat-desc">다음 주 보고서 자동화 재가동</div>
+  </div>
+</div>
+
+<div class="legend">
+  <span><span class="dot high"></span>높음 · 5/15까지</span>
+  <span><span class="dot mid"></span>중 · 5/17까지</span>
+  <span><span class="dot low"></span>일반 · 5/17까지</span>
+</div>
+
+<!-- 1. 외주사 -->
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-num">SECTION 01 / 외주사 영역</div>
+      <h2 class="section-title">외주사에서 받아야 할 것 <em>(마케팅팀 채널)</em></h2>
+    </div>
+    <div class="section-owner">담당 · 마케팅팀 → 외주사 / 회신 · 5/15 (금)</div>
+  </div>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th class="col-key">외주사</th>
+        <th class="col-detail">받을 것</th>
+        <th class="col-pri">우선순위</th>
+        <th class="col-due">마감</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="label">와이지</span><span class="sub">현재 카페바이럴 / 당근 / 일부 플레이스 위탁</span></td>
+        <td><strong>3월 row 누락 54곳</strong> 입력 보완 + 당근작업 탭 거래처 컬럼 추가 협의<span class="note">G·F</span></td>
+        <td><span class="pri high">높음</span></td>
+        <td>5/15</td>
+      </tr>
+      <tr>
+        <td><span class="label">인팩트</span><span class="sub">플레이스 + 블로그</span></td>
+        <td>4월 작업 입력 + <strong>거래처명 표기 통일안</strong> 합의<span class="note">A</span></td>
+        <td><span class="pri high">높음</span></td>
+        <td>5/15</td>
+      </tr>
+      <tr>
+        <td><span class="label">빅스</span><span class="sub">플레이스</span></td>
+        <td>4월 작업 입력 + 플레이스 데이터 회신<span class="note">D</span></td>
+        <td><span class="pri mid">중</span></td>
+        <td>5/15</td>
+      </tr>
+      <tr>
+        <td><span class="label">매스미디어</span><span class="sub">플레이스 (3 거래처)</span></td>
+        <td>3 거래처 플레이스 입력 완료<span class="note">D</span></td>
+        <td><span class="pri mid">중</span></td>
+        <td>5/15</td>
+      </tr>
+      <tr>
+        <td><span class="label">스토리슈페너 · 이피알몰 · 애드서프 · 비블레스 · 에이트믹스</span><span class="sub">신규 등록 6곳 (5/11 노션 추가 완료)</span></td>
+        <td><strong>공통 보고 양식 회람</strong> + 거래처 표기 합의<span class="note">I</span></td>
+        <td><span class="pri low">일반</span></td>
+        <td>5/17</td>
+      </tr>
+      <tr>
+        <td><span class="label">4월 작업 0건 외주사 14곳</span><span class="sub">와이지 12곳 등</span></td>
+        <td>입력 누락 사유 확인 + 입력 의무화 협의</td>
+        <td><span class="pri high">높음</span></td>
+        <td>5/15</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 2. 마케팅팀 -->
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-num">SECTION 02 / 마케팅팀 자체 정리</div>
+      <h2 class="section-title">마케팅팀이 <em>직접 정리</em>할 것</h2>
+    </div>
+    <div class="section-owner">담당 · 마케팅팀 (내부) / 마감 · 5/17 (일)</div>
+  </div>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th class="col-key">항목</th>
+        <th class="col-detail">상세</th>
+        <th class="col-pri">우선순위</th>
+        <th class="col-due">마감</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="label">거래처 alias 등록</span><span class="sub">노션 거래처 DB → 시트탭_별칭 컬럼</span></td>
+        <td>현재 4건 등록 · 잔여 80+ 곳. <strong>1인당 5~10건씩 분담</strong>. 외주사·시트별 변형 표기를 정본에 연결<span class="note">A</span></td>
+        <td><span class="pri high">높음</span></td>
+        <td>5/15</td>
+      </tr>
+      <tr>
+        <td><span class="label">분점 disambiguation 3건</span><span class="sub">정본 표기 결정 필요</span></td>
+        <td><strong>서울다온</strong> (신현 / 모현 / 가정동) · <strong>바른공감</strong> (본점 / 본원 / 검단점) · <strong>올바로치과</strong> (문산 / 파주) — 팀 회의 1회로 결정<span class="note">A</span></td>
+        <td><span class="pri high">높음</span></td>
+        <td>5/15</td>
+      </tr>
+      <tr>
+        <td><span class="label">계정정보 거래처 relation</span><span class="sub">노션 계정정보 DB · "거래처 빈" 필터</span></td>
+        <td>148건/692건 (21%) 누락 — <strong>거래처와 무관한 공용 계정 제외</strong>하고 운영 보완. 1인당 20~30건<span class="note">J</span></td>
+        <td><span class="pri mid">중</span></td>
+        <td>5/17</td>
+      </tr>
+      <tr>
+        <td><span class="label">시스템 이슈 처리자 배정</span><span class="sub">노션 시스템 이슈 DB</span></td>
+        <td>30/30 미지정 → 각자 담당 배정. 팀 회의 1회</td>
+        <td><span class="pri mid">중</span></td>
+        <td>5/15</td>
+      </tr>
+      <tr>
+        <td><span class="label">거래처 표기 정본 전파</span><span class="sub">노션 → 외주사·시트로</span></td>
+        <td>마케팅팀 합의로 결정된 정본 표기를 외주사와 사내 시트에 동일 적용 안내</td>
+        <td><span class="pri mid">중</span></td>
+        <td>5/17</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 3. 콘텐츠팀 -->
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-num">SECTION 03 / 콘텐츠팀</div>
+      <h2 class="section-title">콘텐츠팀이 <em>표준화</em>할 것</h2>
+    </div>
+    <div class="section-owner">담당 · 콘텐츠팀 / 마감 · 5/17 (일)</div>
+  </div>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th class="col-key">항목</th>
+        <th class="col-detail">상세</th>
+        <th class="col-pri">우선순위</th>
+        <th class="col-due">마감</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="label">외주사 결과물 공통 양식 1차안</span><span class="sub">엑셀/PPT/카톡 → 단일 양식</span></td>
+        <td>컬럼 표준: <strong>거래처명 · 발행일 · 제목 · URL · 종류 · 작성자</strong>. 노션 또는 시트로. 일단 1차 — 외주사 회람용<span class="note">D·F</span></td>
+        <td><span class="pri high">높음</span></td>
+        <td>5/17</td>
+      </tr>
+      <tr>
+        <td><span class="label">"카페" 분류 별칭 표준화</span><span class="sub">같은 단어, 다른 업무</span></td>
+        <td><strong>"외주 카페바이럴"</strong> (와이지) vs <strong>"사내 카페제휴"</strong> (협력사) — 별칭 결정 후 모든 시트·문서·노션 통일<span class="note">B</span></td>
+        <td><span class="pri high">높음</span></td>
+        <td>5/15</td>
+      </tr>
+      <tr>
+        <td><span class="label">임상 슬롯 빈 row 메모 표준</span><span class="sub">blogManagement 시트</span></td>
+        <td>미발행 row에 들어갈 메모 키워드 표준: <strong>이월 · 취소 · 보류 · 연기 · 미발행</strong> 5종으로 통일<span class="note">E</span></td>
+        <td><span class="pri mid">중</span></td>
+        <td>5/17</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 4. 디자인팀 -->
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-num">SECTION 04 / 디자인팀</div>
+      <h2 class="section-title">디자인팀이 <em>기준 정리</em>할 것</h2>
+    </div>
+    <div class="section-owner">담당 · 디자인팀 / 마감 · 5/17 (일)</div>
+  </div>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th class="col-key">항목</th>
+        <th class="col-detail">상세</th>
+        <th class="col-pri">우선순위</th>
+        <th class="col-due">마감</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="label">반복 디자인 유형 1차 정리</span><span class="sub">자주 만드는 결과물</span></td>
+        <td>유형 5종: <strong>플레이스 카드 · 블로그 썸네일 · 홈페이지 배너 · 원내 안내문 · 광고 소재</strong>. 각각 기준·치수·제작 방식 1차 메모</td>
+        <td><span class="pri mid">중</span></td>
+        <td>5/17</td>
+      </tr>
+      <tr>
+        <td><span class="label">외주 의뢰 표준 양식</span><span class="sub">외주 디자이너에게 보낼 정보</span></td>
+        <td>들어가야 할 정보: <strong>브랜드 톤 · 타깃 · 문구 · 치수 · 납기 · 레퍼런스</strong>. 1차 폼 1개</td>
+        <td><span class="pri low">일반</span></td>
+        <td>5/17</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 5. 영업팀 -->
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-num">SECTION 05 / 영업팀</div>
+      <h2 class="section-title">영업팀이 <em>입력</em>할 것</h2>
+    </div>
+    <div class="section-owner">담당 · 영업팀 / 마감 · 5/17 (일)</div>
+  </div>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th class="col-key">항목</th>
+        <th class="col-detail">상세</th>
+        <th class="col-pri">우선순위</th>
+        <th class="col-due">마감</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="label">contracts.월단가 빈 칸 입력</span><span class="sub">288/382 (75%) 빈 칸</span></td>
+        <td>계약별 월단가 입력. <strong>영업이 가장 잘 아는 정보</strong>. 한 번에 다 못 채워도 우선 진행 계약부터<span class="note">운영</span></td>
+        <td><span class="pri high">높음</span></td>
+        <td>5/17</td>
+      </tr>
+      <tr>
+        <td><span class="label">신규·변경 요청 폼 입력 습관</span><span class="sub">카톡으로 받은 요청도 폼에</span></td>
+        <td>이번 주부터 <strong>5건/주</strong> 폼 입력 시작. 카톡 받은 즉시 폼으로 옮기는 5분 작업</td>
+        <td><span class="pri mid">중</span></td>
+        <td>5/17</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 6. 팀장급 -->
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-num">SECTION 06 / 팀장급 + 전략기획</div>
+      <h2 class="section-title">팀장급이 <em>문서화</em>할 것</h2>
+    </div>
+    <div class="section-owner">담당 · 각 팀장 + 전략기획팀 / 마감 · 5/17 (일)</div>
+  </div>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th class="col-key">항목</th>
+        <th class="col-detail">상세</th>
+        <th class="col-pri">우선순위</th>
+        <th class="col-due">마감</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="label">팀별 업무 프로세스 1차 글로 옮기기</span><span class="sub">마케팅 · 콘텐츠 · 디자인 · 영업</span></td>
+        <td>머릿속에만 있는 업무 순서·기준을 글로. <strong>완벽 X — 막히는 부분까지 솔직하게</strong>. A4 1~2장 분량</td>
+        <td><span class="pri high">높음</span></td>
+        <td>5/17</td>
+      </tr>
+      <tr>
+        <td><span class="label">팀별 업무 현황 sweep</span><span class="sub">전략기획팀 취합</span></td>
+        <td>진행 중 / 막힌 / 우선순위 — 한 번 정리해서 전략기획팀에 공유. 누락·중복 발견의 기회</td>
+        <td><span class="pri mid">중</span></td>
+        <td>5/17</td>
+      </tr>
+      <tr>
+        <td><span class="label">계약 종료 4 거래처 검증</span><span class="sub">계약 0건 — 정상?</span></td>
+        <td>CLAUDE.md 기준 사내 블로그 미계약 정상이지만 <strong>한 번 더 확인</strong>해 보고 외주사 / 계약 / 활성 여부 명확히</td>
+        <td><span class="pri low">일반</span></td>
+        <td>5/17</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 전략기획팀 -->
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-num">SECTION 07 / 전략기획팀 (자체)</div>
+      <h2 class="section-title">전략기획팀이 <em>전처리</em>할 것</h2>
+    </div>
+    <div class="section-owner">담당 · 전략기획팀 / 마감 · 5/17 (일) — 받은 자료 정리</div>
+  </div>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th class="col-key">항목</th>
+        <th class="col-detail">상세</th>
+        <th class="col-pri">우선순위</th>
+        <th class="col-due">마감</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="label">받은 자료 전처리·정규화</span><span class="sub">외주사·마케팅·콘텐츠·디자인에서 받은 모든 자료</span></td>
+        <td>공통 양식으로 정규화 → 노션 DB에 정리. <strong>재료 손질 단계</strong></td>
+        <td><span class="pri high">높음</span></td>
+        <td>5/17~</td>
+      </tr>
+      <tr>
+        <td><span class="label">외주사 별칭 표준 문서화</span><span class="sub">전사 회람용</span></td>
+        <td>"외주 카페바이럴" vs "사내 카페제휴" 등 별칭 1차 문서 → 전사 회람<span class="note">B·C</span></td>
+        <td><span class="pri mid">중</span></td>
+        <td>5/17</td>
+      </tr>
+      <tr>
+        <td><span class="label">거래처 alias 마이그레이션</span><span class="sub">sync 스크립트 반영</span></td>
+        <td>등록받은 alias를 sync 스크립트에 반영 → 다음 sync부터 자동 매칭<span class="note">A</span></td>
+        <td><span class="pri mid">중</span></td>
+        <td>5/17~</td>
+      </tr>
+      <tr>
+        <td><span class="label">contracts 컬럼 3개 분리 (검토)</span><span class="sub">외주사_rel / 협력사_담당_rel / 상태</span></td>
+        <td>마이그레이션 약 2시간 작업. 다음 주 진행 검토<span class="note">C</span></td>
+        <td><span class="pri low">일반</span></td>
+        <td>다음 주~</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 5/17 기대 결과 -->
+<div class="outcome">
+  <div class="outcome-tag">5/17 (일) 기준 · 기대 결과</div>
+  <h3 class="outcome-title">한 주 뒤 우리가 <em>가지고 있을 것</em></h3>
+  <ul class="outcome-list">
+    <li>외주사 14곳 4월 작업 <strong>입력 완료</strong> + 와이지 3월 row 보완</li>
+    <li>거래처 alias <strong>80%+ 등록</strong> · 분점 3건 정본 확정</li>
+    <li>콘텐츠팀 <strong>공통 보고 양식 v1</strong> + 외주사 회람 완료</li>
+    <li>"카페" 분류 <strong>별칭 표준화</strong> 완료 (외주 vs 사내)</li>
+    <li>각 팀 업무 프로세스 <strong>1차 문서 4개</strong> (마케팅·콘텐츠·디자인·영업)</li>
+    <li>계정정보 거래처 relation <strong>21% → 5% 이하</strong></li>
+    <li>contracts.월단가 <strong>75% → 30% 이하</strong> 빈 칸</li>
+    <li>다음 주(5/18~) 보고서 자동화 재가동 — <strong>거래처 매칭률 80%+ 목표</strong></li>
+  </ul>
+</div>
+
+<!-- Foot -->
+<div class="foot">
+  <div class="foot-text">MEDI&MEDI · 전략기획팀 · 이종광 · 2026.05.11</div>
+  <div class="foot-links">
+    <a href="/presentation.html">📊 발표자료</a>
+    <a href="/" class="outline">🏠 폼 메인</a>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
