@@ -5,12 +5,13 @@ const MEETING_DB_ID = '73219abe-2f01-40d3-9ced-da8afb3e3213';
 const MEETING_DB_FALLBACK_URL = 'https://www.notion.so/f7b5f3e9ce2142599d0eedda716e588a';
 
 export async function POST() {
-  if (!process.env.NOTION_API_KEY) {
+  const auth = process.env.NOTION_MEETING_API_KEY || process.env.NOTION_API_KEY;
+  if (!auth) {
     return NextResponse.json({ success: true, url: MEETING_DB_FALLBACK_URL, demo: true });
   }
 
   try {
-    const notion = new Client({ auth: process.env.NOTION_API_KEY });
+    const notion = new Client({ auth });
 
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
