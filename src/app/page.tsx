@@ -9,9 +9,29 @@ export default function Home() {
     catch { return false; }
   });
   const [showChoice, setShowChoice] = useState(false);
+  const [startingMeeting, setStartingMeeting] = useState(false);
 
   const handleNewClinic = () => {
     router.push('/new-clinic');
+  };
+
+  const handleStartMeeting = async () => {
+    if (startingMeeting) return;
+    setStartingMeeting(true);
+    try {
+      const res = await fetch('/api/start-meeting', { method: 'POST' });
+      const data = await res.json();
+      const target = data.url || data.fallbackUrl;
+      if (target) {
+        window.location.href = target;
+      } else {
+        alert('미팅 페이지를 만들지 못했어요. 다시 시도해 주세요.');
+        setStartingMeeting(false);
+      }
+    } catch {
+      alert('네트워크 오류로 미팅 페이지를 만들지 못했어요.');
+      setStartingMeeting(false);
+    }
   };
 
   return (
@@ -55,6 +75,31 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-4 animate-fade-in-delay">
+            <button
+              onClick={handleStartMeeting}
+              disabled={startingMeeting}
+              className="w-full h-14 bg-[#DC2626] text-white rounded-xl font-semibold text-base
+                         hover:bg-[#b91c1c] active:scale-[0.98] transition-all
+                         flex items-center justify-center gap-2
+                         disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-red-200"
+            >
+              {startingMeeting ? (
+                <>
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v4m0 8v4M4 12h4m8 0h4" />
+                  </svg>
+                  미팅 페이지 만드는 중...
+                </>
+              ) : (
+                <>
+                  <span className="relative flex items-center justify-center w-5 h-5">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-40 animate-ping"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
+                  </span>
+                  미팅 녹음 시작
+                </>
+              )}
+            </button>
             <button
               onClick={handleNewClinic}
               className="w-full h-14 bg-[#2563EB] text-white rounded-xl font-semibold text-base
