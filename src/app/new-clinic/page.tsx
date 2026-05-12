@@ -26,8 +26,10 @@ import {
   FACILITY_LIST,
   MARKETING_CHANNELS,
   REFERRAL_SOURCES,
+  REFERRAL_NEEDS_NAME,
   BUDGET_RANGES,
   WEEKDAYS,
+  IMPLANT_MATERIALS,
 } from '@/data/dental';
 
 const STEP_LABELS = [
@@ -63,11 +65,18 @@ interface FormData {
     interiorCompleteDate: string;
     photoDate: string;
     doctorCount: number;
+    /**
+     * 의료진 명단. 첫 번째 항목은 메인 원장(doctorName 자동 반영).
+     * doctorCount 변경 시 길이가 자동 동기화됨.
+     */
+    doctors: { name: string; title: string; specialty: string }[];
     careerImages: UploadedFile[];
   };
   step2: {
     dentalSubjects: string[];
     topSubjects: string[];
+    /** 임플란트 재료: 제조사 → 선택된 제품군 */
+    implantMaterials: Record<string, string[]>;
     schedule: Record<string, { enabled: boolean; start: string; end: string }>;
     holidays: string[];
     holidayClose: boolean;
@@ -79,20 +88,28 @@ interface FormData {
     equipment: string[];
     facilities: string[];
     parking: { available: string; detail: string };
-    interiorStyle: string;
-    implantBrands: string[];
     hasLabRoom: boolean;
     labEquipment: string[];
     blueprintFiles: UploadedFile[];
   };
   step4: {
     oneLiner: string;
+    /** 진료 철학 포인트 (옛 philosophy 대체) */
     philosophy: string;
-    targetPatients: string;
-    differentiator: string;
-    doctorCareer: string;
+    /** 의료진 홍보 포인트 */
+    doctorPromo: string;
+    /** 병원 홍보 포인트 */
+    clinicPromo: string;
+    /** 주요 진료 홍보 포인트 */
+    treatmentPromo: string;
+    /** 병원 입지 및 타겟 (옛 targetPatients 대체) */
+    locationTarget: string;
+    /** 인테리어 컨셉 (Step 3에서 이동) */
+    interiorStyle: string;
+    /** 브랜드 컬러 */
+    brandColor: string;
     hasProfilePhoto: boolean;
-    additionalDoctors: { name: string; title: string; specialty: string }[];
+    hasLogo: boolean;
     logoFiles: UploadedFile[];
     licenseFiles: UploadedFile[];
     certificateFiles: UploadedFile[];
@@ -104,6 +121,8 @@ interface FormData {
   };
   step5: {
     referralSource: string[];
+    /** 소개해 준 사람 이름 (referralSource에 '컨설팅 소개' 또는 '지인 소개' 포함 시) */
+    referralName: string;
     previousMarketing: string;
     budgetRange: string;
     marketingGoals: string[];
@@ -111,6 +130,12 @@ interface FormData {
     additionalRequest: string;
     benchmarkClinics: string;
     openingEvent: string;
+    /** DID 정보 (Step 6에서 이동) */
+    didInfo: string;
+    /** 네이버 리뷰 증정선물 */
+    reviewGift: string;
+    /** 카톡 채널 증정선물 */
+    channelGift: string;
   };
   step6: {
     services: { serviceId: string; quantity?: number }[];
@@ -118,21 +143,49 @@ interface FormData {
     contractStartDate: string;
     monthlyFee: string;
     specialNotes: string;
-    didCount: number;
-    didInfo: string;
   };
 }
 
 const INITIAL_DATA: FormData = {
-  step1: { clinicName: '', doctorName: '', openDate: '', region: { city: '', district: '' }, address: '', phone: '', fax: '', softOpenDate: '', interiorCompleteDate: '', photoDate: '', doctorCount: 1, careerImages: [] },
-  step2: {
-    dentalSubjects: [], topSubjects: [], schedule: DEFAULT_SCHEDULE,
-    holidays: [], holidayClose: true, lunchTime: { start: '12:30', end: '13:30' }, nightWeekend: '',
+  step1: {
+    clinicName: '', doctorName: '', openDate: '',
+    region: { city: '', district: '' }, address: '', phone: '', fax: '',
+    softOpenDate: '', interiorCompleteDate: '', photoDate: '',
+    doctorCount: 1,
+    doctors: [{ name: '', title: '원장', specialty: '' }],
+    careerImages: [],
   },
-  step3: { chairs: 5, equipment: [], facilities: [], parking: { available: '가능', detail: '' }, interiorStyle: '', implantBrands: [], hasLabRoom: false, labEquipment: [], blueprintFiles: [] },
-  step4: { oneLiner: '', philosophy: '', targetPatients: '', differentiator: '', doctorCareer: '', hasProfilePhoto: false, additionalDoctors: [], logoFiles: [], licenseFiles: [], certificateFiles: [], businessFiles: [], permitFiles: [], signageFiles: [], bannerFiles: [], constructionFiles: [] },
-  step5: { referralSource: [], previousMarketing: '', budgetRange: '', marketingGoals: [], desiredChannels: [], additionalRequest: '', benchmarkClinics: '', openingEvent: '' },
-  step6: { services: [], isStarterPackage: false, contractStartDate: '', monthlyFee: '', specialNotes: '', didCount: 0, didInfo: '' },
+  step2: {
+    dentalSubjects: [], topSubjects: [],
+    implantMaterials: {},
+    schedule: DEFAULT_SCHEDULE,
+    holidays: [], holidayClose: true,
+    lunchTime: { start: '12:30', end: '13:30' }, nightWeekend: '',
+  },
+  step3: {
+    chairs: 5, equipment: [], facilities: [],
+    parking: { available: '가능', detail: '' },
+    hasLabRoom: false, labEquipment: [], blueprintFiles: [],
+  },
+  step4: {
+    oneLiner: '', philosophy: '',
+    doctorPromo: '', clinicPromo: '', treatmentPromo: '',
+    locationTarget: '', interiorStyle: '', brandColor: '',
+    hasProfilePhoto: false, hasLogo: false,
+    logoFiles: [], licenseFiles: [], certificateFiles: [], businessFiles: [],
+    permitFiles: [], signageFiles: [], bannerFiles: [], constructionFiles: [],
+  },
+  step5: {
+    referralSource: [], referralName: '',
+    previousMarketing: '', budgetRange: '',
+    marketingGoals: [], desiredChannels: [],
+    additionalRequest: '', benchmarkClinics: '', openingEvent: '',
+    didInfo: '', reviewGift: '', channelGift: '',
+  },
+  step6: {
+    services: [], isStarterPackage: false,
+    contractStartDate: '', monthlyFee: '', specialNotes: '',
+  },
 };
 
 export default function NewClinicPage() {
@@ -470,12 +523,18 @@ function Step1({
         <TextInput type="date" value={data.photoDate} onChange={(v) => onChange({ photoDate: v })} />
       </div>
       <div>
-        <FieldLabel>총 의료진 수</FieldLabel>
-        <p className="text-xs text-[#6B7280] mb-3">원장 포함 전체 의료진 인원</p>
+        <FieldLabel required>총 의료진 수</FieldLabel>
+        <p className="text-xs text-[#6B7280] mb-3">원장 포함 전체 의료진 인원. 인원에 맞춰 아래 입력 칸이 자동으로 생성됩니다.</p>
         <div className="flex items-center gap-4">
           <button
             type="button"
-            onClick={() => onChange({ doctorCount: Math.max(1, (data.doctorCount || 1) - 1) })}
+            onClick={() => {
+              const cur = data.doctorCount || 1;
+              const next = Math.max(1, cur - 1);
+              const doctors = (data.doctors || []).slice(0, next);
+              onChange({ doctorCount: next, doctors });
+            }}
+            aria-label="의료진 수 감소"
             className="w-10 h-10 rounded-full border border-[#D1D5DB] text-[#374151] text-xl font-light flex items-center justify-center hover:border-[#2563EB] hover:text-[#2563EB] transition-colors"
           >−</button>
           <span className="text-2xl font-bold text-[#2563EB] w-16 text-center">
@@ -483,11 +542,94 @@ function Step1({
           </span>
           <button
             type="button"
-            onClick={() => onChange({ doctorCount: (data.doctorCount || 1) + 1 })}
+            onClick={() => {
+              const cur = data.doctorCount || 1;
+              const next = Math.min(20, cur + 1);
+              const doctors = [...(data.doctors || [])];
+              while (doctors.length < next) {
+                doctors.push({
+                  name: '',
+                  title: doctors.length === 0 ? '원장' : '봉직의',
+                  specialty: '',
+                });
+              }
+              onChange({ doctorCount: next, doctors });
+            }}
+            aria-label="의료진 수 증가"
             className="w-10 h-10 rounded-full border border-[#D1D5DB] text-[#374151] text-xl font-light flex items-center justify-center hover:border-[#2563EB] hover:text-[#2563EB] transition-colors"
           >+</button>
         </div>
       </div>
+
+      <div>
+        <FieldLabel>의료진 명단</FieldLabel>
+        <p className="text-xs text-[#6B7280] mb-3">{data.doctorCount || 1}명의 의료진 정보를 입력해 주세요. 첫 번째는 대표 원장입니다.</p>
+        <div className="space-y-3">
+          {Array.from({ length: data.doctorCount || 1 }).map((_, idx) => {
+            const doc = (data.doctors && data.doctors[idx]) || {
+              name: idx === 0 ? data.doctorName : '',
+              title: idx === 0 ? '원장' : '봉직의',
+              specialty: '',
+            };
+            const isMain = idx === 0;
+            const updateDoctor = (patch: Partial<typeof doc>) => {
+              const doctors = [...(data.doctors || [])];
+              while (doctors.length <= idx) {
+                doctors.push({ name: '', title: '봉직의', specialty: '' });
+              }
+              doctors[idx] = { ...doctors[idx], ...patch };
+              // 첫 번째 의료진의 이름은 doctorName과 동기
+              const updates: Partial<FormData['step1']> = { doctors };
+              if (isMain && 'name' in patch) {
+                updates.doctorName = patch.name || '';
+              }
+              onChange(updates);
+            };
+            return (
+              <div
+                key={idx}
+                className={`rounded-xl p-4 space-y-2 border ${
+                  isMain
+                    ? 'bg-[#EFF6FF] border-[#2563EB]'
+                    : 'bg-[#F8FAFC] border-[#E5E7EB]'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-xs font-bold ${isMain ? 'text-[#2563EB]' : 'text-[#6B7280]'}`}>
+                    {isMain ? '👑 대표 원장' : `의료진 ${idx + 1}`}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    placeholder="성함"
+                    value={doc.name || (isMain ? data.doctorName : '')}
+                    onChange={(e) => updateDoctor({ name: e.target.value })}
+                    className="flex-1 h-10 px-3 rounded-lg border border-[#D1D5DB] bg-white text-sm focus:outline-none focus:border-[#2563EB]"
+                  />
+                  <select
+                    value={doc.title}
+                    onChange={(e) => updateDoctor({ title: e.target.value })}
+                    className="w-28 h-10 px-2 rounded-lg border border-[#D1D5DB] bg-white text-sm focus:outline-none focus:border-[#2563EB]"
+                  >
+                    <option>원장</option>
+                    <option>공동원장</option>
+                    <option>부원장</option>
+                    <option>봉직의</option>
+                    <option>페이닥터</option>
+                  </select>
+                </div>
+                <input
+                  placeholder="전문의 분야 (예: 보철과 전문의, 또는 비워두기)"
+                  value={doc.specialty}
+                  onChange={(e) => updateDoctor({ specialty: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg border border-[#D1D5DB] bg-white text-sm focus:outline-none focus:border-[#2563EB]"
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <FileUpload
         label="의료진 약력 이미지"
         category="career"
@@ -531,6 +673,84 @@ function Step2({
             onChange={(v) => onChange({ topSubjects: v })}
             max={3}
           />
+        </div>
+      )}
+      {/* 임플란트 진료과목 선택 시 재료 UI 노출 */}
+      {DENTAL_CATEGORIES['임플란트'].some((s) => data.dentalSubjects.includes(s)) && (
+        <div>
+          <FieldLabel>임플란트 재료 (사용 제조사·제품군)</FieldLabel>
+          <p className="text-xs text-[#6B7280] mb-3">사용하시는 제조사를 선택하면 하위 제품군이 나타납니다. 여러 개 선택 가능.</p>
+          <div className="space-y-2">
+            {Object.entries(IMPLANT_MATERIALS).map(([brand, products]) => {
+              const isSelected = brand in (data.implantMaterials || {});
+              const selectedProducts = (data.implantMaterials || {})[brand] || [];
+              return (
+                <div
+                  key={brand}
+                  className={`rounded-xl border ${
+                    isSelected ? 'border-[#2563EB] bg-[#EFF6FF]' : 'border-[#E5E7EB] bg-white'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = { ...(data.implantMaterials || {}) };
+                      if (isSelected) {
+                        delete next[brand];
+                      } else {
+                        next[brand] = [];
+                      }
+                      onChange({ implantMaterials: next });
+                    }}
+                    className="w-full px-4 py-3 flex items-center gap-2 text-left"
+                  >
+                    <span
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                        isSelected ? 'bg-[#2563EB] border-[#2563EB]' : 'border-[#D1D5DB]'
+                      }`}
+                    >
+                      {isSelected && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </span>
+                    <span className={`text-sm font-medium ${isSelected ? 'text-[#2563EB]' : 'text-[#374151]'}`}>
+                      {brand}
+                    </span>
+                  </button>
+                  {isSelected && products.length > 0 && (
+                    <div className="px-4 pb-3 pt-1 pl-11 flex flex-wrap gap-2">
+                      {products.map((p) => {
+                        const pSelected = selectedProducts.includes(p);
+                        return (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => {
+                              const next = { ...(data.implantMaterials || {}) };
+                              const cur = next[brand] || [];
+                              next[brand] = pSelected
+                                ? cur.filter((x) => x !== p)
+                                : [...cur, p];
+                              onChange({ implantMaterials: next });
+                            }}
+                            className={`h-8 px-3 rounded-full text-xs font-medium transition-all ${
+                              pSelected
+                                ? 'bg-[#2563EB] text-white'
+                                : 'bg-white border border-[#D1D5DB] text-[#374151] hover:border-[#2563EB] hover:text-[#2563EB]'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
       <div>
@@ -651,22 +871,6 @@ function Step3({
           </div>
         )}
       </div>
-      <div>
-        <FieldLabel>인테리어 컨셉/스타일</FieldLabel>
-        <TextInput
-          value={data.interiorStyle}
-          onChange={(v) => onChange({ interiorStyle: v })}
-          placeholder="예: 모던, 따뜻한 우드톤, 아이 친화적"
-        />
-      </div>
-      <div>
-        <FieldLabel>임플란트 제품사</FieldLabel>
-        <ChipSelector
-          options={['오스템', '메가젠', '스트라우만', '덴티움', '네오', '디오', '코웰']}
-          selected={data.implantBrands}
-          onChange={(v) => onChange({ implantBrands: v })}
-        />
-      </div>
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -725,41 +929,71 @@ function Step4({
           rows={2}
         />
       </div>
+
+      {/* 6가지 브랜딩 포인트 */}
       <div>
-        <FieldLabel>진료 철학</FieldLabel>
+        <FieldLabel>의료진 홍보 포인트</FieldLabel>
+        <TextArea
+          value={data.doctorPromo}
+          onChange={(v) => onChange({ doctorPromo: v })}
+          placeholder="예: 연세대 출신 보철 전문의, 임상 10년+, OO학회 정회원"
+          rows={3}
+        />
+      </div>
+      <div>
+        <FieldLabel>병원 홍보 포인트</FieldLabel>
+        <TextArea
+          value={data.clinicPromo}
+          onChange={(v) => onChange({ clinicPromo: v })}
+          placeholder="예: 디지털 장비 풀세트, 24시간 응급대응, 키즈룸 보유"
+          rows={3}
+        />
+      </div>
+      <div>
+        <FieldLabel>주요 진료 홍보 포인트</FieldLabel>
+        <TextArea
+          value={data.treatmentPromo}
+          onChange={(v) => onChange({ treatmentPromo: v })}
+          placeholder="예: 디지털 임플란트(가이드 수술), 투명교정(인비절라인 다이아몬드)"
+          rows={3}
+        />
+      </div>
+      <div>
+        <FieldLabel>진료 철학 포인트</FieldLabel>
         <TextArea
           value={data.philosophy}
           onChange={(v) => onChange({ philosophy: v })}
-          placeholder="예: 과잉진료 없이 꼭 필요한 치료만, 투명한 설명과 합리적인 비용"
+          placeholder="예: 과잉진료 없이 꼭 필요한 치료만, 투명한 설명과 합리적 비용"
           rows={3}
         />
       </div>
       <div>
-        <FieldLabel>타겟 환자층</FieldLabel>
+        <FieldLabel>병원 입지 및 타겟</FieldLabel>
+        <TextArea
+          value={data.locationTarget}
+          onChange={(v) => onChange({ locationTarget: v })}
+          placeholder="예: 1번 출구 도보 3분, 직장가 + 아파트단지 인접, 30~50대 직장인 + 가족 환자"
+          rows={3}
+        />
+      </div>
+      <div>
+        <FieldLabel>인테리어 컨셉</FieldLabel>
         <TextInput
-          value={data.targetPatients}
-          onChange={(v) => onChange({ targetPatients: v })}
-          placeholder="예: 30~50대 직장인, 교정 관심 20대"
+          value={data.interiorStyle}
+          onChange={(v) => onChange({ interiorStyle: v })}
+          placeholder="예: 모던, 따뜻한 우드톤, 아이 친화적"
         />
       </div>
       <div>
-        <FieldLabel>차별점 / 강점</FieldLabel>
-        <TextArea
-          value={data.differentiator}
-          onChange={(v) => onChange({ differentiator: v })}
-          placeholder="예: 연세대 출신 보철 전문의, 디지털 임플란트 도입"
-          rows={3}
+        <FieldLabel>브랜드 컬러</FieldLabel>
+        <TextInput
+          value={data.brandColor}
+          onChange={(v) => onChange({ brandColor: v })}
+          placeholder="있으시면 작성 (예: 메인 네이비 #1E3A5F, 포인트 골드)"
         />
       </div>
-      <div>
-        <FieldLabel>원장님 경력</FieldLabel>
-        <TextArea
-          value={data.doctorCareer}
-          onChange={(v) => onChange({ doctorCareer: v })}
-          placeholder="예: 서울대 치의학 박사, 분당서울대병원 수련"
-          rows={3}
-        />
-      </div>
+
+      {/* 보유 여부 토글 */}
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -776,65 +1010,21 @@ function Step4({
         </button>
         <span className="text-sm text-[#374151]">프로필 사진 보유</span>
       </div>
-      <div>
-        <FieldLabel>봉직의 정보</FieldLabel>
-        <p className="text-xs text-[#6B7280] mb-3">봉직의가 계신 경우 입력해 주세요</p>
-        {data.additionalDoctors.map((doc, idx) => (
-          <div key={idx} className="bg-[#F8FAFC] rounded-lg p-3 space-y-2 mb-2">
-            <div className="flex gap-2">
-              <input
-                placeholder="이름"
-                value={doc.name}
-                onChange={(e) => {
-                  const updated = [...data.additionalDoctors];
-                  updated[idx] = { ...updated[idx], name: e.target.value };
-                  onChange({ additionalDoctors: updated });
-                }}
-                className="flex-1 h-10 px-3 rounded-lg border border-[#D1D5DB] text-sm focus:outline-none focus:border-[#2563EB]"
-              />
-              <select
-                value={doc.title}
-                onChange={(e) => {
-                  const updated = [...data.additionalDoctors];
-                  updated[idx] = { ...updated[idx], title: e.target.value };
-                  onChange({ additionalDoctors: updated });
-                }}
-                className="w-28 h-10 px-2 rounded-lg border border-[#D1D5DB] text-sm focus:outline-none focus:border-[#2563EB]"
-              >
-                <option>봉직의</option>
-                <option>부원장</option>
-                <option>원장</option>
-              </select>
-              <button
-                type="button"
-                onClick={() => {
-                  const updated = data.additionalDoctors.filter((_, i) => i !== idx);
-                  onChange({ additionalDoctors: updated });
-                }}
-                className="w-10 h-10 text-[#9CA3AF] hover:text-[#DC2626] text-lg flex items-center justify-center"
-              >
-                ×
-              </button>
-            </div>
-            <input
-              placeholder="전문의 분야 (예: 소아치과 전문의)"
-              value={doc.specialty}
-              onChange={(e) => {
-                const updated = [...data.additionalDoctors];
-                updated[idx] = { ...updated[idx], specialty: e.target.value };
-                onChange({ additionalDoctors: updated });
-              }}
-              className="w-full h-10 px-3 rounded-lg border border-[#D1D5DB] text-sm focus:outline-none focus:border-[#2563EB]"
-            />
-          </div>
-        ))}
+      <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => onChange({ additionalDoctors: [...data.additionalDoctors, { name: '', title: '봉직의', specialty: '' }] })}
-          className="w-full h-10 border border-dashed border-[#D1D5DB] rounded-lg text-sm text-[#6B7280] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors"
+          onClick={() => onChange({ hasLogo: !data.hasLogo })}
+          className={`w-12 h-7 rounded-full transition-all flex-shrink-0 ${
+            data.hasLogo ? 'bg-[#2563EB]' : 'bg-[#D1D5DB]'
+          }`}
         >
-          + 봉직의 추가
+          <div
+            className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform mx-1 ${
+              data.hasLogo ? 'translate-x-5' : ''
+            }`}
+          />
         </button>
+        <span className="text-sm text-[#374151]">로고 파일 보유</span>
       </div>
 
       {/* 첨부 자료 섹션 */}
@@ -845,12 +1035,14 @@ function Step4({
         </div>
 
         <FileUpload
-          label="로고"
+          label="로고 파일"
           category="logo"
-          accept=".png,.jpg,.jpeg"
+          accept=".png,.jpg,.jpeg,.svg,.ai,.pdf"
+          multiple
+          maxFiles={5}
           files={data.logoFiles}
           onChange={(files) => onChange({ logoFiles: files })}
-          hint="치과 로고 파일 (png/jpg)"
+          hint="치과 로고 파일 (png/jpg/svg/ai/pdf) — 원본 파일 권장"
         />
 
         <FileUpload
@@ -944,6 +1136,16 @@ function Step5({
           selected={data.referralSource}
           onChange={(v) => onChange({ referralSource: v })}
         />
+        {data.referralSource.some((s) => REFERRAL_NEEDS_NAME.includes(s)) && (
+          <div className="mt-3">
+            <p className="text-xs text-[#6B7280] mb-2">소개해 주신 분의 성함을 적어 주세요</p>
+            <TextInput
+              value={data.referralName}
+              onChange={(v) => onChange({ referralName: v })}
+              placeholder="예: 김OO 컨설턴트, 옆 OO치과 원장님"
+            />
+          </div>
+        )}
       </div>
       <div>
         <FieldLabel>이전 마케팅 경험</FieldLabel>
@@ -996,6 +1198,33 @@ function Step5({
           value={data.openingEvent}
           onChange={(v) => onChange({ openingEvent: v })}
           placeholder="예: 불소도포 무료, 교정 정밀진단비 할인, 첫 방문 기념 선물"
+        />
+      </div>
+      <div>
+        <FieldLabel>DID 정보</FieldLabel>
+        <p className="text-xs text-[#6B7280] mb-2">설치 위치, 가로/세로 방향, 보유 대수 등을 자유롭게 적어 주세요</p>
+        <TextArea
+          value={data.didInfo}
+          onChange={(v) => onChange({ didInfo: v })}
+          placeholder="예: 데스크 왼쪽 1대 가로(교정 영상), 진료실 입구 오른쪽 1대 세로 / 미설치"
+        />
+      </div>
+      <div>
+        <FieldLabel>네이버 리뷰 증정선물</FieldLabel>
+        <p className="text-xs text-[#6B7280] mb-2">리뷰 작성 시 환자에게 드릴 선물을 정하셨다면 적어 주세요</p>
+        <TextInput
+          value={data.reviewGift}
+          onChange={(v) => onChange({ reviewGift: v })}
+          placeholder="예: 음료 1잔 쿠폰, 5,000원 상품권, 스케일링 50% 할인"
+        />
+      </div>
+      <div>
+        <FieldLabel>카톡 채널 추가 증정선물</FieldLabel>
+        <p className="text-xs text-[#6B7280] mb-2">카카오톡 채널 추가 시 환자에게 드릴 선물</p>
+        <TextInput
+          value={data.channelGift}
+          onChange={(v) => onChange({ channelGift: v })}
+          placeholder="예: 칫솔 1세트, 가글 1병, 다음 방문 할인 쿠폰"
         />
       </div>
       <div>
@@ -1059,36 +1288,6 @@ function Step6({
         <FieldLabel>월 계약금</FieldLabel>
         <TextInput value={data.monthlyFee} onChange={(v) => onChange({ monthlyFee: v })} placeholder="예: 150만원" />
       </div>
-      <div>
-        <FieldLabel>DID 설치 대수</FieldLabel>
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => onChange({ didCount: Math.max(0, data.didCount - 1) })}
-            className="w-10 h-10 rounded-lg border border-[#D1D5DB] text-[#374151] text-xl font-semibold flex items-center justify-center hover:bg-[#F3F4F6] transition-colors"
-          >
-            -
-          </button>
-          <span className="text-lg font-semibold text-[#374151] w-10 text-center">{data.didCount}</span>
-          <button
-            type="button"
-            onClick={() => onChange({ didCount: Math.min(10, data.didCount + 1) })}
-            className="w-10 h-10 rounded-lg border border-[#D1D5DB] text-[#374151] text-xl font-semibold flex items-center justify-center hover:bg-[#F3F4F6] transition-colors"
-          >
-            +
-          </button>
-        </div>
-      </div>
-      {data.didCount > 0 && (
-        <div>
-          <FieldLabel>DID 위치/방향 상세</FieldLabel>
-          <TextArea
-            value={data.didInfo}
-            onChange={(v) => onChange({ didInfo: v })}
-            placeholder="예: 데스크 왼쪽 1 가로(교정 영상), 진료실 입구 오른쪽 1 세로"
-          />
-        </div>
-      )}
       <div>
         <FieldLabel>특이사항</FieldLabel>
         <TextArea
@@ -1160,11 +1359,28 @@ function Step7({
         <SummaryItem label="인테리어완료일" value={step1.interiorCompleteDate} />
         <SummaryItem label="촬영가능일" value={step1.photoDate} />
         <SummaryItem label="총 의료진" value={step1.doctorCount ? `${step1.doctorCount}명` : undefined} />
+        {step1.doctors && step1.doctors.length > 0 && (
+          <SummaryItem
+            label="명단"
+            value={step1.doctors
+              .filter((d) => d.name || d.title || d.specialty)
+              .map((d) => `${d.name || '미입력'} ${d.title}${d.specialty ? ` · ${d.specialty}` : ''}`)
+              .join(' / ')}
+          />
+        )}
       </SummarySection>
 
       <SummarySection title="진료 정보" stepIndex={1} onGoToStep={onGoToStep}>
         <SummaryItem label="진료과목" value={step2.dentalSubjects.join(', ')} />
         <SummaryItem label="주력진료" value={step2.topSubjects.join(', ')} />
+        {Object.keys(step2.implantMaterials || {}).length > 0 && (
+          <SummaryItem
+            label="임플란트 재료"
+            value={Object.entries(step2.implantMaterials)
+              .map(([b, ps]) => (ps.length ? `${b} (${ps.join('/')})` : b))
+              .join(', ')}
+          />
+        )}
         <SummaryItem label="공휴일" value={step2.holidayClose ? '휴진' : '진료'} />
         <SummaryItem label="점심시간" value={`${step2.lunchTime.start} ~ ${step2.lunchTime.end}`} />
       </SummarySection>
@@ -1174,27 +1390,31 @@ function Step7({
         <SummaryItem label="장비" value={step3.equipment.join(', ')} />
         <SummaryItem label="시설" value={step3.facilities.join(', ')} />
         <SummaryItem label="주차" value={step3.parking.detail ? `${step3.parking.available} (${step3.parking.detail})` : step3.parking.available} />
-        <SummaryItem label="인테리어" value={step3.interiorStyle} />
-        <SummaryItem label="임플란트" value={step3.implantBrands.join(', ')} />
         <SummaryItem label="기공소" value={step3.hasLabRoom ? `보유${step3.labEquipment.length > 0 ? ` (${step3.labEquipment.join(', ')})` : ''}` : '미보유'} />
       </SummarySection>
 
       <SummarySection title="브랜딩 & 철학" stepIndex={3} onGoToStep={onGoToStep}>
         <SummaryItem label="한줄소개" value={step4.oneLiner} />
-        <SummaryItem label="타겟환자" value={step4.targetPatients} />
-        <SummaryItem label="차별점" value={step4.differentiator} />
-        {step4.additionalDoctors.length > 0 && (
-          <SummaryItem label="봉직의" value={step4.additionalDoctors.map((d) => `${d.name} ${d.title}${d.specialty ? ` (${d.specialty})` : ''}`).join(', ')} />
-        )}
+        <SummaryItem label="의료진 포인트" value={step4.doctorPromo} />
+        <SummaryItem label="병원 포인트" value={step4.clinicPromo} />
+        <SummaryItem label="주요 진료 포인트" value={step4.treatmentPromo} />
+        <SummaryItem label="진료 철학" value={step4.philosophy} />
+        <SummaryItem label="입지·타겟" value={step4.locationTarget} />
+        <SummaryItem label="인테리어 컨셉" value={step4.interiorStyle} />
+        <SummaryItem label="브랜드 컬러" value={step4.brandColor} />
       </SummarySection>
 
       <SummarySection title="마케팅 방향" stepIndex={4} onGoToStep={onGoToStep}>
         <SummaryItem label="유입경로" value={step5.referralSource.join(', ')} />
+        <SummaryItem label="소개해 주신 분" value={step5.referralName} />
         <SummaryItem label="예산" value={step5.budgetRange} />
         <SummaryItem label="목표" value={step5.marketingGoals.join(', ')} />
         <SummaryItem label="채널" value={step5.desiredChannels.join(', ')} />
         <SummaryItem label="벤치마킹" value={step5.benchmarkClinics} />
         <SummaryItem label="개원이벤트" value={step5.openingEvent} />
+        <SummaryItem label="DID 정보" value={step5.didInfo} />
+        <SummaryItem label="리뷰 증정선물" value={step5.reviewGift} />
+        <SummaryItem label="채널 증정선물" value={step5.channelGift} />
       </SummarySection>
 
       <SummarySection title="계약 상품" stepIndex={5} onGoToStep={onGoToStep}>
@@ -1208,9 +1428,6 @@ function Step7({
         <SummaryItem label="패키지" value={step6.isStarterPackage ? '초기개원 패키지' : '일반'} />
         <SummaryItem label="계약시작" value={step6.contractStartDate} />
         <SummaryItem label="월계약금" value={step6.monthlyFee} />
-        {step6.didCount > 0 && (
-          <SummaryItem label="DID 대수" value={`${step6.didCount}대${step6.didInfo ? ` - ${step6.didInfo}` : ''}`} />
-        )}
       </SummarySection>
     </div>
   );
