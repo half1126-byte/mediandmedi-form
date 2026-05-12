@@ -30,6 +30,8 @@ import {
   BUDGET_RANGES,
   WEEKDAYS,
   IMPLANT_MATERIALS,
+  ALIGNER_OPTIONS,
+  PEDIATRIC_ORTHO_OPTIONS,
 } from '@/data/dental';
 
 const STEP_LABELS = [
@@ -77,6 +79,10 @@ interface FormData {
     topSubjects: string[];
     /** 임플란트 재료: 제조사 → 선택된 제품군 */
     implantMaterials: Record<string, string[]>;
+    /** 투명교정 세부 옵션 (교정→투명교정 선택 시) */
+    alignerOptions: string[];
+    /** 소아교정 세부 옵션 (교정→소아교정 선택 시) */
+    pediatricOrthoOptions: string[];
     schedule: Record<string, { enabled: boolean; start: string; end: string }>;
     holidays: string[];
     holidayClose: boolean;
@@ -158,6 +164,8 @@ const INITIAL_DATA: FormData = {
   step2: {
     dentalSubjects: [], topSubjects: [],
     implantMaterials: {},
+    alignerOptions: [],
+    pediatricOrthoOptions: [],
     schedule: DEFAULT_SCHEDULE,
     holidays: [], holidayClose: true,
     lunchTime: { start: '12:30', end: '13:30' }, nightWeekend: '',
@@ -672,6 +680,30 @@ function Step2({
             selected={data.topSubjects}
             onChange={(v) => onChange({ topSubjects: v })}
             max={3}
+          />
+        </div>
+      )}
+      {/* 투명교정 선택 시 서브옵션 노출 */}
+      {data.dentalSubjects.includes('투명교정') && (
+        <div>
+          <FieldLabel>투명교정 — 사용 브랜드</FieldLabel>
+          <p className="text-xs text-[#6B7280] mb-3">사용하시는 브랜드를 모두 선택해 주세요</p>
+          <ChipSelector
+            options={ALIGNER_OPTIONS}
+            selected={data.alignerOptions || []}
+            onChange={(v) => onChange({ alignerOptions: v })}
+          />
+        </div>
+      )}
+      {/* 소아교정 선택 시 서브옵션 노출 */}
+      {data.dentalSubjects.includes('소아교정') && (
+        <div>
+          <FieldLabel>소아교정 — 사용 장치</FieldLabel>
+          <p className="text-xs text-[#6B7280] mb-3">사용하시는 장치를 모두 선택해 주세요</p>
+          <ChipSelector
+            options={PEDIATRIC_ORTHO_OPTIONS}
+            selected={data.pediatricOrthoOptions || []}
+            onChange={(v) => onChange({ pediatricOrthoOptions: v })}
           />
         </div>
       )}
@@ -1373,6 +1405,12 @@ function Step7({
       <SummarySection title="진료 정보" stepIndex={1} onGoToStep={onGoToStep}>
         <SummaryItem label="진료과목" value={step2.dentalSubjects.join(', ')} />
         <SummaryItem label="주력진료" value={step2.topSubjects.join(', ')} />
+        {step2.alignerOptions && step2.alignerOptions.length > 0 && (
+          <SummaryItem label="투명교정 브랜드" value={step2.alignerOptions.join(', ')} />
+        )}
+        {step2.pediatricOrthoOptions && step2.pediatricOrthoOptions.length > 0 && (
+          <SummaryItem label="소아교정 장치" value={step2.pediatricOrthoOptions.join(', ')} />
+        )}
         {Object.keys(step2.implantMaterials || {}).length > 0 && (
           <SummaryItem
             label="임플란트 재료"
