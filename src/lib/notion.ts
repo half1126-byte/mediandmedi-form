@@ -117,8 +117,15 @@ export async function createTaskRecord(
 }
 
 /**
- * 계약 변경 요청 DB("DB 개발" 워크스페이스)에 폼 데이터 페이지 생성.
- * 거래처명으로 거래처DB 페이지 검색 → "거래처" relation 자동 연결 (실패 시 relation 없이 페이지만 생성).
+ * OLD 팀스페이스 홈 거래처 DB ID — 미팅 DB의 거래처 relation이 이곳을 참조.
+ * 거래처 데이터 마이그레이션 끝나면 미팅 DB의 relation도 DB 개발 거래처DB로 전환해야 함.
+ */
+const LEGACY_CLINICS_DB_ID = '3539a82d-b9c4-8174-ada9-c2269dea9515';
+
+/**
+ * 계약변경 폼 → 미팅 DB("미팅 기록")에 미팅 유형=계약변경 페이지 생성.
+ * 미팅 DB는 사용자 운영 정본이라 계약 변경도 미팅 형식으로 기록.
+ * 거래처명으로 OLD 거래처 DB 검색해 relation 연결 (매칭 실패 시 relation 없이 페이지만 생성).
  */
 export async function createChangeRecord(
   data: Record<string, unknown>
@@ -127,8 +134,9 @@ export async function createChangeRecord(
   if (!dbId) throw new Error('NOTION_CHANGE_DB_ID not configured');
 
   const clinicName = (data.clinicName as string) || '';
-  const clinicPageId = clinicName ? await findClinicByName(clinicName) : null;
-
+  const doctorName = (data.doctorName as string) || '';
+  const reason = (data.reason as string) || '';
+  const currentServices = (data.currentServices as string[]) || [];
   const addServices = (data.addServices as string[]) || [];
   const removeServices = (data.removeServices as string[]) || [];
   const changeType =
@@ -136,17 +144,26 @@ export async function createChangeRecord(
     removeServices.length > 0 ? '서비스 축소' :
     '서비스 추가';
 
+  const agendaLines: string[] = [];
+  if (currentServices.length > 0) agendaLines.push(`현재 서비스: ${currentServices.join(', ')}`);
+  if (addServices.length > 0) agendaLines.push(`추가 요청: ${addServices.join(', ')}`);
+  if (removeServices.length > 0) agendaLines.push(`축소 요청: ${removeServices.join(', ')}`);
+  agendaLines.push(`변경 유형: ${changeType}`);
+  const agendaText = agendaLines.join('\n');
+
+  const dateStr = today();
+  const clinicPageId = clinicName ? await findClinicInDb(clinicName, LEGACY_CLINICS_DB_ID) : null;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const properties: any = {
-    '거래처명': { title: [{ text: { content: clinicName } }] },
-    '원장명': { rich_text: [{ text: { content: (data.doctorName as string) || '' } }] },
-    '현재상품': { multi_select: ((data.currentServices as string[]) || []).map((s) => ({ name: s })) },
-    '추가상품': { multi_select: addServices.map((s) => ({ name: s })) },
-    '축소상품': { multi_select: removeServices.map((s) => ({ name: s })) },
-    '변경유형': { select: { name: changeType } },
-    '변경사유': { rich_text: [{ text: { content: (data.reason as string) || '' } }] },
-    '처리상태': { select: { name: '접수' } },
-    '제출일': { date: { start: today() } },
+    '미팅 제목': { title: [{ text: { content: `[계약변경] ${clinicName} · ${dateStr}` } }] },
+    '미팅 유형': { select: { name: '계약변경' } },
+    '일자': { date: { start: dateStr } },
+    '참석자(외부)': { rich_text: [{ text: { content: doctorName } }] },
+    '주요 안건': { rich_text: [{ text: { content: agendaText.substring(0, 1900) } }] },
+    '핵심 결정사항': { rich_text: [{ text: { content: reason.substring(0, 1900) } }] },
+    '액션 아이템': { rich_text: [{ text: { content: '마케팅팀 검토 → 계약상품 DB 반영' } }] },
+    '상태': { status: { name: '시작 전' } },
   };
   if (clinicPageId) {
     properties['거래처'] = { relation: [{ id: clinicPageId }] };
@@ -163,11 +180,10 @@ export async function createChangeRecord(
 }
 
 /**
- * 거래처명으로 거래처DB에서 페이지 검색 → page ID 반환.
- * "DB 개발" 거래처DB의 title 컬럼명은 "거래처명".
+ * 거래처명으로 임의의 거래처 DB에서 페이지 검색 → page ID 반환.
+ * title 컬럼명이 "거래처명"인 DB 가정.
  */
-async function findClinicByName(clinicName: string): Promise<string | null> {
-  const dbId = process.env.NOTION_MAIN_DB_ID;
+async function findClinicInDb(clinicName: string, dbId: string): Promise<string | null> {
   if (!dbId || !clinicName) return null;
   try {
     const res = await withRetry(() =>
@@ -188,6 +204,16 @@ async function findClinicByName(clinicName: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * 거래처명으로 신 거래처DB(DB 개발)에서 페이지 검색.
+ * 신규개원·진료일정 변경 등 신 DB 기반 폼에서 사용.
+ */
+async function findClinicByName(clinicName: string): Promise<string | null> {
+  const dbId = process.env.NOTION_MAIN_DB_ID;
+  if (!dbId) return null;
+  return findClinicInDb(clinicName, dbId);
 }
 
 /**
