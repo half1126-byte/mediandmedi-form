@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ChipSelector from '@/components/ChipSelector';
 import LoadingOverlay from '@/components/LoadingOverlay';
@@ -20,29 +20,6 @@ export default function ContractChangePage() {
   const [submitStep, setSubmitStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-
-  const [clinicOptions, setClinicOptions] = useState<string[]>([]);
-  const [showClinicDropdown, setShowClinicDropdown] = useState(false);
-  const clinicInputRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    fetch('/api/clinic-names').then(r => r.json()).then(d => {
-      if (d.clinicNames) setClinicOptions(d.clinicNames);
-    }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (clinicInputRef.current && !clinicInputRef.current.contains(e.target as Node))
-        setShowClinicDropdown(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const filteredClinics = clinicOptions.filter(
-    n => n.toLowerCase().includes(clinicName.toLowerCase()) && n !== clinicName
-  );
 
   const handleSubmit = async () => {
     if (!clinicName || !doctorName || currentServices.length === 0 || !reason) {
@@ -144,32 +121,16 @@ export default function ContractChangePage() {
       </header>
 
       <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-6 pb-28 space-y-6">
-        <div className="relative" ref={clinicInputRef}>
+        <div>
           <label className="block text-sm font-semibold text-[#374151] mb-2">
             치과명 <span className="text-[#DC2626]">*</span>
           </label>
           <input
             value={clinicName}
-            onChange={(e) => { setClinicName(e.target.value); setShowClinicDropdown(true); }}
-            onFocus={() => setShowClinicDropdown(true)}
-            placeholder="기존 거래처를 선택해주세요"
+            onChange={(e) => setClinicName(e.target.value)}
+            placeholder="예: OO치과의원"
             className="w-full h-12 px-4 rounded-lg border border-[#D1D5DB] text-base focus:outline-none focus:border-[#2563EB]"
           />
-          {showClinicDropdown && filteredClinics.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#D1D5DB] rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
-              {filteredClinics.map(name => (
-                <button
-                  key={name}
-                  type="button"
-                  onClick={() => { setClinicName(name); setShowClinicDropdown(false); }}
-                  className="w-full text-left px-4 py-3 text-sm hover:bg-[#EFF6FF] transition-colors first:rounded-t-xl last:rounded-b-xl"
-                >
-                  🏥 {name}
-                </button>
-              ))}
-            </div>
-          )}
-          <p className="text-xs text-[#6B7280] mt-1">거래처 목록에서 선택해야 노션 미팅 기록에 자동으로 연결됩니다.</p>
         </div>
 
         <div>

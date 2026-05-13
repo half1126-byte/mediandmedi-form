@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { isHoliday } from '@/data/holidays';
 
@@ -31,9 +31,6 @@ export default function ScheduleChangePage() {
 
   const [clinicName, setClinicName] = useState('');
   const [doctorName, setDoctorName] = useState('');
-  const [clinicOptions, setClinicOptions] = useState<string[]>([]);
-  const [showClinicDropdown, setShowClinicDropdown] = useState(false);
-  const clinicInputRef = useRef<HTMLDivElement>(null);
 
   const now = new Date();
   const nextMonth = now.getMonth() + 2 > 12
@@ -52,25 +49,6 @@ export default function ScheduleChangePage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetch('/api/clinic-names').then(r => r.json()).then(d => {
-      if (d.clinicNames) setClinicOptions(d.clinicNames);
-    }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (clinicInputRef.current && !clinicInputRef.current.contains(e.target as Node))
-        setShowClinicDropdown(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const filteredClinics = clinicOptions.filter(
-    n => n.toLowerCase().includes(clinicName.toLowerCase()) && n !== clinicName
-  );
 
   const daysInMonth = getDaysInMonth(calYear, calMonth);
   const firstDay = getFirstDayOfWeek(calYear, calMonth);
@@ -239,28 +217,17 @@ export default function ScheduleChangePage() {
               <h3 className="font-semibold text-[#374151]">치과 정보를 입력해 주세요</h3>
             </div>
             <div className="space-y-3">
-              {/* 치과명 자동완성 */}
-              <div className="relative" ref={clinicInputRef}>
+              {/* 치과명 */}
+              <div>
                 <label className="block text-xs text-[#6B7280] mb-1 font-medium">치과명</label>
                 <input
                   type="text"
                   value={clinicName}
-                  onChange={e => { setClinicName(e.target.value); setShowClinicDropdown(true); }}
-                  onFocus={() => setShowClinicDropdown(true)}
+                  onChange={e => setClinicName(e.target.value)}
                   placeholder="예: OO치과의원"
                   className="w-full h-12 px-4 rounded-xl border border-[#D1D5DB] text-base
                              focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
                 />
-                {showClinicDropdown && filteredClinics.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#D1D5DB] rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
-                    {filteredClinics.map(name => (
-                      <button key={name} onClick={() => { setClinicName(name); setShowClinicDropdown(false); }}
-                        className="w-full text-left px-4 py-3 text-sm hover:bg-[#EFF6FF] transition-colors first:rounded-t-xl last:rounded-b-xl">
-                        🏥 {name}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
               {/* 원장님 성함 */}
               <div>
