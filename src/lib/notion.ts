@@ -48,9 +48,9 @@ export interface SubmitResult {
 }
 
 /**
- * 거래처 DB(메인 정본)에 신규개원 폼 데이터 페이지 생성.
- * 신 워크스페이스의 거래처 DB는 컬럼이 정해져 있어 핵심 필드만 properties로 매핑하고
- * 폼의 풀 정보(브랜딩, 마케팅, 시설, 계약 등)는 페이지 본문 children blocks로 함께 저장.
+ * 거래처DB("DB 개발" 워크스페이스)에 신규개원 폼 데이터 페이지 생성.
+ * 폼이 보내는 필드 대부분이 이미 거래처DB의 컬럼으로 존재하므로 properties로 매핑한다.
+ * 컬럼에 매핑이 안 되는 자유 텍스트(의료진 명단, 진료시간 상세 등)는 본문 blocks으로 보존.
  */
 export async function createMainRecord(
   data: Record<string, unknown>
@@ -75,9 +75,9 @@ export async function createMainRecord(
 }
 
 /**
- * 대시보드 업무 DB에 팀별 자동 업무 페이지 생성.
- * 폼의 팀(콘텐츠팀/디자인팀 등) → 신 DB의 "카테고리" select
- * 거래처명 → 거래처 DB 페이지 ID 조회 후 "관련거래처" relation
+ * 업무DB("DB 개발" 워크스페이스)에 팀별 자동 업무 페이지 생성.
+ * 폼이 보내는 team(마케팅팀/바이럴팀/디자인팀/웹팀) → 업무DB "카테고리" select
+ * parentId(거래처 페이지 ID) → "관련거래처" relation
  */
 export async function createTaskRecord(
   task: {
@@ -96,13 +96,13 @@ export async function createTaskRecord(
       notion.pages.create({
         parent: { database_id: dbId },
         properties: {
-          '제목': { title: [{ text: { content: task.title } }] },
+          '업무명': { title: [{ text: { content: task.title } }] },
           '카테고리': { select: { name: task.team } },
-          '상태': { select: { name: '예정' } },
+          '업무상태': { status: { name: '대기' } },
           '관련거래처': { relation: [{ id: task.parentId }] },
           '내용': { rich_text: [{ text: { content: task.detail.substring(0, 1900) } }] },
           '작성자': { rich_text: [{ text: { content: '신규개원 자동' } }] },
-          '생성일': { date: { start: new Date().toISOString().split('T')[0] } },
+          '생성일': { date: { start: today() } },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any,
       })
@@ -117,8 +117,8 @@ export async function createTaskRecord(
 }
 
 /**
- * 계약 변경 요청 DB에 폼 데이터 페이지 생성.
- * 거래처명으로 거래처 DB 페이지 검색 → relation 자동 연결 (실패 시 relation 없이 페이지만 생성).
+ * 계약 변경 요청 DB("DB 개발" 워크스페이스)에 폼 데이터 페이지 생성.
+ * 거래처명으로 거래처DB 페이지 검색 → "거래처" relation 자동 연결 (실패 시 relation 없이 페이지만 생성).
  */
 export async function createChangeRecord(
   data: Record<string, unknown>
@@ -146,7 +146,7 @@ export async function createChangeRecord(
     '변경유형': { select: { name: changeType } },
     '변경사유': { rich_text: [{ text: { content: (data.reason as string) || '' } }] },
     '처리상태': { select: { name: '접수' } },
-    '제출일': { date: { start: new Date().toISOString().split('T')[0] } },
+    '제출일': { date: { start: today() } },
   };
   if (clinicPageId) {
     properties['거래처'] = { relation: [{ id: clinicPageId }] };
@@ -163,8 +163,8 @@ export async function createChangeRecord(
 }
 
 /**
- * 거래처명으로 거래처 DB에서 페이지 검색 → page ID 반환.
- * 신 워크스페이스 거래처 DB의 title 컬럼명은 "거래처명".
+ * 거래처명으로 거래처DB에서 페이지 검색 → page ID 반환.
+ * "DB 개발" 거래처DB의 title 컬럼명은 "거래처명".
  */
 async function findClinicByName(clinicName: string): Promise<string | null> {
   const dbId = process.env.NOTION_MAIN_DB_ID;
@@ -191,8 +191,8 @@ async function findClinicByName(clinicName: string): Promise<string | null> {
 }
 
 /**
- * 진료일정 DB에 폼 데이터 페이지 생성.
- * 폼이 보내는 휴진일/요일진료/공휴일진료 등 텍스트 필드들을 신 컬럼에 매핑.
+ * 진료일정 DB("DB 개발" 워크스페이스)에 폼 데이터 페이지 생성.
+ * 폼이 보내는 휴진일/요일진료/공휴일진료를 신 DB 컬럼에 매핑.
  * 작업명(title)은 "{거래처명} - {대상월}" 형식, 거래처 relation 자동 연결.
  */
 export async function createScheduleChangeRecord(
@@ -210,7 +210,6 @@ export async function createScheduleChangeRecord(
 
   const clinicPageId = clinicName ? await findClinicByName(clinicName) : null;
 
-  // 폼이 보내는 태그별로 날짜 분류
   const TAG_TYPES = ['휴진', '토요일진료', '일요일진료', '오전진료', '오후진료', '야간진료', '공휴일진료'] as const;
   const tagToDates: Record<string, string[]> = {};
   for (const tag of TAG_TYPES) tagToDates[tag] = [];
@@ -228,22 +227,22 @@ export async function createScheduleChangeRecord(
   const sortDates = (arr: string[]) =>
     arr.sort((a, b) => parseInt(a) - parseInt(b)).join(', ');
 
-  // 신 진료일정 DB 컬럼 매핑
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const properties: any = {
     '작업명': {
       title: [{ text: { content: targetMonth ? `${clinicName} - ${targetMonth}` : clinicName } }],
     },
     '성함': { rich_text: [{ text: { content: (data.doctorName as string) || '' } }] },
-    '제출일': { date: { start: new Date().toISOString().split('T')[0] } },
+    '제출일': { date: { start: today() } },
     '처리상태_폼': { select: { name: '접수' } },
   };
 
-  // 대상 월: "2026-06" 형식 → "6" 추출
+  // 대상연도/월: "2026-06" 형식 → 2026, 6 추출
   if (targetMonth) {
-    const monthMatch = targetMonth.match(/-?(\d{1,2})$/);
-    if (monthMatch) {
-      properties['대상 월'] = { select: { name: String(parseInt(monthMatch[1])) } };
+    const ym = targetMonth.match(/^(\d{4})-?(\d{1,2})$/);
+    if (ym) {
+      properties['대상연도'] = { select: { name: ym[1] } };
+      properties['대상 월'] = { select: { name: String(parseInt(ym[2])) } };
     }
   }
 
@@ -287,85 +286,250 @@ function textProp(content: string) {
   return { rich_text: [{ text: { content } }] };
 }
 
-/**
- * 거래처 DB(신 워크스페이스)의 핵심 컬럼만 매핑.
- * 신 거래처 DB 스키마: 거래처명(title) / 원장님_성함 / 대표전화 / 주소 / 지역 / 진료과목 / 활성여부 / 계약시작일 / 메모
- * 폼의 풀 정보는 buildMainPageChildren으로 본문에 별도 저장.
- */
-function buildMainProperties(data: Record<string, unknown>): Record<string, unknown> {
-  const s1 = (data.step1 || {}) as Record<string, unknown>;
-  const s2 = (data.step2 || {}) as Record<string, unknown>;
-  const region = (s1.region || {}) as Record<string, string>;
-
-  const addressParts = [region.district, region.dong, s1.address as string]
-    .filter(Boolean)
-    .join(' ');
-
-  // 진료과목: 거래처 DB의 multi_select에 신규 옵션이 없으면 노션이 자동 생성
-  const dentalSubjects = (s2.dentalSubjects as string[]) || [];
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const props: any = {
-    '거래처명': { title: [{ text: { content: (s1.clinicName as string) || '' } }] },
-    '원장님_성함': { rich_text: [{ text: { content: (s1.doctorName as string) || '' } }] },
-    '활성여부': { select: { name: '활성' } },
-  };
-
-  if (s1.openDate) {
-    props['계약시작일'] = { date: { start: s1.openDate as string } };
-  }
-  if (region.city) {
-    props['지역'] = { select: { name: region.city } };
-  }
-  if (addressParts) {
-    props['주소'] = { rich_text: [{ text: { content: addressParts } }] };
-  }
-  if (s1.phone) {
-    props['대표전화'] = { phone_number: s1.phone as string };
-  }
-  if (dentalSubjects.length > 0) {
-    props['진료과목'] = { multi_select: dentalSubjects.map((s) => ({ name: s })) };
-  }
-
-  return props;
+function today(): string {
+  return new Date().toISOString().split('T')[0];
 }
 
 /**
- * 신규개원 폼의 풀 정보를 거래처 페이지 본문 blocks으로 변환.
- * 핵심 properties로 매핑 안 되는 step2~6 정보(시설/장비/브랜딩/마케팅/계약/파일)를 보존.
+ * Notion 페이지 단건 조회. 존재하지 않거나 권한 없을 때 null 반환.
  */
-function buildMainPageChildren(data: Record<string, unknown>): Array<Record<string, unknown>> {
+export async function getPageData(pageId: string): Promise<unknown | null> {
+  try {
+    return await withRetry(() => notion.pages.retrieve({ page_id: pageId }));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * "DB 개발" 거래처DB 컬럼에 신규개원 폼 데이터 매핑.
+ * 신규 페이지는 관계유형=클라이언트, 업종=치과, 상태=계약전로 자동 분류.
+ */
+function buildMainProperties(data: Record<string, unknown>): Record<string, unknown> {
   const s1 = (data.step1 || {}) as Record<string, unknown>;
   const s2 = (data.step2 || {}) as Record<string, unknown>;
   const s3 = (data.step3 || {}) as Record<string, unknown>;
   const s4 = (data.step4 || {}) as Record<string, unknown>;
   const s5 = (data.step5 || {}) as Record<string, unknown>;
   const s6 = (data.step6 || {}) as Record<string, unknown>;
+  const region = (s1.region || {}) as Record<string, string>;
+
+  const addressParts = [region.district, region.dong, s1.address as string]
+    .filter(Boolean)
+    .join(' ');
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const props: any = {
+    '거래처명': { title: [{ text: { content: (s1.clinicName as string) || '' } }] },
+    '원장명': { rich_text: [{ text: { content: (s1.doctorName as string) || '' } }] },
+    '관계유형': { select: { name: '클라이언트' } },
+    '업종': { select: { name: '치과' } },
+    '상태': { status: { name: '계약전' } },
+    '폼 제출일': { date: { start: today() } },
+  };
+
+  // step1
+  if (s1.openDate) {
+    props['개원예정일'] = { date: { start: s1.openDate as string } };
+  }
+  if (region.city) {
+    const regionParts = [region.city, region.district, region.dong].filter(Boolean).join(' ');
+    props['지역'] = { rich_text: [{ text: { content: regionParts } }] };
+  }
+  if (addressParts) {
+    props['주소'] = { rich_text: [{ text: { content: addressParts } }] };
+  }
+  if (s1.phone) {
+    props['대표 전화'] = { rich_text: [{ text: { content: s1.phone as string } }] };
+  }
+  // 의료진 요약 → 의료진 rich_text
+  const doctors = (s1.doctors as { name: string; title: string; specialty: string }[]) || [];
+  if (doctors.length > 0) {
+    const summary = doctors
+      .map((d) => `${d.name || '미입력'} · ${d.title}${d.specialty ? ` (${d.specialty})` : ''}`)
+      .join(' / ');
+    props['의료진'] = { rich_text: [{ text: { content: summary.substring(0, 1900) } }] };
+  }
+
+  // step2 — 진료
+  const dentalSubjects = (s2.dentalSubjects as string[]) || [];
+  if (dentalSubjects.length > 0) {
+    props['진료과목'] = { multi_select: dentalSubjects.map((s) => ({ name: s })) };
+  }
+  const topSubjects = (s2.topSubjects as string[]) || [];
+  if (topSubjects.length > 0) {
+    props['주력진료'] = { multi_select: topSubjects.map((s) => ({ name: s })) };
+  }
+  // 임플란트 재료 → 제조사 multi_select (재료 상세는 본문 blocks)
+  const implant = (s2.implantMaterials as Record<string, string[]>) || {};
+  const implantBrands = Object.keys(implant);
+  if (implantBrands.length > 0) {
+    props['임플란트 재료'] = { multi_select: implantBrands.map((b) => ({ name: b })) };
+  }
+  const alignerOptions = (s2.alignerOptions as string[]) || [];
+  if (alignerOptions.length > 0) {
+    props['교정 옵션'] = { multi_select: alignerOptions.map((s) => ({ name: s })) };
+  }
+  const pediatricOrthoOptions = (s2.pediatricOrthoOptions as string[]) || [];
+  if (pediatricOrthoOptions.length > 0) {
+    props['소아교정 옵션'] = { multi_select: pediatricOrthoOptions.map((s) => ({ name: s })) };
+  }
+  // 진료시간 요약
+  const schedule = (s2.schedule || {}) as Record<string, { enabled: boolean; start: string; end: string }>;
+  const scheduleLine = Object.entries(schedule)
+    .filter(([, v]) => v.enabled)
+    .map(([day, v]) => `${day} ${v.start}~${v.end}`)
+    .join(', ');
+  if (scheduleLine) {
+    props['진료시간'] = { rich_text: [{ text: { content: scheduleLine.substring(0, 1900) } }] };
+  }
+
+  // step3 — 시설
+  if (s3.chairs) {
+    const n = typeof s3.chairs === 'number' ? s3.chairs : parseInt(s3.chairs as string);
+    if (!isNaN(n)) props['체어수'] = { number: n };
+  }
+  const facilities = (s3.facilities as string[]) || [];
+  if (facilities.length > 0) {
+    props['시설'] = { multi_select: facilities.map((s) => ({ name: s })) };
+  }
+
+  // step4 — 브랜딩
+  if (s4.oneLiner) {
+    props['한줄소개'] = { rich_text: [{ text: { content: (s4.oneLiner as string).substring(0, 1900) } }] };
+  }
+  if (s4.brandColor) {
+    props['브랜드 컬러'] = { rich_text: [{ text: { content: s4.brandColor as string } }] };
+  }
+  const promoParts = [s4.doctorPromo, s4.clinicPromo, s4.treatmentPromo, s4.philosophy, s4.locationTarget, s4.interiorStyle]
+    .filter(Boolean)
+    .join(' | ');
+  if (promoParts) {
+    props['홍보 포인트'] = { rich_text: [{ text: { content: promoParts.substring(0, 1900) } }] };
+  }
+
+  // step5 — 마케팅
+  const referralSource = (s5.referralSource as string[]) || [];
+  if (referralSource.length > 0) {
+    props['소개경로'] = { multi_select: referralSource.map((s) => ({ name: s })) };
+  }
+  if (s5.referralName) {
+    props['소개자명'] = { rich_text: [{ text: { content: s5.referralName as string } }] };
+  }
+  if (s5.budgetRange) {
+    props['예산범위'] = { select: { name: s5.budgetRange as string } };
+  }
+  const marketingGoalParts = [
+    (s5.marketingGoals as string[])?.join(', '),
+    s5.benchmarkClinics ? `벤치마킹: ${s5.benchmarkClinics}` : '',
+    s5.previousMarketing ? `이전 마케팅: ${s5.previousMarketing}` : '',
+  ].filter(Boolean).join(' | ');
+  if (marketingGoalParts) {
+    props['마케팅 목표'] = { rich_text: [{ text: { content: marketingGoalParts.substring(0, 1900) } }] };
+  }
+  if (s5.didInfo) {
+    props['DID 정보'] = { rich_text: [{ text: { content: s5.didInfo as string } }] };
+  }
+  if (s5.reviewGift) {
+    props['리뷰 증정선물'] = { rich_text: [{ text: { content: s5.reviewGift as string } }] };
+  }
+  if (s5.channelGift) {
+    props['채널 증정선물'] = { rich_text: [{ text: { content: s5.channelGift as string } }] };
+  }
+  const extraParts = [
+    s5.openingEvent ? `개원이벤트: ${s5.openingEvent}` : '',
+    s5.additionalRequest ? `추가요청: ${s5.additionalRequest}` : '',
+  ].filter(Boolean).join(' | ');
+  if (extraParts) {
+    props['이벤트 / 추가요청'] = { rich_text: [{ text: { content: extraParts.substring(0, 1900) } }] };
+  }
+
+  // step6 — 계약
+  const services = (s6.services as { serviceId: string; quantity?: number }[]) || [];
+  const teamsInvolved = Array.from(
+    new Set(
+      services
+        .map((s) => SERVICES.find((sv) => sv.id === s.serviceId)?.team as string | undefined)
+        .filter((t): t is string => !!t)
+    )
+  );
+  if (teamsInvolved.length > 0) {
+    props['계약 서비스'] = { multi_select: teamsInvolved.map((t) => ({ name: t })) };
+  }
+  if (s6.isStarterPackage) {
+    props['초기개원 패키지'] = { checkbox: true };
+  }
+  if (s6.contractStartDate) {
+    props['거래시작일'] = { date: { start: s6.contractStartDate as string } };
+  }
+  if (s6.monthlyFee) {
+    props['월 계약금'] = { rich_text: [{ text: { content: s6.monthlyFee as string } }] };
+  }
+  if (s6.specialNotes) {
+    props['특이사항'] = { rich_text: [{ text: { content: (s6.specialNotes as string).substring(0, 1900) } }] };
+  }
+
+  // 파일 컬럼 (files type, external URL)
+  setFiles(props, '약력 이미지', s1.careerImages);
+  setFiles(props, '인테리어 도면', s3.blueprintFiles);
+  setFiles(props, '로고 파일', s4.logoFiles);
+  setFiles(props, '면허증', s4.licenseFiles);
+  setFiles(props, '전문의 자격증', s4.certificateFiles);
+  setFiles(props, '사업자등록증', s4.businessFiles);
+  setFiles(props, '개설필증', s4.permitFiles);
+  setFiles(props, '간판 사진', s4.signageFiles);
+  setFiles(props, '현수막 사진', s4.bannerFiles);
+  setFiles(props, '공사 현장 사진', s4.constructionFiles);
+
+  return props;
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function setFiles(props: any, key: string, raw: unknown): void {
+  const arr = (raw as { url: string; filename: string }[] | undefined) || [];
+  if (arr.length === 0) return;
+  props[key] = {
+    files: arr.slice(0, 25).map((f) => ({
+      name: (f.filename || 'file').substring(0, 100),
+      type: 'external',
+      external: { url: f.url },
+    })),
+  };
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/**
+ * 거래처 페이지 본문에는 컬럼으로 매핑 불가능한 자유 텍스트(의료진 상세, 임플란트 재료별 제품군, 추가 메모 등) 보존.
+ */
+function buildMainPageChildren(data: Record<string, unknown>): Array<Record<string, unknown>> {
+  const s1 = (data.step1 || {}) as Record<string, unknown>;
+  const s2 = (data.step2 || {}) as Record<string, unknown>;
+  const s3 = (data.step3 || {}) as Record<string, unknown>;
+  const s4 = (data.step4 || {}) as Record<string, unknown>;
+  const s6 = (data.step6 || {}) as Record<string, unknown>;
 
   const blocks: Array<Record<string, unknown>> = [];
 
-  // 안내 callout
   blocks.push({
     object: 'block',
     type: 'callout',
     callout: {
-      rich_text: [{ type: 'text', text: { content: '🏥 신규개원 폼으로 자동 생성된 거래처 페이지. 핵심 필드는 상단 속성에, 상세 정보는 아래 본문에 저장됩니다.' } }],
+      rich_text: [{ type: 'text', text: { content: '🏥 신규개원 폼으로 자동 생성된 거래처 페이지. 핵심 필드는 상단 속성에, 상세 정보는 본문에 저장됩니다.' } }],
       icon: { type: 'emoji', emoji: '🏥' },
       color: 'gray_background',
     },
   });
 
-  // 의료진 명단
+  // 의료진 상세
   const doctors = (s1.doctors as { name: string; title: string; specialty: string }[]) || [];
   if (doctors.length > 0) {
     blocks.push(heading('의료진'));
     doctors.forEach((d) => {
-      const label = `${d.name || '미입력'} · ${d.title}${d.specialty ? ` · ${d.specialty}` : ''}`;
-      blocks.push(bullet(label));
+      blocks.push(bullet(`${d.name || '미입력'} · ${d.title}${d.specialty ? ` · ${d.specialty}` : ''}`));
     });
   }
 
-  // 일정 정보
+  // 일정·연락
   const datesArr: string[] = [];
   if (s1.softOpenDate) datesArr.push(`가오픈 ${s1.softOpenDate}`);
   if (s1.interiorCompleteDate) datesArr.push(`인테리어 완료 ${s1.interiorCompleteDate}`);
@@ -376,97 +540,55 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
     datesArr.forEach((t) => blocks.push(bullet(t)));
   }
 
-  // 진료 정보
-  blocks.push(heading('진료 정보'));
-  if ((s2.topSubjects as string[])?.length) {
-    blocks.push(bullet(`주력진료: ${(s2.topSubjects as string[]).join(', ')}`));
-  }
+  // 임플란트 재료 상세 (제품군까지)
   const implant = (s2.implantMaterials as Record<string, string[]>) || {};
-  const implantSummary = Object.entries(implant)
-    .map(([b, ps]) => (ps.length ? `${b}(${ps.join('/')})` : b))
-    .join(', ');
-  if (implantSummary) blocks.push(bullet(`임플란트 재료: ${implantSummary}`));
-  if ((s2.alignerOptions as string[])?.length) {
-    blocks.push(bullet(`투명교정: ${(s2.alignerOptions as string[]).join(', ')}`));
+  const implantDetails = Object.entries(implant)
+    .map(([b, ps]) => (ps.length ? `${b}: ${ps.join(', ')}` : `${b}: 전체`))
+    .join('\n');
+  if (implantDetails) {
+    blocks.push(heading('임플란트 재료 상세'));
+    implantDetails.split('\n').forEach((line) => blocks.push(bullet(line)));
   }
-  if ((s2.pediatricOrthoOptions as string[])?.length) {
-    blocks.push(bullet(`소아교정: ${(s2.pediatricOrthoOptions as string[]).join(', ')}`));
-  }
-  const schedule = (s2.schedule || {}) as Record<string, { enabled: boolean; start: string; end: string }>;
-  const scheduleLine = Object.entries(schedule)
-    .filter(([, v]) => v.enabled)
-    .map(([day, v]) => `${day} ${v.start}~${v.end}`)
-    .join(', ');
-  if (scheduleLine) blocks.push(bullet(`진료시간: ${scheduleLine}`));
+
+  // 점심·야간 등 진료 보조 정보
   const lunch = (s2.lunchTime || {}) as { start?: string; end?: string };
-  if (lunch.start && lunch.end) blocks.push(bullet(`점심시간: ${lunch.start}~${lunch.end}`));
-  if (s2.nightWeekend) blocks.push(bullet(`야간/주말: ${s2.nightWeekend}`));
+  const auxParts: string[] = [];
+  if (lunch.start && lunch.end) auxParts.push(`점심시간: ${lunch.start}~${lunch.end}`);
+  if (s2.nightWeekend) auxParts.push(`야간/주말: ${s2.nightWeekend}`);
+  if (auxParts.length > 0) {
+    blocks.push(heading('진료 보조 정보'));
+    auxParts.forEach((t) => blocks.push(bullet(t)));
+  }
 
-  // 시설/장비
-  blocks.push(heading('시설·장비'));
-  if (s3.chairs) blocks.push(bullet(`체어 ${s3.chairs}대`));
-  if ((s3.equipment as string[])?.length) blocks.push(bullet(`장비: ${(s3.equipment as string[]).join(', ')}`));
-  if ((s3.facilities as string[])?.length) blocks.push(bullet(`시설: ${(s3.facilities as string[]).join(', ')}`));
+  // 장비/주차/기공
+  const facilityAux: string[] = [];
+  if ((s3.equipment as string[])?.length) facilityAux.push(`장비: ${(s3.equipment as string[]).join(', ')}`);
   const parking = (s3.parking as Record<string, string>) || {};
-  if (parking.available) blocks.push(bullet(`주차: ${parking.available}${parking.detail ? ` (${parking.detail})` : ''}`));
-  if (s3.hasLabRoom) blocks.push(bullet(`기공소: 보유${(s3.labEquipment as string[])?.length ? ` (${(s3.labEquipment as string[]).join(', ')})` : ''}`));
-
-  // 브랜딩
-  blocks.push(heading('브랜딩'));
-  if (s4.oneLiner) blocks.push(bullet(`한줄소개: ${s4.oneLiner}`));
-  if (s4.doctorPromo) blocks.push(bullet(`의료진 포인트: ${s4.doctorPromo}`));
-  if (s4.clinicPromo) blocks.push(bullet(`병원 포인트: ${s4.clinicPromo}`));
-  if (s4.treatmentPromo) blocks.push(bullet(`주요 진료 포인트: ${s4.treatmentPromo}`));
-  if (s4.philosophy) blocks.push(bullet(`진료 철학: ${s4.philosophy}`));
-  if (s4.locationTarget) blocks.push(bullet(`입지·타겟: ${s4.locationTarget}`));
-  if (s4.interiorStyle) blocks.push(bullet(`인테리어 컨셉: ${s4.interiorStyle}`));
-  if (s4.brandColor) blocks.push(bullet(`브랜드 컬러: ${s4.brandColor}`));
-  if (s4.hasProfilePhoto) blocks.push(bullet('프로필 사진 보유'));
-  if (s4.hasLogo) blocks.push(bullet('로고 파일 보유'));
-
-  // 마케팅
-  blocks.push(heading('마케팅'));
-  if ((s5.referralSource as string[])?.length) {
-    blocks.push(bullet(`유입경로: ${(s5.referralSource as string[]).join(', ')}`));
+  if (parking.available) facilityAux.push(`주차: ${parking.available}${parking.detail ? ` (${parking.detail})` : ''}`);
+  if (s3.hasLabRoom) facilityAux.push(`기공소: 보유${(s3.labEquipment as string[])?.length ? ` (${(s3.labEquipment as string[]).join(', ')})` : ''}`);
+  if (facilityAux.length > 0) {
+    blocks.push(heading('장비·주차·기공'));
+    facilityAux.forEach((t) => blocks.push(bullet(t)));
   }
-  if (s5.referralName) blocks.push(bullet(`소개자: ${s5.referralName}`));
-  if (s5.previousMarketing) blocks.push(bullet(`이전 마케팅: ${s5.previousMarketing}`));
-  if (s5.budgetRange) blocks.push(bullet(`예산: ${s5.budgetRange}`));
-  if ((s5.marketingGoals as string[])?.length) {
-    blocks.push(bullet(`목표: ${(s5.marketingGoals as string[]).join(', ')}`));
-  }
-  if ((s5.desiredChannels as string[])?.length) {
-    blocks.push(bullet(`원하는 채널: ${(s5.desiredChannels as string[]).join(', ')}`));
-  }
-  if (s5.benchmarkClinics) blocks.push(bullet(`벤치마킹: ${s5.benchmarkClinics}`));
-  if (s5.openingEvent) blocks.push(bullet(`개원이벤트: ${s5.openingEvent}`));
-  if (s5.didInfo) blocks.push(bullet(`DID: ${s5.didInfo}`));
-  if (s5.reviewGift) blocks.push(bullet(`리뷰 증정선물: ${s5.reviewGift}`));
-  if (s5.channelGift) blocks.push(bullet(`채널 증정선물: ${s5.channelGift}`));
-  if (s5.additionalRequest) blocks.push(bullet(`추가 요청: ${s5.additionalRequest}`));
 
-  // 계약
-  blocks.push(heading('계약'));
+  // 브랜딩 메모 (컬럼에 안 들어간 항목들)
+  const brandAux: string[] = [];
+  if (s4.hasProfilePhoto) brandAux.push('프로필 사진 보유');
+  if (s4.hasLogo) brandAux.push('로고 파일 보유');
+  if (brandAux.length > 0) {
+    blocks.push(heading('브랜딩 메모'));
+    brandAux.forEach((t) => blocks.push(bullet(t)));
+  }
+
+  // 계약 서비스 상세
   const services = (s6.services as { serviceId: string; quantity?: number }[]) || [];
   if (services.length > 0) {
-    const text = services.map((s) => {
+    blocks.push(heading('계약 서비스 상세'));
+    services.forEach((s) => {
       const svc = SERVICES.find((sv) => sv.id === s.serviceId);
-      return `${svc?.name || s.serviceId}${s.quantity ? ` ${s.quantity}${svc?.unit || ''}` : ''}`;
-    }).join(', ');
-    blocks.push(bullet(`서비스: ${text}`));
-  }
-  if (s6.isStarterPackage) blocks.push(bullet('초기개원 패키지 적용'));
-  if (s6.contractStartDate) blocks.push(bullet(`계약시작: ${s6.contractStartDate}`));
-  if (s6.monthlyFee) blocks.push(bullet(`월 계약금: ${s6.monthlyFee}`));
-  if (s6.specialNotes) blocks.push(bullet(`특이사항: ${s6.specialNotes}`));
-
-  // 파일 첨부 URL
-  const files = collectFiles(data);
-  if (files.length > 0) {
-    blocks.push(heading('첨부 자료'));
-    for (const f of files) {
-      blocks.push(bullet(`${f.label}: ${f.urls}`));
-    }
+      const label = `${svc?.team || '?'} / ${svc?.name || s.serviceId}${s.quantity ? ` ${s.quantity}${svc?.unit || ''}` : ''}`;
+      blocks.push(bullet(label));
+    });
   }
 
   return blocks;
@@ -490,30 +612,4 @@ function bullet(text: string) {
       rich_text: [{ type: 'text', text: { content: text.substring(0, 1900) } }],
     },
   };
-}
-
-function collectFiles(data: Record<string, unknown>): { label: string; urls: string }[] {
-  const s1 = (data.step1 || {}) as Record<string, unknown>;
-  const s3 = (data.step3 || {}) as Record<string, unknown>;
-  const s4 = (data.step4 || {}) as Record<string, unknown>;
-  const map: [string, unknown][] = [
-    ['약력이미지', s1.careerImages],
-    ['인테리어 도면', s3.blueprintFiles],
-    ['로고', s4.logoFiles],
-    ['면허증', s4.licenseFiles],
-    ['전문의 자격증', s4.certificateFiles],
-    ['사업자등록증', s4.businessFiles],
-    ['개설필증', s4.permitFiles],
-    ['간판 사진', s4.signageFiles],
-    ['현수막 사진', s4.bannerFiles],
-    ['공사 현장 사진', s4.constructionFiles],
-  ];
-  const results: { label: string; urls: string }[] = [];
-  for (const [label, files] of map) {
-    const arr = (files as { url: string; filename: string }[] | undefined) || [];
-    if (arr.length === 0) continue;
-    const urls = arr.map((f) => `${f.filename} → ${f.url}`).join(' | ');
-    results.push({ label, urls: urls.length > 1800 ? urls.slice(0, 1800) + '...' : urls });
-  }
-  return results;
 }
