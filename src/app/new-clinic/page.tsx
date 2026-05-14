@@ -199,6 +199,7 @@ const INITIAL_DATA: FormData = {
 export default function NewClinicPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
+  const [confirmed, setConfirmed] = useState(false);
   const [data, setData] = useState<FormData>(INITIAL_DATA);
   const [sessionId, setSessionId] = useState('');
   const [showRestore, setShowRestore] = useState<SavedFormData | null>(null);
@@ -274,6 +275,7 @@ export default function NewClinicPage() {
   const goToStep = (s: number) => {
     saveNow();
     setStep(s);
+    setConfirmed(false);
     scrollToTop();
   };
 
@@ -378,7 +380,7 @@ export default function NewClinicPage() {
           {step === 3 && <Step4 data={data.step4} onChange={(u) => updateStep('step4', u)} />}
           {step === 4 && <Step5 data={data.step5} onChange={(u) => updateStep('step5', u)} />}
           {step === 5 && <Step6 data={data.step6} onChange={(u) => updateStep('step6', u)} />}
-          {step === 6 && <Step7 data={data} onGoToStep={goToStep} />}
+          {step === 6 && <Step7 data={data} onGoToStep={goToStep} confirmed={confirmed} setConfirmed={setConfirmed} />}
         </div>
       </main>
 
@@ -409,12 +411,13 @@ export default function NewClinicPage() {
           ) : (
             <button
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={submitting || !confirmed}
+              title={!confirmed ? '먼저 "위 내용을 모두 확인했습니다" 체크박스를 선택해주세요' : undefined}
               className="flex-1 h-12 bg-[#2563EB] text-white rounded-lg font-semibold
                          hover:bg-[#1d4ed8] active:scale-[0.98] transition-all
                          disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              제출하기
+              {confirmed ? '제출하기' : '확인 후 제출 가능'}
             </button>
           )}
         </div>
@@ -1365,18 +1368,31 @@ function SummaryItem({ label, value }: { label: string; value: string | undefine
 }
 
 function Step7({
-  data, onGoToStep,
+  data, onGoToStep, confirmed, setConfirmed,
 }: {
   data: FormData;
   onGoToStep: (step: number) => void;
+  confirmed: boolean;
+  setConfirmed: (v: boolean) => void;
 }) {
   const { step1, step2, step3, step4, step5, step6 } = data;
 
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold text-[#374151] mb-2">최종 확인</h2>
+
+      {/* 강조 경고 박스 */}
+      <div className="bg-[#FEF3C7] border-l-4 border-[#D97706] rounded-r-lg p-4">
+        <p className="text-sm font-semibold text-[#92400E] mb-1">⚠️ 제출 전 마지막 확인</p>
+        <p className="text-xs text-[#92400E] leading-relaxed">
+          이대로 제출하면 노션 거래처 DB에 영구 기록되며, 다른 폼(계약변경·진료일정)이
+          이 거래처와 연결될 때 <strong>여기 입력한 치과명을 정확히 따라야</strong> 매칭됩니다.
+          오타·공백·괄호 흔들림은 나중에 일일이 수동으로 고쳐야 하니, 지금 한 번 더 봐주세요.
+        </p>
+      </div>
+
       <p className="text-sm text-[#6B7280] mb-4">
-        입력하신 내용을 한 번 더 확인해 주세요. 각 섹션의 [수정] 버튼으로 수정하실 수 있습니다.
+        각 섹션의 [수정] 버튼으로 해당 단계로 돌아갈 수 있습니다.
       </p>
 
       <SummarySection title="기본 정보" stepIndex={0} onGoToStep={onGoToStep}>
@@ -1467,6 +1483,22 @@ function Step7({
         <SummaryItem label="계약시작" value={step6.contractStartDate} />
         <SummaryItem label="월계약금" value={step6.monthlyFee} />
       </SummarySection>
+
+      {/* 확인 게이트: 체크해야 제출 활성화 */}
+      <label className="flex items-start gap-3 bg-white rounded-xl border-2 border-[#2563EB] p-4 cursor-pointer hover:bg-[#EFF6FF] transition-colors">
+        <input
+          type="checkbox"
+          checked={confirmed}
+          onChange={(e) => setConfirmed(e.target.checked)}
+          className="mt-0.5 w-5 h-5 accent-[#2563EB] flex-shrink-0"
+        />
+        <div className="text-sm">
+          <span className="font-semibold text-[#374151]">위 내용을 모두 확인했습니다.</span>
+          <p className="text-xs text-[#6B7280] mt-1 leading-relaxed">
+            치과명·원장명·전화번호·주소가 정확한지, 오타나 공백 흔들림이 없는지 한 번 더 봐주세요.
+          </p>
+        </div>
+      </label>
     </div>
   );
 }
