@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { isHoliday } from '@/data/holidays';
+import ReviewModal from '@/components/ReviewModal';
 
 type ScheduleTag = '휴진' | '토요일진료' | '일요일진료' | '오전진료' | '오후진료' | '야간진료' | '공휴일진료';
 type ActiveMode = ScheduleTag | null;
@@ -49,6 +50,17 @@ export default function ScheduleChangePage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+  const [showReview, setShowReview] = useState(false);
+
+  // 사용자가 제출 버튼 클릭 → 검토 모달 띄움
+  const handleReviewOpen = () => {
+    if (!clinicName.trim() || !doctorName.trim()) {
+      setError('치과명과 성함을 입력해주세요');
+      return;
+    }
+    setError('');
+    setShowReview(true);
+  };
 
   const daysInMonth = getDaysInMonth(calYear, calMonth);
   const firstDay = getFirstDayOfWeek(calYear, calMonth);
@@ -78,6 +90,7 @@ export default function ScheduleChangePage() {
 
   const handleSubmit = async () => {
     if (!canSubmit || submitting) return;
+    setShowReview(false);
     setSubmitting(true);
     setError('');
     const scheduleSummary = Object.entries(dateSchedules)
@@ -502,7 +515,7 @@ export default function ScheduleChangePage() {
             className="w-full py-4 bg-[#2563EB] text-white rounded-xl font-bold text-base
                        hover:bg-[#1d4ed8] active:scale-[0.98] transition-all
                        disabled:opacity-40 disabled:cursor-not-allowed"
-            onClick={handleSubmit}
+            onClick={handleReviewOpen}
             disabled={!canSubmit || submitting}
           >
             {submitting ? '제출 중입니다...' : '📤 진료일정 제출하기'}
@@ -510,6 +523,30 @@ export default function ScheduleChangePage() {
         </div>
       </main>
 
+      <ReviewModal
+        open={showReview}
+        title={`${calYear}년 ${calMonth}월 진료일정 확인`}
+        warning="이대로 제출하면 노션 진료일정 DB에 페이지가 생성되며, 거래처 매칭은 입력한 치과명이 거래처 DB와 정확히 일치해야 자동 연결됩니다."
+        items={[
+          { label: '치과명', value: clinicName },
+          { label: '성함', value: doctorName },
+          { label: '대상월', value: `${calYear}년 ${calMonth}월` },
+          {
+            label: '일정 표시 수',
+            value: (() => {
+              const n = Object.values(dateSchedules).filter((tags) => tags.length > 0).length;
+              return n > 0 ? `${n}일` : '없음';
+            })(),
+          },
+          { label: '휴진 사유', value: holidayReason },
+          { label: '이벤트', value: events },
+          { label: '출력 사이즈', value: printSizes.join(', ') },
+          { label: '기타 요청', value: extraRequest },
+        ]}
+        onCancel={() => setShowReview(false)}
+        onConfirm={handleSubmit}
+        submitting={submitting}
+      />
     </div>
   );
 }

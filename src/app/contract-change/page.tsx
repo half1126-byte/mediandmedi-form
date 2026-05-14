@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ChipSelector from '@/components/ChipSelector';
 import LoadingOverlay from '@/components/LoadingOverlay';
+import ReviewModal from '@/components/ReviewModal';
 import { SERVICES } from '@/data/services';
 
 const SERVICE_NAMES = SERVICES.map((s) => s.name);
@@ -20,13 +21,21 @@ export default function ContractChangePage() {
   const [submitStep, setSubmitStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [showReview, setShowReview] = useState(false);
 
-  const handleSubmit = async () => {
+  // 사용자가 제출 버튼 클릭 → 검증 후 검토 모달 띄움
+  const handleReviewOpen = () => {
     if (!clinicName || !doctorName || currentServices.length === 0 || !reason) {
       setError('치과명, 원장님 성함, 현재 상품, 변경 사유는 필수로 입력해 주세요');
       return;
     }
+    setError(null);
+    setShowReview(true);
+  };
 
+  // 검토 모달에서 "제출하기" 확인 → 실제 제출
+  const handleSubmit = async () => {
+    setShowReview(false);
     setSubmitting(true);
     setSubmitStep(0);
     setError(null);
@@ -192,10 +201,27 @@ export default function ContractChangePage() {
         </div>
       </main>
 
+      <ReviewModal
+        open={showReview}
+        title="계약변경 내용 확인"
+        warning="이대로 제출하면 노션 미팅 기록 DB에 '계약변경' 미팅 페이지로 저장됩니다. 거래처 매칭은 입력한 치과명이 거래처 DB와 정확히 일치해야 자동 연결됩니다."
+        items={[
+          { label: '치과명', value: clinicName },
+          { label: '원장님', value: doctorName },
+          { label: '현재 상품', value: currentServices.join(', ') },
+          { label: '추가 상품', value: addServices.join(', ') },
+          { label: '축소 상품', value: removeServices.join(', ') },
+          { label: '변경 사유', value: reason },
+        ]}
+        onCancel={() => setShowReview(false)}
+        onConfirm={handleSubmit}
+        submitting={submitting}
+      />
+
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <button
-            onClick={handleSubmit}
+            onClick={handleReviewOpen}
             disabled={submitting}
             className="w-full h-12 bg-[#2563EB] text-white rounded-lg font-semibold
                        hover:bg-[#1d4ed8] active:scale-[0.98] transition-all
