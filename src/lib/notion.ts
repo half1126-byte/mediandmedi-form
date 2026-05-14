@@ -1,5 +1,6 @@
 import { Client } from '@notionhq/client';
 import { SERVICES } from '@/data/services';
+import { clinicNamesMatch, normalizeClinicName } from './normalize';
 
 const authKey = process.env.NOTION_MEETING_API_KEY || process.env.NOTION_API_KEY;
 
@@ -283,6 +284,9 @@ function today(): string {
 /**
  * 거래처명으로 거래처DB에서 페이지 검색 → page ID 반환.
  * OLD 🏥 거래처 DB의 title 컬럼명은 "거래처명".
+ *
+ * 매칭은 normalizeClinicName 기반 (공백 흔들림에 강함). 정확 일치 우선,
+ * 정규화 일치는 fallback.
  */
 async function findClinicByName(clinicName: string): Promise<string | null> {
   const dbId = process.env.NOTION_MAIN_DB_ID;
@@ -290,19 +294,31 @@ async function findClinicByName(clinicName: string): Promise<string | null> {
   try {
     const res = await withRetry(() =>
       notion.search({
-        query: clinicName,
+        query: normalizeClinicName(clinicName),
         filter: { value: 'page', property: 'object' },
         page_size: 10,
       })
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const match = (res.results as any[]).find((p) => {
-      if (p.parent?.database_id?.replace(/-/g, '') !== dbId.replace(/-/g, '')) return false;
+    const candidates = (res.results as any[]).filter((p) =>
+      p.parent?.database_id?.replace(/-/g, '') === dbId.replace(/-/g, '')
+    );
+
+    // 1차: 입력값 그대로 정확 일치 (사용자가 의도한 정확한 표기)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const exact = candidates.find((p: any) => {
       const titleArr = p.properties?.['거래처명']?.title || p.properties?.['title']?.title || [];
-      const title = titleArr[0]?.plain_text || '';
-      return title === clinicName;
+      return (titleArr[0]?.plain_text || '') === clinicName;
     });
-    return match ? match.id : null;
+    if (exact) return exact.id;
+
+    // 2차: 정규화 일치 (앞뒤·다중 공백 차이만 무시)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const normalized = candidates.find((p: any) => {
+      const titleArr = p.properties?.['거래처명']?.title || p.properties?.['title']?.title || [];
+      return clinicNamesMatch(titleArr[0]?.plain_text || '', clinicName);
+    });
+    return normalized ? normalized.id : null;
   } catch {
     return null;
   }
