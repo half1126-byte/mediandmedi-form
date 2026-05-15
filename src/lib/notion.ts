@@ -48,10 +48,12 @@ export interface SubmitResult {
   taskResults?: { team: string; success: boolean; error?: string }[];
 }
 
+/** 기존 거래처(계약중인 클라이언트)가 있는 구 DB. 계약변경·진료일정 폼의 relation 검색용. */
+const LEGACY_CLINICS_DB_ID = '3539a82d-b9c4-8174-ada9-c2269dea9515';
+
 /**
- * 신규개원 폼 → DB개발(종광) "🏥 거래처" 데이터베이스에 새 페이지 생성.
- * OLD 거래처 DB 컬럼만 properties로 매핑하고, 폼이 보내는 추가 정보(브랜딩/마케팅/시설/계약/파일)는
- * 페이지 본문 blocks로 보존.
+ * 신규개원 폼 → "거래처 DB" (신 스키마)에 새 페이지 생성.
+ * 핵심 정보는 properties로 매핑, 상세 정보는 페이지 본문 blocks에 저장.
  */
 export async function createMainRecord(
   data: Record<string, unknown>
@@ -145,7 +147,7 @@ export async function createChangeRecord(
   const agendaText = agendaLines.join('\n');
 
   const dateStr = today();
-  const clinicPageId = clinicName ? await findClinicByName(clinicName) : null;
+  const clinicPageId = clinicName ? await findClinicByName(clinicName, LEGACY_CLINICS_DB_ID) : null;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const properties: any = {
@@ -188,7 +190,7 @@ export async function createScheduleChangeRecord(
   const dateSchedulesRaw = (data.dateSchedulesRaw as Record<string, string[]>) || {};
   const holidayReason = (data.holidayReason as string) || '';
 
-  const clinicPageId = clinicName ? await findClinicByName(clinicName) : null;
+  const clinicPageId = clinicName ? await findClinicByName(clinicName, LEGACY_CLINICS_DB_ID) : null;
 
   const TAG_TYPES = ['휴진', '토요일진료', '일요일진료', '오전진료', '오후진료', '야간진료', '공휴일진료'] as const;
   const tagToDates: Record<string, string[]> = {};
@@ -283,13 +285,10 @@ function today(): string {
 
 /**
  * 거래처명으로 거래처DB에서 페이지 검색 → page ID 반환.
- * OLD 🏥 거래처 DB의 title 컬럼명은 "거래처명".
- *
- * 매칭은 normalizeClinicName 기반 (공백 흔들림에 강함). 정확 일치 우선,
- * 정규화 일치는 fallback.
+ * dbIdOverride가 주어지면 해당 DB에서, 아니면 NOTION_MAIN_DB_ID에서 검색.
  */
-async function findClinicByName(clinicName: string): Promise<string | null> {
-  const dbId = process.env.NOTION_MAIN_DB_ID;
+async function findClinicByName(clinicName: string, dbIdOverride?: string): Promise<string | null> {
+  const dbId = dbIdOverride || process.env.NOTION_MAIN_DB_ID;
   if (!dbId || !clinicName) return null;
   try {
     const res = await withRetry(() =>
@@ -336,36 +335,15 @@ export async function getPageData(pageId: string): Promise<unknown | null> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 거래처 properties / page body 빌더 (OLD 🏥 거래처 스키마)
+// 거래처 properties / page body 빌더 (신 "거래처 DB" 스키마)
 // ─────────────────────────────────────────────────────────────────────────────
-
-// 폼이 보내는 시/도 → OLD 거래처 "지역" select 옵션
-const REGION_MAP: Record<string, string> = {
-  '서울특별시': '서울', '서울': '서울',
-  '경기도': '경기', '경기': '경기',
-  '인천광역시': '인천', '인천': '인천',
-  '강원도': '강원', '강원특별자치도': '강원', '강원': '강원',
-  '충청북도': '충청', '충청남도': '충청', '대전광역시': '충청', '세종특별자치시': '충청', '충청': '충청',
-  '전라북도': '전라', '전라남도': '전라', '광주광역시': '전라', '전북특별자치도': '전라', '전라': '전라',
-  '경상북도': '경상', '경상남도': '경상', '대구광역시': '경상', '부산광역시': '경상', '울산광역시': '경상', '경상': '경상',
-  '제주특별자치도': '제주', '제주': '제주',
-};
-
-// 폼 진료과목 8개 → OLD 거래처 진료과목 multi 옵션
-const SUBJECT_MAP: Record<string, string> = {
-  '일반진료': '치과',
-  '임플란트': '임플란트',
-  '보철': '보철',
-  '턱관절치료': '치과',
-  '교정': '교정',
-  '심미치료': '치과',
-  '소아진료': '소아치과',
-  '기타': '치과',
-};
 
 function buildMainProperties(data: Record<string, unknown>): Record<string, unknown> {
   const s1 = (data.step1 || {}) as Record<string, unknown>;
   const s2 = (data.step2 || {}) as Record<string, unknown>;
+  const s3 = (data.step3 || {}) as Record<string, unknown>;
+  const s4 = (data.step4 || {}) as Record<string, unknown>;
+  const s5 = (data.step5 || {}) as Record<string, unknown>;
   const s6 = (data.step6 || {}) as Record<string, unknown>;
   const region = (s1.region || {}) as Record<string, string>;
 
@@ -376,50 +354,152 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const props: any = {
     '거래처명': { title: [{ text: { content: (s1.clinicName as string) || '' } }] },
-    '활성여부': { select: { name: '활성' } },
+    '상태': { status: { name: '계약전' } },
+    '업종': { select: { name: '치과' } },
+    '관계유형': { select: { name: '클라이언트' } },
+    '폼 제출일': { date: { start: today() } },
   };
 
   if (s1.doctorName) {
-    props['원장님_성함'] = { rich_text: [{ text: { content: s1.doctorName as string } }] };
+    props['원장명'] = { rich_text: [{ text: { content: s1.doctorName as string } }] };
   }
   if (s1.phone) {
-    props['대표전화'] = { phone_number: s1.phone as string };
+    props['대표 전화'] = { rich_text: [{ text: { content: s1.phone as string } }] };
   }
   if (addressParts) {
     props['주소'] = { rich_text: [{ text: { content: addressParts } }] };
   }
-  const mappedRegion = REGION_MAP[region.city || ''];
-  if (mappedRegion) {
-    props['지역'] = { select: { name: mappedRegion } };
+  if (region.city) {
+    props['지역'] = { rich_text: [{ text: { content: region.city } }] };
+  }
+  if (s1.openDate) {
+    props['개원예정일'] = { date: { start: s1.openDate as string } };
   }
 
-  // 진료과목 매핑 + 중복 제거
+  // 진료과목: 신 DB 옵션이 폼 값과 동일(일반진료/임플란트/보철/턱관절치료/교정/심미치료/소아진료/기타)
   const dentalSubjects = (s2.dentalSubjects as string[]) || [];
-  const mappedSubjects = Array.from(
-    new Set(dentalSubjects.map((s) => SUBJECT_MAP[s] || s).filter(Boolean))
-  );
-  if (mappedSubjects.length > 0) {
-    props['진료과목_legacy'] = { multi_select: mappedSubjects.map((s) => ({ name: s })) };
+  if (dentalSubjects.length > 0) {
+    props['진료과목'] = { multi_select: dentalSubjects.map((s) => ({ name: s })) };
   }
 
-  // 계약시작일: step6.contractStartDate가 우선, 없으면 step1.openDate
+  const topSubjects = (s2.topSubjects as string[]) || [];
+  if (topSubjects.length > 0) {
+    props['주력진료'] = { multi_select: topSubjects.map((s) => ({ name: s })) };
+  }
+
+  const alignerOptions = (s2.alignerOptions as string[]) || [];
+  if (alignerOptions.length > 0) {
+    props['교정 옵션'] = { multi_select: alignerOptions.map((s) => ({ name: s })) };
+  }
+
+  const pediatricOrtho = (s2.pediatricOrthoOptions as string[]) || [];
+  if (pediatricOrtho.length > 0) {
+    props['소아교정 옵션'] = { multi_select: pediatricOrtho.map((s) => ({ name: s })) };
+  }
+
+  const implantMaterials = (s2.implantMaterials as Record<string, string[]>) || {};
+  const implantBrands = Object.keys(implantMaterials).filter(Boolean);
+  if (implantBrands.length > 0) {
+    props['임플란트 재료'] = { multi_select: implantBrands.map((b) => ({ name: b })) };
+  }
+
+  const schedule = (s2.schedule || {}) as Record<string, { enabled: boolean; start: string; end: string }>;
+  const scheduleLine = Object.entries(schedule)
+    .filter(([, v]) => v.enabled)
+    .map(([day, v]) => `${day} ${v.start}~${v.end}`)
+    .join(', ');
+  if (scheduleLine) {
+    props['진료시간'] = { rich_text: [{ text: { content: scheduleLine } }] };
+  }
+
+  if (s3.chairs) {
+    const chairs = parseInt(s3.chairs as string);
+    if (!isNaN(chairs)) props['체어수'] = { number: chairs };
+  }
+
+  const facilities = (s3.facilities as string[]) || [];
+  if (facilities.length > 0) {
+    props['시설'] = { multi_select: facilities.map((f) => ({ name: f })) };
+  }
+
+  if (s4.oneLiner) {
+    props['한줄소개'] = { rich_text: [{ text: { content: s4.oneLiner as string } }] };
+  }
+  if (s4.brandColor) {
+    props['브랜드 컬러'] = { rich_text: [{ text: { content: s4.brandColor as string } }] };
+  }
+  const promoParts: string[] = [];
+  if (s4.doctorPromo) promoParts.push(`의료진: ${s4.doctorPromo}`);
+  if (s4.clinicPromo) promoParts.push(`병원: ${s4.clinicPromo}`);
+  if (promoParts.length > 0) {
+    props['홍보 포인트'] = { rich_text: [{ text: { content: promoParts.join(' / ').substring(0, 1900) } }] };
+  }
+
+  const referralSource = (s5.referralSource as string[]) || [];
+  if (referralSource.length > 0) {
+    props['소개경로'] = { multi_select: referralSource.map((s) => ({ name: s })) };
+  }
+  if (s5.referralName) {
+    props['소개자명'] = { rich_text: [{ text: { content: s5.referralName as string } }] };
+  }
+  if (s5.budgetRange) {
+    props['예산범위'] = { select: { name: s5.budgetRange as string } };
+  }
+  if (s5.didInfo) {
+    props['DID 정보'] = { rich_text: [{ text: { content: s5.didInfo as string } }] };
+  }
+  if (s5.reviewGift) {
+    props['리뷰 증정선물'] = { rich_text: [{ text: { content: s5.reviewGift as string } }] };
+  }
+  if (s5.channelGift) {
+    props['채널 증정선물'] = { rich_text: [{ text: { content: s5.channelGift as string } }] };
+  }
+  const eventParts: string[] = [];
+  if (s5.openingEvent) eventParts.push(s5.openingEvent as string);
+  if (s5.additionalRequest) eventParts.push(s5.additionalRequest as string);
+  if (eventParts.length > 0) {
+    props['이벤트 / 추가요청'] = { rich_text: [{ text: { content: eventParts.join(' / ').substring(0, 1900) } }] };
+  }
+  const marketingGoals = (s5.marketingGoals as string[]) || [];
+  if (marketingGoals.length > 0) {
+    props['마케팅 목표'] = { rich_text: [{ text: { content: marketingGoals.join(', ') } }] };
+  }
+
+  // 거래시작일: step6.contractStartDate 우선, 없으면 openDate
   const contractStart = (s6.contractStartDate as string) || (s1.openDate as string);
   if (contractStart) {
-    props['계약시작일'] = { date: { start: contractStart } };
+    props['거래시작일'] = { date: { start: contractStart } };
+  }
+  if (s6.isStarterPackage) {
+    props['초기개원 패키지'] = { checkbox: true };
+  }
+  if (s6.monthlyFee) {
+    props['월 계약금'] = { rich_text: [{ text: { content: s6.monthlyFee as string } }] };
+  }
+  if (s6.specialNotes) {
+    props['특이사항'] = { rich_text: [{ text: { content: (s6.specialNotes as string).substring(0, 1900) } }] };
   }
 
-  // 메모: 신규개원 폼 핵심 정보 한 줄 요약 (긴 정보는 본문 blocks에)
-  const memoParts: string[] = [`[신규개원 폼 ${today()}]`];
-  if (s1.openDate) memoParts.push(`개원예정일 ${s1.openDate}`);
+  // 계약 서비스: 선택한 서비스의 팀 목록(중복 제거)
+  const services = (s6.services as { serviceId: string }[]) || [];
+  if (services.length > 0) {
+    const teams = Array.from(new Set(
+      services
+        .map((svc) => SERVICES.find((s) => s.id === svc.serviceId)?.team)
+        .filter((t) => Boolean(t)) as string[]
+    ));
+    if (teams.length > 0) {
+      props['계약 서비스'] = { multi_select: teams.map((t) => ({ name: t })) };
+    }
+  }
+
   const doctors = (s1.doctors as { name: string; title: string; specialty: string }[]) || [];
   if (doctors.length > 0) {
-    const first = doctors[0];
-    memoParts.push(`대표원장 ${first.name || '미입력'}(${first.title}${first.specialty ? ` · ${first.specialty}` : ''})`);
+    const doctorText = doctors
+      .map((d) => `${d.name || '미입력'}(${d.title}${d.specialty ? `·${d.specialty}` : ''})`)
+      .join(', ');
+    props['의료진'] = { rich_text: [{ text: { content: doctorText.substring(0, 1900) } }] };
   }
-  if ((s2.topSubjects as string[])?.length) {
-    memoParts.push(`주력 ${(s2.topSubjects as string[]).join('/')}`);
-  }
-  props['메모'] = { rich_text: [{ text: { content: memoParts.join(' · ').substring(0, 1900) } }] };
 
   return props;
 }
