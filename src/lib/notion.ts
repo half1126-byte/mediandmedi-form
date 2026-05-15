@@ -399,7 +399,7 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     new Set(dentalSubjects.map((s) => SUBJECT_MAP[s] || s).filter(Boolean))
   );
   if (mappedSubjects.length > 0) {
-    props['진료과목'] = { multi_select: mappedSubjects.map((s) => ({ name: s })) };
+    props['진료과목_legacy'] = { multi_select: mappedSubjects.map((s) => ({ name: s })) };
   }
 
   // 계약시작일: step6.contractStartDate가 우선, 없으면 step1.openDate
