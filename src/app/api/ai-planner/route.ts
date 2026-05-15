@@ -6,7 +6,7 @@ import { join } from 'path';
 const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'http://medischedule.co.kr',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
