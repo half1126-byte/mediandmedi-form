@@ -17,9 +17,9 @@ describe('generateTeamTasks', () => {
     );
 
     expect(results).toHaveLength(1);
-    expect(results[0].team).toBe('카페팀');
+    expect(results[0].team).toBe('마케팅팀');
     expect(results[0].taskName).toContain('해피치과');
-    expect(results[0].taskName).toContain('카페바이럴');
+    expect(results[0].taskName).toContain('카페 바이럴');
     expect(results[0].taskName).toContain('10건/월');
     expect(results[0].success).toBe(true);
   });
@@ -64,10 +64,10 @@ describe('generateTeamTasks', () => {
 
     const results = await generateTeamTasks(
       '해피치과',
-      [{ serviceId: 'design-homepage' }],
+      [{ serviceId: 'web-homepage-build' }],
       'parent-123'
     );
 
-    expect(results[0].taskName).toBe('신규: 해피치과 - 홈페이지 디자인');
+    expect(results[0].taskName).toBe('신규: 해피치과 - 홈페이지 제작');
   });
 });

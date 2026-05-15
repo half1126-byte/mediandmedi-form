@@ -10,7 +10,7 @@ describe('LoadingOverlay', () => {
 
   it('show=true일 때 렌더링', () => {
     render(<LoadingOverlay show={true} />);
-    expect(screen.getByText('거래처 정보 저장 중...')).toBeInTheDocument();
+    expect(screen.getByText('치과 정보 저장 중...')).toBeInTheDocument();
   });
 
   it('커스텀 스텝 표시', () => {
