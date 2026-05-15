@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const userPrompt = buildPrompt({ mode, clinicName, specialty, platform, items, concept, brief, userBrief });
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 2048,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
