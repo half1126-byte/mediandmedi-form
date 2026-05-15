@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { isHoliday } from '@/data/holidays';
 import ReviewModal from '@/components/ReviewModal';
@@ -55,6 +55,8 @@ export default function ScheduleChangePage() {
   const [error, setError] = useState('');
   const [showReview, setShowReview] = useState(false);
 
+  const calendarRef = useRef<HTMLDivElement>(null);
+
   // 사용자가 제출 버튼 클릭 → 검토 모달 띄움
   const handleReviewOpen = () => {
     if (!clinicName.trim() || !doctorName.trim()) {
@@ -91,6 +93,35 @@ export default function ScheduleChangePage() {
   const canSubmit = clinicName.trim() && doctorName.trim();
   const hasHoliday = Object.values(dateSchedules).some(tags => tags.includes('휴진'));
 
+  const captureCalendarImage = async (): Promise<string | null> => {
+    if (!calendarRef.current) return null;
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(calendarRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      return await new Promise<string | null>((resolve) => {
+        canvas.toBlob(async (blob) => {
+          if (!blob) { resolve(null); return; }
+          const formData = new FormData();
+          formData.append('image', blob, 'calendar.png');
+          try {
+            const up = await fetch('/api/upload-calendar', { method: 'POST', body: formData });
+            const upData = await up.json();
+            resolve(upData.success ? upData.url : null);
+          } catch {
+            resolve(null);
+          }
+        }, 'image/png');
+      });
+    } catch {
+      return null;
+    }
+  };
+
   const handleSubmit = async () => {
     if (!canSubmit || submitting) return;
     setShowReview(false);
@@ -105,6 +136,9 @@ export default function ScheduleChangePage() {
         return `${h ? `${d}일(${h.name})` : `${d}일`}: ${tags.join(', ')}`;
       }).join('\n');
 
+    // 달력 이미지 캡처 (실패해도 제출은 계속)
+    const calendarImageUrl = await captureCalendarImage();
+
     try {
       const res = await fetch('/api/schedule-change', {
         method: 'POST',
@@ -118,6 +152,7 @@ export default function ScheduleChangePage() {
           calendarText: calendarText.trim() || undefined,
           specialNote: specialNote.trim() || undefined,
           extraRequest: extraRequest.trim(), holidayReason: holidayReason.trim(),
+          calendarImageUrl: calendarImageUrl || undefined,
         }),
       });
       const data = await res.json();
@@ -264,7 +299,7 @@ export default function ScheduleChangePage() {
           </section>
 
           {/* STEP 2: 진료일정 달력 */}
-          <section className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
+          <section ref={calendarRef} className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
             {/* 스텝 헤더 */}
             <div className="px-5 pt-5 pb-4 border-b border-[#F3F4F6]">
               <div className="flex items-center gap-2 mb-1">

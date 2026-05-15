@@ -272,6 +272,33 @@ export async function createScheduleChangeRecord(
     })
   );
 
+  // 달력 이미지가 있으면 페이지 본문에 이미지 블록 추가
+  const calendarImageUrl = data.calendarImageUrl as string | undefined;
+  if (calendarImageUrl) {
+    try {
+      await withRetry(() =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (notion.blocks.children as any).append({
+          block_id: response.id,
+          children: [
+            {
+              object: 'block',
+              type: 'heading_3',
+              heading_3: { rich_text: [{ type: 'text', text: { content: '📅 진료일정 달력' } }] },
+            },
+            {
+              object: 'block',
+              type: 'image',
+              image: { type: 'external', external: { url: calendarImageUrl } },
+            },
+          ],
+        })
+      );
+    } catch (e) {
+      console.warn('[calendar-image] 이미지 블록 추가 실패 (무시):', e);
+    }
+  }
+
   return response.id;
 }
 
