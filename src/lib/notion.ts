@@ -236,20 +236,20 @@ export async function createScheduleChangeRecord(
     properties['이벤트'] = { rich_text: [{ text: { content: data.events as string } }] };
   }
 
-  // 출력사이즈: OLD는 A4/가로 DID/세로 DID/팝업만 허용. 폼이 보내는 다른 값(A3/A2/B-시리즈/롤배너/현수막)은 기타요청에.
-  const allowedSizes = new Set(['A4', '가로 DID', '세로 DID', '팝업']);
-  const matchedSizes = printSizes.filter((s) => allowedSizes.has(s));
-  const unmatchedSizes = printSizes.filter((s) => !allowedSizes.has(s));
-  if (matchedSizes.length > 0) {
-    properties['출력사이즈'] = { multi_select: matchedSizes.map((s) => ({ name: s })) };
+  if (data.templateType) {
+    properties['템플릿 타입'] = { select: { name: data.templateType as string } };
   }
-
-  // 기타요청: 폼의 extraRequest + 매핑 안 된 출력사이즈 합치기
-  const extraParts: string[] = [];
-  if (data.extraRequest) extraParts.push(data.extraRequest as string);
-  if (unmatchedSizes.length > 0) extraParts.push(`요청 사이즈: ${unmatchedSizes.join(', ')}`);
-  if (extraParts.length > 0) {
-    properties['기타요청'] = { rich_text: [{ text: { content: extraParts.join(' | ').substring(0, 1900) } }] };
+  if (printSizes.length > 0) {
+    properties['출력사이즈'] = { multi_select: printSizes.map((s) => ({ name: s })) };
+  }
+  if (data.calendarText) {
+    properties['달력 표기 필수내용 원문'] = { rich_text: [{ text: { content: (data.calendarText as string).substring(0, 1900) } }] };
+  }
+  if (data.specialNote) {
+    properties['특이사항/병원요청'] = { rich_text: [{ text: { content: (data.specialNote as string).substring(0, 1900) } }] };
+  }
+  if (data.extraRequest) {
+    properties['기타요청'] = { rich_text: [{ text: { content: (data.extraRequest as string).substring(0, 1900) } }] };
   }
 
   if (holidayReason) {

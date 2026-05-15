@@ -18,7 +18,7 @@ const SCHEDULE_TAGS: { label: ScheduleTag; color: string; bg: string; emoji: str
   { label: '공휴일진료', color: '#BE185D', bg: '#FCE7F3', emoji: '🎌' },
 ];
 
-const PRINT_SIZES = ['팝업(가로)', '팝업(세로)', 'A4(가로)', 'A4(세로)', '세로형 DID', '가로형 DID'] as const;
+const PRINT_SIZES = ['팝업', 'A4', '세로 DID', '가로 DID'] as const;
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
 function formatDate(y: number, m: number, d: number) {
@@ -46,6 +46,9 @@ export default function ScheduleChangePage() {
   const [holidayReason, setHolidayReason] = useState('');
   const [events, setEvents] = useState('');
   const [printSizes, setPrintSizes] = useState<string[]>([]);
+  const [templateType, setTemplateType] = useState('');
+  const [calendarText, setCalendarText] = useState('');
+  const [specialNote, setSpecialNote] = useState('');
   const [extraRequest, setExtraRequest] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -111,6 +114,9 @@ export default function ScheduleChangePage() {
           targetMonth: `${calYear}년 ${calMonth}월`, calYear, calMonth,
           scheduleData: scheduleSummary, dateSchedulesRaw: dateSchedules,
           events: events.trim(), printSizes,
+          templateType: templateType || undefined,
+          calendarText: calendarText.trim() || undefined,
+          specialNote: specialNote.trim() || undefined,
           extraRequest: extraRequest.trim(), holidayReason: holidayReason.trim(),
         }),
       });
@@ -465,6 +471,28 @@ export default function ScheduleChangePage() {
               />
             </div>
 
+            {/* 템플릿 타입 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-[#374151]">
+                템플릿 타입을 선택해 주세요
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {(['A', 'B', '고정', '반고정'] as const).map(t => {
+                  const active = templateType === t;
+                  return (
+                    <button key={t} onClick={() => setTemplateType(active ? '' : t)}
+                      className={`h-11 rounded-xl text-sm font-semibold transition-all
+                        ${active
+                          ? 'bg-[#2563EB] text-white ring-2 ring-[#2563EB] ring-offset-1'
+                          : 'bg-[#F8FAFC] text-[#374151] border border-[#E5E7EB] hover:border-[#2563EB] hover:text-[#2563EB]'
+                        }`}>
+                      {active && '✓ '}{t}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* 출력 사이즈 */}
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-[#374151]">
@@ -485,6 +513,36 @@ export default function ScheduleChangePage() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* 달력 표기 필수내용 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-[#374151]">
+                달력에 꼭 표기해야 할 내용을 적어 주세요
+              </label>
+              <textarea
+                value={calendarText}
+                onChange={e => setCalendarText(e.target.value)}
+                placeholder={`예:\n화 야간진료\n일 정기휴무\n목 정기휴무\n6월 4일, 11일 목요일 정상 진료`}
+                rows={4}
+                className="w-full px-4 py-3 rounded-xl border border-[#D1D5DB] text-sm resize-none
+                           focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
+              />
+            </div>
+
+            {/* 특이사항/병원요청 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-[#374151]">
+                특이사항 / 병원 요청사항
+              </label>
+              <textarea
+                value={specialNote}
+                onChange={e => setSpecialNote(e.target.value)}
+                placeholder={`예: 기본적으로 휴진 있는 주의 목요일은 근무`}
+                rows={2}
+                className="w-full px-4 py-3 rounded-xl border border-[#D1D5DB] text-sm resize-none
+                           focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
+              />
             </div>
 
             {/* 기타 요청사항 */}
@@ -540,7 +598,10 @@ export default function ScheduleChangePage() {
           },
           { label: '휴진 사유', value: holidayReason },
           { label: '이벤트', value: events },
+          { label: '템플릿 타입', value: templateType },
           { label: '출력 사이즈', value: printSizes.join(', ') },
+          { label: '달력 표기 필수내용', value: calendarText },
+          { label: '특이사항/병원요청', value: specialNote },
           { label: '기타 요청', value: extraRequest },
         ]}
         onCancel={() => setShowReview(false)}
