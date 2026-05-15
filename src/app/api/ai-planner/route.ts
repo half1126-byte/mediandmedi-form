@@ -32,12 +32,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { mode, clinicName, specialty, platform, items, concept, brief } = body;
+    const { mode, clinicName, specialty, platform, items, concept, brief, userBrief } = body;
 
     const skill = loadSkill();
     const systemPrompt = `${skill}\n\n---\n\n## 응답 규칙\n- 반드시 한국어로 답변하세요.\n- 마크다운 형식으로 구조화하여 출력하세요.\n- 의료광고법을 준수하는 표현만 사용하세요.\n- 실용적이고 바로 사용 가능한 내용을 제공하세요.`;
 
-    const userPrompt = buildPrompt({ mode, clinicName, specialty, platform, items, concept, brief });
+    const userPrompt = buildPrompt({ mode, clinicName, specialty, platform, items, concept, brief, userBrief });
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
@@ -63,10 +63,11 @@ type PlannerInput = {
   items?: { name: string; quantity?: number; platform?: string }[];
   concept?: string;
   brief?: string;
+  userBrief?: string;
 };
 
 function buildPrompt(input: PlannerInput): string {
-  const { mode, clinicName, specialty, platform, items, concept, brief } = input;
+  const { mode, clinicName, specialty, platform, items, concept, brief, userBrief } = input;
 
   const context = [
     clinicName   && `병원명: ${clinicName}`,
@@ -74,7 +75,8 @@ function buildPrompt(input: PlannerInput): string {
     platform     && `주요 플랫폼: ${platform}`,
     items?.length && `제작물 목록:\n${items.map(it => `  - ${it.name}${it.quantity ? ` (${it.quantity}개)` : ''}${it.platform ? ` [${it.platform}]` : ''}`).join('\n')}`,
     concept      && `현재 컨셉 메모: ${concept}`,
-    brief        && `기획 메모: ${brief}`,
+    brief        && `병원 가이드라인: ${brief}`,
+    userBrief    && `마케터 추가 지시사항: ${userBrief}`,
   ].filter(Boolean).join('\n');
 
   const prompts: Record<string, string> = {
