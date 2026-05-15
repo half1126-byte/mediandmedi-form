@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vercel build artifacts — 빌드 산출물이라 lint 대상 아님
+    ".vercel/**",
   ]),
 ]);
 

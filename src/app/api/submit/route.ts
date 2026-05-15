@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createMainRecord } from '@/lib/notion';
 import { generateTeamTasks } from '@/lib/team-tasks';
 
-const isDemoMode = !process.env.NOTION_API_KEY || !process.env.NOTION_MAIN_DB_ID;
+// lib/notion.ts와 동일 우선순위: NOTION_MEETING_API_KEY가 신 워크스페이스 키
+const isDemoMode =
+  (!process.env.NOTION_MEETING_API_KEY && !process.env.NOTION_API_KEY) ||
+  !process.env.NOTION_MAIN_DB_ID;
 
 export async function POST(request: NextRequest) {
   try {

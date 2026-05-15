@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createScheduleChangeRecord } from '@/lib/notion';
 
-const isDemoMode = !process.env.NOTION_API_KEY || !process.env.NOTION_SCHEDULE_DB_ID;
+const isDemoMode =
+  (!process.env.NOTION_MEETING_API_KEY && !process.env.NOTION_API_KEY) ||
+  !process.env.NOTION_SCHEDULE_DB_ID;
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export interface ReviewItem {
   label: string;
@@ -28,11 +28,14 @@ export default function ReviewModal({
   open, title, warning, items, onCancel, onConfirm, submitting = false,
 }: ReviewModalProps) {
   const [confirmed, setConfirmed] = useState(false);
-
-  // 모달 열릴 때마다 체크박스 리셋
-  useEffect(() => {
+  // 모달이 열릴 때마다 체크박스 자동 리셋.
+  // React 권장 패턴: useEffect에서 setState하면 cascading render. prevOpen 비교로
+  // open prop이 false→true 전환되는 시점에만 render 중 동기 리셋.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) setConfirmed(false);
-  }, [open]);
+  }
 
   if (!open) return null;
 
