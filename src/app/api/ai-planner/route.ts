@@ -5,6 +5,16 @@ import { join } from 'path';
 
 const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
+
 // 스킬 MD 로드 (빌드 타임에 번들됨)
 function loadSkill(): string {
   try {
@@ -17,7 +27,7 @@ function loadSkill(): string {
 
 export async function POST(request: NextRequest) {
   if (!process.env.CLAUDE_API_KEY || process.env.CLAUDE_API_KEY === '여기에_API_키_입력') {
-    return NextResponse.json({ error: 'CLAUDE_API_KEY 환경변수를 설정해주세요.' }, { status: 500 });
+    return NextResponse.json({ error: 'CLAUDE_API_KEY 환경변수를 설정해주세요.' }, { status: 500, headers: CORS_HEADERS });
   }
 
   try {
@@ -38,10 +48,10 @@ export async function POST(request: NextRequest) {
 
     const result = message.content[0].type === 'text' ? message.content[0].text : '';
 
-    return NextResponse.json({ success: true, result, mode });
+    return NextResponse.json({ success: true, result, mode }, { headers: CORS_HEADERS });
   } catch (err) {
     console.error('[ai-planner] error:', err);
-    return NextResponse.json({ error: 'AI 요청 실패. 잠시 후 다시 시도해주세요.' }, { status: 500 });
+    return NextResponse.json({ error: 'AI 요청 실패. 잠시 후 다시 시도해주세요.' }, { status: 500, headers: CORS_HEADERS });
   }
 }
 
