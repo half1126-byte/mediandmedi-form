@@ -1420,10 +1420,24 @@ function Step6({
 // Step Web: 홈페이지/웹
 function WebSubhead({ children, hint }: { children: React.ReactNode; hint?: string }) {
   return (
-    <div className="pt-2">
+    <div className="pb-3 border-b border-[#E5E7EB]">
       <h3 className="text-base font-bold text-[#374151]">{children}</h3>
       {hint && <p className="text-xs text-[#6B7280] mt-1">{hint}</p>}
     </div>
+  );
+}
+
+// 홈페이지/웹 스텝의 소섹션을 카드로 묶어 시각적 경계를 부여 (기존 '첨부 자료' 박스 패턴과 일관)
+function WebSection({
+  title, hint, children,
+}: {
+  title: React.ReactNode; hint?: string; children: React.ReactNode;
+}) {
+  return (
+    <section className="bg-[#F8FAFC] rounded-xl p-5 space-y-4 border border-[#E5E7EB]">
+      <WebSubhead hint={hint}>{title}</WebSubhead>
+      {children}
+    </section>
   );
 }
 
@@ -1445,147 +1459,129 @@ function StepWeb({
       </div>
 
       {/* 오시는 길 */}
-      <WebSubhead hint="홈페이지·블로그 '오시는 길'에 그대로 노출됩니다">📍 오시는 길</WebSubhead>
-      <div>
-        <FieldLabel>지하철 노선</FieldLabel>
-        <TextInput value={data.subway} onChange={(v) => onChange({ subway: v })} placeholder="예: 압구정로데오역 5번 출구 도보 5분" />
-      </div>
-      <div>
-        <FieldLabel>버스 노선</FieldLabel>
-        <TextInput value={data.bus} onChange={(v) => onChange({ bus: v })} placeholder="예: 강남역 정류장, 140번, 146번" />
-      </div>
-      <div>
-        <FieldLabel>위치 특이사항 / 어필 사항</FieldLabel>
-        <TextInput value={data.locationNote} onChange={(v) => onChange({ locationNote: v })} placeholder="예: 건물 내 엘리베이터 바로 앞, 랜드마크 인근" />
-      </div>
+      <WebSection title="📍 오시는 길" hint="홈페이지·블로그 '오시는 길'에 그대로 노출됩니다">
+        <div>
+          <FieldLabel>지하철 노선</FieldLabel>
+          <TextInput value={data.subway} onChange={(v) => onChange({ subway: v })} placeholder="예: 압구정로데오역 5번 출구 도보 5분" />
+        </div>
+        <div>
+          <FieldLabel>버스 노선</FieldLabel>
+          <TextInput value={data.bus} onChange={(v) => onChange({ bus: v })} placeholder="예: 강남역 정류장, 140번, 146번" />
+        </div>
+        <div>
+          <FieldLabel>위치 특이사항 / 어필 사항</FieldLabel>
+          <TextInput value={data.locationNote} onChange={(v) => onChange({ locationNote: v })} placeholder="예: 건물 내 엘리베이터 바로 앞, 랜드마크 인근" />
+        </div>
+      </WebSection>
 
       {/* 원장 약력 */}
-      <WebSubhead hint="홈페이지 의료진 소개에 사용됩니다">👩‍⚕️ 원장 약력 (상세)</WebSubhead>
-      <div>
-        <FieldLabel>학력</FieldLabel>
-        <TextArea value={data.education} onChange={(v) => onChange({ education: v })} placeholder="예: 서울대학교 치과대학 졸업" rows={2} />
-      </div>
-      <div>
-        <FieldLabel>전직 경력 (병원명·직위 전부)</FieldLabel>
-        <TextArea value={data.career} onChange={(v) => onChange({ career: v })} placeholder="예: 전) OO치과의원 원장 / 전) OO치과 총괄원장" rows={3} />
-      </div>
-      <div>
-        <FieldLabel>학회 / 협회 활동</FieldLabel>
-        <TextArea value={data.associations} onChange={(v) => onChange({ associations: v })} placeholder="예: 대한치과보철학회 정회원 / 대한구강악안면임플란트학회 회원" rows={2} />
-      </div>
-      <div>
-        <FieldLabel>수상 / 논문 / 방송 출연 이력</FieldLabel>
-        <TextArea value={data.awards} onChange={(v) => onChange({ awards: v })} placeholder="있으시면 작성해 주세요" rows={2} />
-      </div>
+      <WebSection title="👩‍⚕️ 원장 약력 (상세)" hint="홈페이지 의료진 소개에 사용됩니다">
+        <div>
+          <FieldLabel>학력</FieldLabel>
+          <TextArea value={data.education} onChange={(v) => onChange({ education: v })} placeholder="예: 서울대학교 치과대학 졸업" rows={2} />
+        </div>
+        <div>
+          <FieldLabel>전직 경력 (병원명·직위 전부)</FieldLabel>
+          <TextArea value={data.career} onChange={(v) => onChange({ career: v })} placeholder="예: 전) OO치과의원 원장 / 전) OO치과 총괄원장" rows={3} />
+        </div>
+        <div>
+          <FieldLabel>학회 / 협회 활동</FieldLabel>
+          <TextArea value={data.associations} onChange={(v) => onChange({ associations: v })} placeholder="예: 대한치과보철학회 정회원 / 대한구강악안면임플란트학회 회원" rows={2} />
+        </div>
+        <div>
+          <FieldLabel>수상 / 논문 / 방송 출연 이력</FieldLabel>
+          <TextArea value={data.awards} onChange={(v) => onChange({ awards: v })} placeholder="있으시면 작성해 주세요" rows={2} />
+        </div>
+      </WebSection>
 
       {/* 디자인 방향 */}
-      <WebSubhead>🎨 키워드 및 디자인 방향</WebSubhead>
-      <div>
-        <FieldLabel>병원 상징 메인 키워드 (우선순위 순)</FieldLabel>
-        <TextInput value={data.mainKeywords} onChange={(v) => onChange({ mainKeywords: v })} placeholder="예: 프리미엄, 신뢰, 자연스러움, 전문성" />
-      </div>
-      <div>
-        <FieldLabel>참고 / 좋아하는 사이트 URL</FieldLabel>
-        <TextArea value={data.referenceSites} onChange={(v) => onChange({ referenceSites: v })} placeholder="마음에 드는 홈페이지 주소를 적어 주세요 (여러 개 가능)" rows={2} />
-      </div>
-      <div>
-        <FieldLabel>디자인 작업 시 중점 사항</FieldLabel>
-        <TextInput value={data.designFocus} onChange={(v) => onChange({ designFocus: v })} placeholder="예: 인물 위주 / 사진 위주 / 깔끔한 텍스트 중심" />
-      </div>
-      <div>
-        <FieldLabel>메인 페이지에서 가장 강조할 내용</FieldLabel>
-        <TextArea value={data.mainEmphasis} onChange={(v) => onChange({ mainEmphasis: v })} placeholder="메인 화면에 가장 부각되었으면 하는 내용" rows={2} />
-      </div>
-      <div>
-        <FieldLabel>병원 대표 사진 / 이미지 방향</FieldLabel>
-        <TextArea value={data.photoDirection} onChange={(v) => onChange({ photoDirection: v })} placeholder="예: 밝고 깔끔한 원장 프로필 + 인테리어 사진 보유 (사진 파일은 별도 전달)" rows={2} />
-      </div>
+      <WebSection title="🎨 키워드 및 디자인 방향">
+        <div>
+          <FieldLabel>병원 상징 메인 키워드 (우선순위 순)</FieldLabel>
+          <TextInput value={data.mainKeywords} onChange={(v) => onChange({ mainKeywords: v })} placeholder="예: 프리미엄, 신뢰, 자연스러움, 전문성" />
+        </div>
+        <div>
+          <FieldLabel>참고 / 좋아하는 사이트 URL</FieldLabel>
+          <TextArea value={data.referenceSites} onChange={(v) => onChange({ referenceSites: v })} placeholder="마음에 드는 홈페이지 주소를 적어 주세요 (여러 개 가능)" rows={2} />
+        </div>
+        <div>
+          <FieldLabel>디자인 작업 시 중점 사항</FieldLabel>
+          <TextInput value={data.designFocus} onChange={(v) => onChange({ designFocus: v })} placeholder="예: 인물 위주 / 사진 위주 / 깔끔한 텍스트 중심" />
+        </div>
+        <div>
+          <FieldLabel>메인 페이지에서 가장 강조할 내용</FieldLabel>
+          <TextArea value={data.mainEmphasis} onChange={(v) => onChange({ mainEmphasis: v })} placeholder="메인 화면에 가장 부각되었으면 하는 내용" rows={2} />
+        </div>
+        <div>
+          <FieldLabel>병원 대표 사진 / 이미지 방향</FieldLabel>
+          <TextArea value={data.photoDirection} onChange={(v) => onChange({ photoDirection: v })} placeholder="예: 밝고 깔끔한 원장 프로필 + 인테리어 사진 보유 (사진 파일은 별도 전달)" rows={2} />
+        </div>
+      </WebSection>
 
       {/* 온라인 채널 & 도메인 */}
-      <WebSubhead>📱 온라인 채널 & 도메인</WebSubhead>
-      <div>
-        <FieldLabel>인스타그램 URL</FieldLabel>
-        <TextInput value={data.instagramUrl} onChange={(v) => onChange({ instagramUrl: v })} placeholder="https://www.instagram.com/..." />
-      </div>
-      <div>
-        <FieldLabel>블로그 URL</FieldLabel>
-        <TextInput value={data.blogUrl} onChange={(v) => onChange({ blogUrl: v })} placeholder="https://blog.naver.com/..." />
-      </div>
-      <div>
-        <FieldLabel>유튜브 채널 URL</FieldLabel>
-        <TextInput value={data.youtubeUrl} onChange={(v) => onChange({ youtubeUrl: v })} placeholder="https://youtube.com/..." />
-      </div>
-      <div>
-        <FieldLabel>카카오톡 채널</FieldLabel>
-        <TextInput value={data.kakaoChannel} onChange={(v) => onChange({ kakaoChannel: v })} placeholder="채널명 또는 URL" />
-      </div>
-      <div>
-        <FieldLabel>네이버 예약 URL</FieldLabel>
-        <TextInput value={data.naverBooking} onChange={(v) => onChange({ naverBooking: v })} placeholder="https://booking.naver.com/..." />
-      </div>
-      <div>
-        <FieldLabel>원하는 도메인 주소 (1~3순위)</FieldLabel>
-        <TextArea value={data.desiredDomain} onChange={(v) => onChange({ desiredDomain: v })} placeholder="예: 1순위 ooclinic.com / 2순위 ooclinic.co.kr" rows={2} />
-      </div>
-      <div>
-        <FieldLabel>SSL 인증서(https) 설치 여부</FieldLabel>
-        <ChipSelector
-          options={SSL_OPTIONS}
-          selected={data.ssl ? [data.ssl] : []}
-          onChange={(v) => onChange({ ssl: v[0] || '' })}
-          multiple={false}
-        />
-      </div>
+      <WebSection title="📱 온라인 채널 & 도메인">
+        <div>
+          <FieldLabel>인스타그램 URL</FieldLabel>
+          <TextInput value={data.instagramUrl} onChange={(v) => onChange({ instagramUrl: v })} placeholder="https://www.instagram.com/..." />
+        </div>
+        <div>
+          <FieldLabel>블로그 URL</FieldLabel>
+          <TextInput value={data.blogUrl} onChange={(v) => onChange({ blogUrl: v })} placeholder="https://blog.naver.com/..." />
+        </div>
+        <div>
+          <FieldLabel>유튜브 채널 URL</FieldLabel>
+          <TextInput value={data.youtubeUrl} onChange={(v) => onChange({ youtubeUrl: v })} placeholder="https://youtube.com/..." />
+        </div>
+        <div>
+          <FieldLabel>카카오톡 채널</FieldLabel>
+          <TextInput value={data.kakaoChannel} onChange={(v) => onChange({ kakaoChannel: v })} placeholder="채널명 또는 URL" />
+        </div>
+        <div>
+          <FieldLabel>네이버 예약 URL</FieldLabel>
+          <TextInput value={data.naverBooking} onChange={(v) => onChange({ naverBooking: v })} placeholder="https://booking.naver.com/..." />
+        </div>
+        <div>
+          <FieldLabel>원하는 도메인 주소 (1~3순위)</FieldLabel>
+          <TextArea value={data.desiredDomain} onChange={(v) => onChange({ desiredDomain: v })} placeholder="예: 1순위 ooclinic.com / 2순위 ooclinic.co.kr" rows={2} />
+        </div>
+        <div>
+          <FieldLabel>SSL 인증서(https) 설치 여부</FieldLabel>
+          <ChipSelector options={SSL_OPTIONS} selected={data.ssl ? [data.ssl] : []} onChange={(v) => onChange({ ssl: v[0] || '' })} multiple={false} />
+        </div>
+      </WebSection>
 
       {/* 기능 요구사항 */}
-      <WebSubhead>⚙️ 기능 요구사항</WebSubhead>
-      <div>
-        <FieldLabel>필요한 기능</FieldLabel>
-        <ChipSelector
-          options={HOMEPAGE_FEATURES}
-          selected={data.features}
-          onChange={(v) => onChange({ features: v })}
-        />
-      </div>
-      <div>
-        <FieldLabel>홈페이지 직접 수정·관리 예정 여부</FieldLabel>
-        <ChipSelector
-          options={CMS_OPTIONS}
-          selected={data.cmsNeed ? [data.cmsNeed] : []}
-          onChange={(v) => onChange({ cmsNeed: v[0] || '' })}
-          multiple={false}
-        />
-      </div>
-      <div>
-        <FieldLabel>기존 홈페이지 유무</FieldLabel>
-        <ChipSelector
-          options={RENEWAL_OPTIONS}
-          selected={data.renewalType ? [data.renewalType] : []}
-          onChange={(v) => onChange({ renewalType: v[0] || '' })}
-          multiple={false}
-        />
-        {data.renewalType === '기존 홈페이지 있음(리뉴얼)' && (
-          <div className="mt-2">
-            <TextInput value={data.oldSiteUrl} onChange={(v) => onChange({ oldSiteUrl: v })} placeholder="기존 홈페이지 URL (예: https://기존홈페이지.com)" />
-          </div>
-        )}
-      </div>
+      <WebSection title="⚙️ 기능 요구사항">
+        <div>
+          <FieldLabel>필요한 기능</FieldLabel>
+          <ChipSelector options={HOMEPAGE_FEATURES} selected={data.features} onChange={(v) => onChange({ features: v })} />
+        </div>
+        <div>
+          <FieldLabel>홈페이지 직접 수정·관리 예정 여부</FieldLabel>
+          <ChipSelector options={CMS_OPTIONS} selected={data.cmsNeed ? [data.cmsNeed] : []} onChange={(v) => onChange({ cmsNeed: v[0] || '' })} multiple={false} />
+        </div>
+        <div>
+          <FieldLabel>기존 홈페이지 유무</FieldLabel>
+          <ChipSelector options={RENEWAL_OPTIONS} selected={data.renewalType ? [data.renewalType] : []} onChange={(v) => onChange({ renewalType: v[0] || '' })} multiple={false} />
+          {data.renewalType === '기존 홈페이지 있음(리뉴얼)' && (
+            <div className="mt-2">
+              <TextInput value={data.oldSiteUrl} onChange={(v) => onChange({ oldSiteUrl: v })} placeholder="기존 홈페이지 URL (예: https://기존홈페이지.com)" />
+            </div>
+          )}
+        </div>
+      </WebSection>
 
       {/* 일정/유지보수 */}
-      <WebSubhead>📅 일정 / 유지보수</WebSubhead>
-      <div>
-        <FieldLabel>원하는 오픈 목표 일정</FieldLabel>
-        <TextInput value={data.homepageDeadline} onChange={(v) => onChange({ homepageDeadline: v })} placeholder="예: 2026년 8월 말 오픈 희망" />
-      </div>
-      <div>
-        <FieldLabel>오픈 후 유지보수 계약 희망 여부</FieldLabel>
-        <ChipSelector
-          options={MAINTENANCE_OPTIONS}
-          selected={data.maintenance ? [data.maintenance] : []}
-          onChange={(v) => onChange({ maintenance: v[0] || '' })}
-          multiple={false}
-        />
-      </div>
+      <WebSection title="📅 일정 / 유지보수">
+        <div>
+          <FieldLabel>원하는 오픈 목표 일정</FieldLabel>
+          <TextInput value={data.homepageDeadline} onChange={(v) => onChange({ homepageDeadline: v })} placeholder="예: 2026년 8월 말 오픈 희망" />
+        </div>
+        <div>
+          <FieldLabel>오픈 후 유지보수 계약 희망 여부</FieldLabel>
+          <ChipSelector options={MAINTENANCE_OPTIONS} selected={data.maintenance ? [data.maintenance] : []} onChange={(v) => onChange({ maintenance: v[0] || '' })} multiple={false} />
+        </div>
+      </WebSection>
     </div>
   );
 }
