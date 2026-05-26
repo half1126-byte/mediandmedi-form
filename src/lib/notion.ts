@@ -537,6 +537,7 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   const s3 = (data.step3 || {}) as Record<string, unknown>;
   const s4 = (data.step4 || {}) as Record<string, unknown>;
   const s5 = (data.step5 || {}) as Record<string, unknown>;
+  const sw = (data.stepWeb || {}) as Record<string, unknown>;
   const s6 = (data.step6 || {}) as Record<string, unknown>;
 
   const blocks: Array<Record<string, unknown>> = [];
@@ -609,6 +610,9 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   // 브랜딩
   blocks.push(heading('브랜딩'));
   if (s4.oneLiner) blocks.push(bullet(`한줄소개: ${s4.oneLiner}`));
+  if (s4.slogan) blocks.push(bullet(`슬로건: ${s4.slogan}`));
+  if (s4.brandVision) blocks.push(bullet(`브랜드 비전: ${s4.brandVision}`));
+  if (s4.brandTone) blocks.push(bullet(`브랜드 톤앤매너: ${s4.brandTone}`));
   if (s4.doctorPromo) blocks.push(bullet(`의료진 포인트: ${s4.doctorPromo}`));
   if (s4.clinicPromo) blocks.push(bullet(`병원 포인트: ${s4.clinicPromo}`));
   if (s4.treatmentPromo) blocks.push(bullet(`주요 진료 포인트: ${s4.treatmentPromo}`));
@@ -639,6 +643,41 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   if (s5.reviewGift) blocks.push(bullet(`리뷰 증정선물: ${s5.reviewGift}`));
   if (s5.channelGift) blocks.push(bullet(`채널 증정선물: ${s5.channelGift}`));
   if (s5.additionalRequest) blocks.push(bullet(`추가 요청: ${s5.additionalRequest}`));
+
+  // 홈페이지/웹
+  const webItems: string[] = [];
+  const webOnemore = (label: string, v: unknown) => {
+    if (v && String(v).trim()) webItems.push(`${label}: ${v}`);
+  };
+  webOnemore('지하철', sw.subway);
+  webOnemore('버스', sw.bus);
+  webOnemore('위치 어필', sw.locationNote);
+  webOnemore('학력', sw.education);
+  webOnemore('경력', sw.career);
+  webOnemore('학회·협회', sw.associations);
+  webOnemore('수상·논문·방송', sw.awards);
+  webOnemore('메인 키워드', sw.mainKeywords);
+  webOnemore('참고 사이트', sw.referenceSites);
+  webOnemore('디자인 중점', sw.designFocus);
+  webOnemore('메인 강조', sw.mainEmphasis);
+  webOnemore('사진 방향', sw.photoDirection);
+  webOnemore('인스타그램', sw.instagramUrl);
+  webOnemore('블로그', sw.blogUrl);
+  webOnemore('유튜브', sw.youtubeUrl);
+  webOnemore('카카오톡 채널', sw.kakaoChannel);
+  webOnemore('네이버 예약', sw.naverBooking);
+  webOnemore('도메인', sw.desiredDomain);
+  webOnemore('SSL', sw.ssl);
+  if ((sw.features as string[])?.length) webItems.push(`필요 기능: ${(sw.features as string[]).join(', ')}`);
+  webOnemore('CMS', sw.cmsNeed);
+  webOnemore('리뉴얼', sw.renewalType);
+  webOnemore('기존 홈페이지 URL', sw.oldSiteUrl);
+  webOnemore('오픈 목표 일정', sw.homepageDeadline);
+  webOnemore('유지보수', sw.maintenance);
+  if (webItems.length > 0) {
+    blocks.push(heading('홈페이지/웹'));
+    webItems.forEach((t) => blocks.push(bullet(t)));
+  }
 
   // 계약
   blocks.push(heading('계약'));
