@@ -128,6 +128,7 @@ function SummaryContent() {
   const step3 = (formData?.step3 || {}) as Record<string, unknown>;
   const step4 = (formData?.step4 || {}) as Record<string, unknown>;
   const step5 = (formData?.step5 || {}) as Record<string, unknown>;
+  const stepWeb = (formData?.stepWeb || {}) as Record<string, unknown>;
   const step6 = (formData?.step6 || {}) as Record<string, unknown>;
   const region = (step1.region || {}) as Record<string, string>;
   const parking = (step3.parking || {}) as Record<string, string>;
@@ -191,8 +192,11 @@ function SummaryContent() {
 
             <SummarySection title="브랜딩 & 철학">
               <InfoRow label="한줄소개" value={step4.oneLiner as string} />
-              <InfoRow label="타겟환자" value={step4.targetPatients as string} />
-              <InfoRow label="차별점" value={step4.differentiator as string} />
+              <InfoRow label="슬로건" value={step4.slogan as string} />
+              <InfoRow label="브랜드 비전" value={step4.brandVision as string} />
+              <InfoRow label="브랜드 톤" value={step4.brandTone as string} />
+              <InfoRow label="진료 철학" value={step4.philosophy as string} />
+              <InfoRow label="입지·타겟" value={step4.locationTarget as string} />
             </SummarySection>
 
             <SummarySection title="마케팅 방향">
@@ -200,6 +204,16 @@ function SummaryContent() {
               <InfoRow label="목표" value={((step5.marketingGoals as string[]) || []).join(', ')} />
               <InfoRow label="채널" value={((step5.desiredChannels as string[]) || []).join(', ')} />
             </SummarySection>
+
+            {(stepWeb.desiredDomain || (stepWeb.features as string[])?.length || stepWeb.mainKeywords) ? (
+              <SummarySection title="홈페이지/웹">
+                <InfoRow label="도메인" value={stepWeb.desiredDomain as string} />
+                <InfoRow label="메인 키워드" value={stepWeb.mainKeywords as string} />
+                <InfoRow label="필요 기능" value={((stepWeb.features as string[]) || []).join(', ')} />
+                <InfoRow label="리뉴얼" value={stepWeb.renewalType as string} />
+                <InfoRow label="오픈 일정" value={stepWeb.homepageDeadline as string} />
+              </SummarySection>
+            ) : null}
 
             {services.length > 0 && (
               <SummarySection title="계약 상품">

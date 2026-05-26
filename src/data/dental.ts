@@ -91,3 +91,25 @@ export const BUDGET_RANGES = [
 ];
 
 export const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'] as const;
+
+// ─── 홈페이지/웹 스텝 옵션 (medischedule.co.kr 홈페이지 제작 질문지 기준) ───
+
+// 홈페이지 필요 기능
+export const HOMEPAGE_FEATURES = [
+  '온라인 예약 시스템', '카카오톡 채널 상담 연동', '네이버 예약 연동',
+  '온라인 상담 채팅', '팝업/이벤트 배너 관리', '비급여 가격표 페이지',
+  'Before & After 갤러리', '환자 후기 게시판', '블로그/뉴스 게시판',
+  '다국어 지원(한/영)', '네이버·카카오 지도 삽입',
+];
+
+// SSL 인증서(https) 설치 여부
+export const SSL_OPTIONS = ['있음(보유 중)', '없음', '미정/모름'];
+
+// 직접 수정·관리 여부 (CMS)
+export const CMS_OPTIONS = ['직접 관리 예정(CMS 필요)', '제작사에 수정 의뢰 예정', '미정'];
+
+// 기존 홈페이지 유무 (리뉴얼)
+export const RENEWAL_OPTIONS = ['기존 홈페이지 있음(리뉴얼)', '신규 제작', '없음'];
+
+// 오픈 후 유지보수 계약 희망 여부
+export const MAINTENANCE_OPTIONS = ['희망함', '희망하지 않음', '미정'];

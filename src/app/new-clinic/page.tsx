@@ -32,6 +32,11 @@ import {
   IMPLANT_MATERIALS,
   ALIGNER_OPTIONS,
   PEDIATRIC_ORTHO_OPTIONS,
+  HOMEPAGE_FEATURES,
+  SSL_OPTIONS,
+  CMS_OPTIONS,
+  RENEWAL_OPTIONS,
+  MAINTENANCE_OPTIONS,
 } from '@/data/dental';
 
 const STEP_LABELS = [
@@ -40,10 +45,11 @@ const STEP_LABELS = [
   '시설/장비',
   '브랜딩 & 철학',
   '마케팅 방향',
+  '홈페이지/웹',
   '계약 상품',
   '최종 확인',
 ];
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 
 const DEFAULT_SCHEDULE: Record<string, { enabled: boolean; start: string; end: string }> = {};
 WEEKDAYS.forEach((day) => {
@@ -100,6 +106,12 @@ interface FormData {
   };
   step4: {
     oneLiner: string;
+    /** 슬로건 / 태그라인 (브랜딩 인터뷰 도출) */
+    slogan: string;
+    /** 브랜드 비전 / 목표 (브랜딩 인터뷰 도출) */
+    brandVision: string;
+    /** 브랜드 톤앤매너 — 성격·말투 (브랜딩 인터뷰 도출) */
+    brandTone: string;
     /** 진료 철학 포인트 (옛 philosophy 대체) */
     philosophy: string;
     /** 의료진 홍보 포인트 */
@@ -143,6 +155,40 @@ interface FormData {
     /** 카톡 채널 증정선물 */
     channelGift: string;
   };
+  /** 홈페이지/웹 제작 정보 (계약 서비스에 홈페이지 포함 시 작성) */
+  stepWeb: {
+    // 오시는 길
+    subway: string;
+    bus: string;
+    locationNote: string;
+    // 원장 약력 (홈페이지용 상세)
+    education: string;
+    career: string;
+    associations: string;
+    awards: string;
+    // 디자인 방향
+    mainKeywords: string;
+    referenceSites: string;
+    designFocus: string;
+    mainEmphasis: string;
+    photoDirection: string;
+    // 온라인 채널 & 도메인
+    instagramUrl: string;
+    blogUrl: string;
+    youtubeUrl: string;
+    kakaoChannel: string;
+    naverBooking: string;
+    desiredDomain: string;
+    ssl: string;
+    // 기능 요구사항
+    features: string[];
+    cmsNeed: string;
+    renewalType: string;
+    oldSiteUrl: string;
+    // 일정/유지보수
+    homepageDeadline: string;
+    maintenance: string;
+  };
   step6: {
     services: { serviceId: string; quantity?: number }[];
     isStarterPackage: boolean;
@@ -176,7 +222,8 @@ const INITIAL_DATA: FormData = {
     hasLabRoom: false, labEquipment: [], blueprintFiles: [],
   },
   step4: {
-    oneLiner: '', philosophy: '',
+    oneLiner: '', slogan: '', brandVision: '', brandTone: '',
+    philosophy: '',
     doctorPromo: '', clinicPromo: '', treatmentPromo: '',
     locationTarget: '', interiorStyle: '', brandColor: '',
     hasProfilePhoto: false, hasLogo: false,
@@ -189,6 +236,15 @@ const INITIAL_DATA: FormData = {
     marketingGoals: [], desiredChannels: [],
     additionalRequest: '', benchmarkClinics: '', openingEvent: '',
     didInfo: '', reviewGift: '', channelGift: '',
+  },
+  stepWeb: {
+    subway: '', bus: '', locationNote: '',
+    education: '', career: '', associations: '', awards: '',
+    mainKeywords: '', referenceSites: '', designFocus: '', mainEmphasis: '', photoDirection: '',
+    instagramUrl: '', blogUrl: '', youtubeUrl: '', kakaoChannel: '', naverBooking: '',
+    desiredDomain: '', ssl: '',
+    features: [], cmsNeed: '', renewalType: '', oldSiteUrl: '',
+    homepageDeadline: '', maintenance: '',
   },
   step6: {
     services: [], isStarterPackage: false,
@@ -379,15 +435,16 @@ export default function NewClinicPage() {
           {step === 2 && <Step3 data={data.step3} onChange={(u) => updateStep('step3', u)} />}
           {step === 3 && <Step4 data={data.step4} onChange={(u) => updateStep('step4', u)} />}
           {step === 4 && <Step5 data={data.step5} onChange={(u) => updateStep('step5', u)} />}
-          {step === 5 && <Step6 data={data.step6} onChange={(u) => updateStep('step6', u)} />}
-          {step === 6 && <Step7 data={data} onGoToStep={goToStep} confirmed={confirmed} setConfirmed={setConfirmed} />}
+          {step === 5 && <StepWeb data={data.stepWeb} onChange={(u) => updateStep('stepWeb', u)} />}
+          {step === 6 && <Step6 data={data.step6} onChange={(u) => updateStep('step6', u)} />}
+          {step === 7 && <Step7 data={data} onGoToStep={goToStep} confirmed={confirmed} setConfirmed={setConfirmed} />}
         </div>
       </main>
 
       {/* 하단 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
         <div className="max-w-4xl mx-auto px-6 py-4 flex gap-3">
-          {step > 0 && step < 6 && (
+          {step > 0 && step < 7 && (
             <button
               onClick={prevStep}
               className="h-12 px-6 bg-white border border-[#D1D5DB] text-[#374151] rounded-lg font-medium"
@@ -395,7 +452,7 @@ export default function NewClinicPage() {
               이전
             </button>
           )}
-          {step < 6 ? (
+          {step < 7 ? (
             <button
               onClick={nextStep}
               disabled={
@@ -964,6 +1021,14 @@ function Step4({
           rows={2}
         />
       </div>
+      <div>
+        <FieldLabel>슬로건 / 태그라인</FieldLabel>
+        <TextInput
+          value={data.slogan}
+          onChange={(v) => onChange({ slogan: v })}
+          placeholder="예: 평생 가는 치아, 평생 가는 치과 (브랜딩 인터뷰에서 도출)"
+        />
+      </div>
 
       {/* 6가지 브랜딩 포인트 */}
       <div>
@@ -1000,6 +1065,23 @@ function Step4({
           onChange={(v) => onChange({ philosophy: v })}
           placeholder="예: 과잉진료 없이 꼭 필요한 치료만, 투명한 설명과 합리적 비용"
           rows={3}
+        />
+      </div>
+      <div>
+        <FieldLabel>브랜드 비전 / 목표</FieldLabel>
+        <TextArea
+          value={data.brandVision}
+          onChange={(v) => onChange({ brandVision: v })}
+          placeholder="예: 3~5년 내 지역에서 가장 신뢰받는 임플란트 치과로 자리매김 (브랜딩 인터뷰에서 도출)"
+          rows={2}
+        />
+      </div>
+      <div>
+        <FieldLabel>브랜드 톤앤매너 (성격·말투)</FieldLabel>
+        <TextInput
+          value={data.brandTone}
+          onChange={(v) => onChange({ brandTone: v })}
+          placeholder="예: 따뜻하고 친근한 / 믿음직한 전문가 톤 (브랜딩 인터뷰에서 도출)"
         />
       </div>
       <div>
@@ -1335,6 +1417,179 @@ function Step6({
   );
 }
 
+// Step Web: 홈페이지/웹
+function WebSubhead({ children, hint }: { children: React.ReactNode; hint?: string }) {
+  return (
+    <div className="pt-2">
+      <h3 className="text-base font-bold text-[#374151]">{children}</h3>
+      {hint && <p className="text-xs text-[#6B7280] mt-1">{hint}</p>}
+    </div>
+  );
+}
+
+function StepWeb({
+  data, onChange,
+}: {
+  data: FormData['stepWeb'];
+  onChange: (u: Partial<FormData['stepWeb']>) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+        <svg className="w-5 h-5 text-[#2563EB] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p className="text-sm text-[#2563EB]">
+          홈페이지 제작을 진행하는 경우 작성해 주세요. <strong>해당 없으면 비워두셔도 됩니다.</strong>
+        </p>
+      </div>
+
+      {/* 오시는 길 */}
+      <WebSubhead hint="홈페이지·블로그 '오시는 길'에 그대로 노출됩니다">📍 오시는 길</WebSubhead>
+      <div>
+        <FieldLabel>지하철 노선</FieldLabel>
+        <TextInput value={data.subway} onChange={(v) => onChange({ subway: v })} placeholder="예: 압구정로데오역 5번 출구 도보 5분" />
+      </div>
+      <div>
+        <FieldLabel>버스 노선</FieldLabel>
+        <TextInput value={data.bus} onChange={(v) => onChange({ bus: v })} placeholder="예: 강남역 정류장, 140번, 146번" />
+      </div>
+      <div>
+        <FieldLabel>위치 특이사항 / 어필 사항</FieldLabel>
+        <TextInput value={data.locationNote} onChange={(v) => onChange({ locationNote: v })} placeholder="예: 건물 내 엘리베이터 바로 앞, 랜드마크 인근" />
+      </div>
+
+      {/* 원장 약력 */}
+      <WebSubhead hint="홈페이지 의료진 소개에 사용됩니다">👩‍⚕️ 원장 약력 (상세)</WebSubhead>
+      <div>
+        <FieldLabel>학력</FieldLabel>
+        <TextArea value={data.education} onChange={(v) => onChange({ education: v })} placeholder="예: 서울대학교 치과대학 졸업" rows={2} />
+      </div>
+      <div>
+        <FieldLabel>전직 경력 (병원명·직위 전부)</FieldLabel>
+        <TextArea value={data.career} onChange={(v) => onChange({ career: v })} placeholder="예: 전) OO치과의원 원장 / 전) OO치과 총괄원장" rows={3} />
+      </div>
+      <div>
+        <FieldLabel>학회 / 협회 활동</FieldLabel>
+        <TextArea value={data.associations} onChange={(v) => onChange({ associations: v })} placeholder="예: 대한치과보철학회 정회원 / 대한구강악안면임플란트학회 회원" rows={2} />
+      </div>
+      <div>
+        <FieldLabel>수상 / 논문 / 방송 출연 이력</FieldLabel>
+        <TextArea value={data.awards} onChange={(v) => onChange({ awards: v })} placeholder="있으시면 작성해 주세요" rows={2} />
+      </div>
+
+      {/* 디자인 방향 */}
+      <WebSubhead>🎨 키워드 및 디자인 방향</WebSubhead>
+      <div>
+        <FieldLabel>병원 상징 메인 키워드 (우선순위 순)</FieldLabel>
+        <TextInput value={data.mainKeywords} onChange={(v) => onChange({ mainKeywords: v })} placeholder="예: 프리미엄, 신뢰, 자연스러움, 전문성" />
+      </div>
+      <div>
+        <FieldLabel>참고 / 좋아하는 사이트 URL</FieldLabel>
+        <TextArea value={data.referenceSites} onChange={(v) => onChange({ referenceSites: v })} placeholder="마음에 드는 홈페이지 주소를 적어 주세요 (여러 개 가능)" rows={2} />
+      </div>
+      <div>
+        <FieldLabel>디자인 작업 시 중점 사항</FieldLabel>
+        <TextInput value={data.designFocus} onChange={(v) => onChange({ designFocus: v })} placeholder="예: 인물 위주 / 사진 위주 / 깔끔한 텍스트 중심" />
+      </div>
+      <div>
+        <FieldLabel>메인 페이지에서 가장 강조할 내용</FieldLabel>
+        <TextArea value={data.mainEmphasis} onChange={(v) => onChange({ mainEmphasis: v })} placeholder="메인 화면에 가장 부각되었으면 하는 내용" rows={2} />
+      </div>
+      <div>
+        <FieldLabel>병원 대표 사진 / 이미지 방향</FieldLabel>
+        <TextArea value={data.photoDirection} onChange={(v) => onChange({ photoDirection: v })} placeholder="예: 밝고 깔끔한 원장 프로필 + 인테리어 사진 보유 (사진 파일은 별도 전달)" rows={2} />
+      </div>
+
+      {/* 온라인 채널 & 도메인 */}
+      <WebSubhead>📱 온라인 채널 & 도메인</WebSubhead>
+      <div>
+        <FieldLabel>인스타그램 URL</FieldLabel>
+        <TextInput value={data.instagramUrl} onChange={(v) => onChange({ instagramUrl: v })} placeholder="https://www.instagram.com/..." />
+      </div>
+      <div>
+        <FieldLabel>블로그 URL</FieldLabel>
+        <TextInput value={data.blogUrl} onChange={(v) => onChange({ blogUrl: v })} placeholder="https://blog.naver.com/..." />
+      </div>
+      <div>
+        <FieldLabel>유튜브 채널 URL</FieldLabel>
+        <TextInput value={data.youtubeUrl} onChange={(v) => onChange({ youtubeUrl: v })} placeholder="https://youtube.com/..." />
+      </div>
+      <div>
+        <FieldLabel>카카오톡 채널</FieldLabel>
+        <TextInput value={data.kakaoChannel} onChange={(v) => onChange({ kakaoChannel: v })} placeholder="채널명 또는 URL" />
+      </div>
+      <div>
+        <FieldLabel>네이버 예약 URL</FieldLabel>
+        <TextInput value={data.naverBooking} onChange={(v) => onChange({ naverBooking: v })} placeholder="https://booking.naver.com/..." />
+      </div>
+      <div>
+        <FieldLabel>원하는 도메인 주소 (1~3순위)</FieldLabel>
+        <TextArea value={data.desiredDomain} onChange={(v) => onChange({ desiredDomain: v })} placeholder="예: 1순위 ooclinic.com / 2순위 ooclinic.co.kr" rows={2} />
+      </div>
+      <div>
+        <FieldLabel>SSL 인증서(https) 설치 여부</FieldLabel>
+        <ChipSelector
+          options={SSL_OPTIONS}
+          selected={data.ssl ? [data.ssl] : []}
+          onChange={(v) => onChange({ ssl: v[0] || '' })}
+          multiple={false}
+        />
+      </div>
+
+      {/* 기능 요구사항 */}
+      <WebSubhead>⚙️ 기능 요구사항</WebSubhead>
+      <div>
+        <FieldLabel>필요한 기능</FieldLabel>
+        <ChipSelector
+          options={HOMEPAGE_FEATURES}
+          selected={data.features}
+          onChange={(v) => onChange({ features: v })}
+        />
+      </div>
+      <div>
+        <FieldLabel>홈페이지 직접 수정·관리 예정 여부</FieldLabel>
+        <ChipSelector
+          options={CMS_OPTIONS}
+          selected={data.cmsNeed ? [data.cmsNeed] : []}
+          onChange={(v) => onChange({ cmsNeed: v[0] || '' })}
+          multiple={false}
+        />
+      </div>
+      <div>
+        <FieldLabel>기존 홈페이지 유무</FieldLabel>
+        <ChipSelector
+          options={RENEWAL_OPTIONS}
+          selected={data.renewalType ? [data.renewalType] : []}
+          onChange={(v) => onChange({ renewalType: v[0] || '' })}
+          multiple={false}
+        />
+        {data.renewalType === '기존 홈페이지 있음(리뉴얼)' && (
+          <div className="mt-2">
+            <TextInput value={data.oldSiteUrl} onChange={(v) => onChange({ oldSiteUrl: v })} placeholder="기존 홈페이지 URL (예: https://기존홈페이지.com)" />
+          </div>
+        )}
+      </div>
+
+      {/* 일정/유지보수 */}
+      <WebSubhead>📅 일정 / 유지보수</WebSubhead>
+      <div>
+        <FieldLabel>원하는 오픈 목표 일정</FieldLabel>
+        <TextInput value={data.homepageDeadline} onChange={(v) => onChange({ homepageDeadline: v })} placeholder="예: 2026년 8월 말 오픈 희망" />
+      </div>
+      <div>
+        <FieldLabel>오픈 후 유지보수 계약 희망 여부</FieldLabel>
+        <ChipSelector
+          options={MAINTENANCE_OPTIONS}
+          selected={data.maintenance ? [data.maintenance] : []}
+          onChange={(v) => onChange({ maintenance: v[0] || '' })}
+          multiple={false}
+        />
+      </div>
+    </div>
+  );
+}
+
 // Step 7: 최종 확인
 function SummarySection({
   title, stepIndex, onGoToStep, children,
@@ -1375,7 +1630,7 @@ function Step7({
   confirmed: boolean;
   setConfirmed: (v: boolean) => void;
 }) {
-  const { step1, step2, step3, step4, step5, step6 } = data;
+  const { step1, step2, step3, step4, step5, stepWeb, step6 } = data;
 
   return (
     <div className="space-y-4">
@@ -1449,6 +1704,9 @@ function Step7({
 
       <SummarySection title="브랜딩 & 철학" stepIndex={3} onGoToStep={onGoToStep}>
         <SummaryItem label="한줄소개" value={step4.oneLiner} />
+        <SummaryItem label="슬로건" value={step4.slogan} />
+        <SummaryItem label="브랜드 비전" value={step4.brandVision} />
+        <SummaryItem label="브랜드 톤" value={step4.brandTone} />
         <SummaryItem label="의료진 포인트" value={step4.doctorPromo} />
         <SummaryItem label="병원 포인트" value={step4.clinicPromo} />
         <SummaryItem label="주요 진료 포인트" value={step4.treatmentPromo} />
@@ -1471,7 +1729,19 @@ function Step7({
         <SummaryItem label="채널 증정선물" value={step5.channelGift} />
       </SummarySection>
 
-      <SummarySection title="계약 상품" stepIndex={5} onGoToStep={onGoToStep}>
+      <SummarySection title="홈페이지/웹" stepIndex={5} onGoToStep={onGoToStep}>
+        <SummaryItem label="오시는 길" value={[stepWeb.subway, stepWeb.bus, stepWeb.locationNote].filter(Boolean).join(' / ')} />
+        <SummaryItem label="원장 약력" value={[stepWeb.education, stepWeb.career].filter(Boolean).join(' / ')} />
+        <SummaryItem label="메인 키워드" value={stepWeb.mainKeywords} />
+        <SummaryItem label="참고 사이트" value={stepWeb.referenceSites} />
+        <SummaryItem label="도메인" value={stepWeb.desiredDomain} />
+        <SummaryItem label="SSL" value={stepWeb.ssl} />
+        <SummaryItem label="필요 기능" value={(stepWeb.features || []).join(', ')} />
+        <SummaryItem label="리뉴얼" value={stepWeb.renewalType} />
+        <SummaryItem label="오픈 일정" value={stepWeb.homepageDeadline} />
+      </SummarySection>
+
+      <SummarySection title="계약 상품" stepIndex={6} onGoToStep={onGoToStep}>
         <SummaryItem
           label="서비스"
           value={step6.services.map((s) => {
