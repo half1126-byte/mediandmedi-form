@@ -101,6 +101,76 @@ describe('createChangeRecord', () => {
   });
 });
 
+describe('createMainRecord — 신규 필드 매핑 (디자인/브랜딩·홈페이지·브랜딩)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // 페이지 본문 blocks 의 모든 텍스트를 한 문자열로 평탄화
+  function bodyText(children: Array<Record<string, unknown>>): string {
+    return children
+      .map((b) => {
+        const type = b.type as string;
+        const node = (b[type] as { rich_text?: Array<{ text?: { content?: string } }> }) || {};
+        return (node.rich_text || []).map((r) => r.text?.content || '').join('');
+      })
+      .join('\n');
+  }
+
+  const e2ePayload = {
+    step1: { clinicName: 'E2E_테스트치과', doctorName: '테스트원장', openDate: '2026-12-01', region: { city: '서울특별시', district: '강남구' }, doctors: [{ name: '테스트원장', title: '원장', specialty: '보철과' }] },
+    step2: { dentalSubjects: ['일반 임플란트'], topSubjects: ['일반 임플란트'], implantMaterials: { 오스템: ['SA'] }, schedule: {}, holidays: [], holidayClose: true, lunchTime: { start: '12:30', end: '13:30' } },
+    step3: { chairs: 5, equipment: ['CT(CBCT)'], facilities: ['수술실'], parking: { available: '가능' } },
+    step4: { oneLiner: 'E2E 한줄', slogan: 'E2E 슬로건', brandVision: 'E2E 비전', brandTone: '따뜻·전문', brandColor: '네이비', hasProfilePhoto: false },
+    step5: { referralSource: ['지인 소개'], budgetRange: '300만원 ~ 500만원', marketingGoals: ['신규 환자 유입'], desiredChannels: ['네이버 블로그'] },
+    stepWeb: { subway: '강남역 1번 출구', desiredDomain: 'e2etest.com', ssl: '있음(보유 중)', features: ['온라인 예약'], renewalType: '신규 제작', homepageDeadline: '2026년 11월', maintenance: '희망함' },
+    stepDesign: { logoType: '심볼+워드마크 결합형', logoNotation: '한글+영문 병기', englishSpelling: 'E2E Dental', logoMotif: '이니셜', colorPreference: ['블루(신뢰·전문)'], avoidColor: '빨강', videoMessage: '따뜻한 진료', videoChannels: ['홈페이지(16:9)'], videoItems: ['드론(외부/주변)', '의료진 1분 인트로'], videoBgm: '라이선스 음원' },
+    step6: { services: [], isStarterPackage: false, specialNotes: 'E2E 테스트' },
+  };
+
+  it('제출 시 거래처명 properties + 신규 섹션 본문이 노션 API 페이로드에 포함된다', async () => {
+    mockCreate.mockResolvedValue({ id: 'page-e2e' });
+    const id = await createMainRecord(e2ePayload);
+    expect(id).toBe('page-e2e');
+
+    const arg = mockCreate.mock.calls[0][0] as {
+      properties: Record<string, { title?: Array<{ text: { content: string } }> }>;
+      children: Array<Record<string, unknown>>;
+    };
+
+    // 핵심 properties
+    expect(arg.properties['거래처명'].title?.[0].text.content).toBe('E2E_테스트치과');
+
+    const body = bodyText(arg.children);
+
+    // 브랜딩 신규 필드
+    expect(body).toContain('슬로건: E2E 슬로건');
+    expect(body).toContain('브랜드 비전: E2E 비전');
+    expect(body).toContain('브랜드 톤앤매너: 따뜻·전문');
+
+    // 홈페이지/웹 섹션
+    expect(body).toContain('홈페이지/웹');
+    expect(body).toContain('도메인: e2etest.com');
+    expect(body).toContain('SSL: 있음(보유 중)');
+
+    // 디자인/브랜딩 섹션
+    expect(body).toContain('디자인/브랜딩');
+    expect(body).toContain('로고 타입: 심볼+워드마크 결합형');
+    expect(body).toContain('선호 컬러: 블루(신뢰·전문)');
+    expect(body).toContain('영상 제작 항목: 드론(외부/주변), 의료진 1분 인트로');
+    expect(body).toContain('영상 BGM: 라이선스 음원');
+  });
+
+  it('신규 스텝 데이터가 없으면 해당 섹션 헤딩이 본문에 없다 (구버전 호환)', async () => {
+    mockCreate.mockResolvedValue({ id: 'page-min' });
+    await createMainRecord(sampleFormData); // stepWeb·stepDesign 없음
+    const arg = mockCreate.mock.calls[0][0] as { children: Array<Record<string, unknown>> };
+    const body = bodyText(arg.children);
+    expect(body).not.toContain('디자인/브랜딩');
+    expect(body).not.toContain('홈페이지/웹');
+  });
+});
+
 describe('getPageData', () => {
   beforeEach(() => {
     vi.clearAllMocks();
