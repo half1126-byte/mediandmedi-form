@@ -1,7 +1,7 @@
 'use client';
 
-// 각 스텝 예상 시간(분) — 8단계: 기본/진료/시설/브랜딩/마케팅/홈페이지·웹/계약/최종
-const STEP_TIMES_MIN = [2, 3, 2, 2, 2, 3, 2, 1];
+// 각 스텝 예상 시간(분) — 9단계: 기본/진료/시설/브랜딩/마케팅/홈페이지·웹/디자인·브랜딩/계약/최종
+const STEP_TIMES_MIN = [2, 3, 2, 2, 2, 3, 2, 2, 1];
 
 interface ProgressBarProps {
   currentStep: number; // 0-indexed

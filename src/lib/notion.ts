@@ -538,6 +538,7 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   const s4 = (data.step4 || {}) as Record<string, unknown>;
   const s5 = (data.step5 || {}) as Record<string, unknown>;
   const sw = (data.stepWeb || {}) as Record<string, unknown>;
+  const sd = (data.stepDesign || {}) as Record<string, unknown>;
   const s6 = (data.step6 || {}) as Record<string, unknown>;
 
   const blocks: Array<Record<string, unknown>> = [];
@@ -677,6 +678,27 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   if (webItems.length > 0) {
     blocks.push(heading('홈페이지/웹'));
     webItems.forEach((t) => blocks.push(bullet(t)));
+  }
+
+  // 디자인/브랜딩
+  const designItems: string[] = [];
+  const designOne = (label: string, v: unknown) => {
+    if (v && String(v).trim()) designItems.push(`${label}: ${v}`);
+  };
+  designOne('로고 타입', sd.logoType);
+  designOne('로고 표기', sd.logoNotation);
+  designOne('영문 표기', sd.englishSpelling);
+  designOne('로고 모티브', sd.logoMotif);
+  if ((sd.colorPreference as string[])?.length) designItems.push(`선호 컬러: ${(sd.colorPreference as string[]).join(', ')}`);
+  designOne('피하는 컬러', sd.avoidColor);
+  designOne('영상 메시지', sd.videoMessage);
+  designOne('영상 레퍼런스', sd.videoReference);
+  if ((sd.videoChannels as string[])?.length) designItems.push(`영상 채널: ${(sd.videoChannels as string[]).join(', ')}`);
+  if ((sd.videoItems as string[])?.length) designItems.push(`영상 제작 항목: ${(sd.videoItems as string[]).join(', ')}`);
+  designOne('영상 BGM', sd.videoBgm);
+  if (designItems.length > 0) {
+    blocks.push(heading('디자인/브랜딩'));
+    designItems.forEach((t) => blocks.push(bullet(t)));
   }
 
   // 계약

@@ -129,6 +129,7 @@ function SummaryContent() {
   const step4 = (formData?.step4 || {}) as Record<string, unknown>;
   const step5 = (formData?.step5 || {}) as Record<string, unknown>;
   const stepWeb = (formData?.stepWeb || {}) as Record<string, unknown>;
+  const stepDesign = (formData?.stepDesign || {}) as Record<string, unknown>;
   const step6 = (formData?.step6 || {}) as Record<string, unknown>;
   const region = (step1.region || {}) as Record<string, string>;
   const parking = (step3.parking || {}) as Record<string, string>;
@@ -212,6 +213,14 @@ function SummaryContent() {
                 <InfoRow label="필요 기능" value={((stepWeb.features as string[]) || []).join(', ')} />
                 <InfoRow label="리뉴얼" value={stepWeb.renewalType as string} />
                 <InfoRow label="오픈 일정" value={stepWeb.homepageDeadline as string} />
+              </SummarySection>
+            ) : null}
+
+            {(stepDesign.logoType || (stepDesign.colorPreference as string[])?.length || (stepDesign.videoItems as string[])?.length) ? (
+              <SummarySection title="디자인/브랜딩">
+                <InfoRow label="로고 타입" value={stepDesign.logoType as string} />
+                <InfoRow label="선호 컬러" value={((stepDesign.colorPreference as string[]) || []).join(', ')} />
+                <InfoRow label="영상 항목" value={((stepDesign.videoItems as string[]) || []).join(', ')} />
               </SummarySection>
             ) : null}
 
