@@ -37,6 +37,12 @@ import {
   CMS_OPTIONS,
   RENEWAL_OPTIONS,
   MAINTENANCE_OPTIONS,
+  LOGO_TYPES,
+  LOGO_NOTATION,
+  COLOR_PREFERENCES,
+  VIDEO_CHANNELS,
+  VIDEO_ITEMS,
+  VIDEO_BGM,
 } from '@/data/dental';
 
 const STEP_LABELS = [
@@ -46,10 +52,11 @@ const STEP_LABELS = [
   '브랜딩 & 철학',
   '마케팅 방향',
   '홈페이지/웹',
+  '디자인/브랜딩',
   '계약 상품',
   '최종 확인',
 ];
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 9;
 
 const DEFAULT_SCHEDULE: Record<string, { enabled: boolean; start: string; end: string }> = {};
 WEEKDAYS.forEach((day) => {
@@ -189,6 +196,20 @@ interface FormData {
     homepageDeadline: string;
     maintenance: string;
   };
+  /** 디자인/브랜딩 — 로고·CI·브랜드 영상 핵심 (디자인팀) */
+  stepDesign: {
+    logoType: string;
+    logoNotation: string;
+    englishSpelling: string;
+    logoMotif: string;
+    colorPreference: string[];
+    avoidColor: string;
+    videoMessage: string;
+    videoReference: string;
+    videoChannels: string[];
+    videoItems: string[];
+    videoBgm: string;
+  };
   step6: {
     services: { serviceId: string; quantity?: number }[];
     isStarterPackage: boolean;
@@ -246,6 +267,11 @@ const INITIAL_DATA: FormData = {
     features: [], cmsNeed: '', renewalType: '', oldSiteUrl: '',
     homepageDeadline: '', maintenance: '',
   },
+  stepDesign: {
+    logoType: '', logoNotation: '', englishSpelling: '', logoMotif: '',
+    colorPreference: [], avoidColor: '',
+    videoMessage: '', videoReference: '', videoChannels: [], videoItems: [], videoBgm: '',
+  },
   step6: {
     services: [], isStarterPackage: false,
     contractStartDate: '', monthlyFee: '', specialNotes: '',
@@ -279,8 +305,19 @@ export default function NewClinicPage() {
     const loaded = loadForm(showRestore.sessionId);
     if (loaded) {
       setSessionId(showRestore.sessionId);
-      setData(loaded.data as unknown as FormData);
-      setStep(loaded.currentStep);
+      // 구버전 저장본 방어: 새로 추가된 스텝(stepWeb·stepDesign 등)이나 누락 필드는
+      // INITIAL_DATA 기본값으로 채워 병합한다. (없으면 해당 스텝 진입 시 크래시)
+      const saved = (loaded.data || {}) as Record<string, Record<string, unknown>>;
+      const merged = { ...INITIAL_DATA };
+      (Object.keys(INITIAL_DATA) as (keyof FormData)[]).forEach((k) => {
+        (merged as Record<string, unknown>)[k] = {
+          ...(INITIAL_DATA[k] as Record<string, unknown>),
+          ...(saved[k] || {}),
+        };
+      });
+      setData(merged);
+      // 저장된 스텝이 현재 단계 범위를 벗어나면 클램프
+      setStep(Math.min(Math.max(loaded.currentStep ?? 0, 0), TOTAL_STEPS - 1));
     }
     setShowRestore(null);
   };
@@ -436,15 +473,16 @@ export default function NewClinicPage() {
           {step === 3 && <Step4 data={data.step4} onChange={(u) => updateStep('step4', u)} />}
           {step === 4 && <Step5 data={data.step5} onChange={(u) => updateStep('step5', u)} />}
           {step === 5 && <StepWeb data={data.stepWeb} onChange={(u) => updateStep('stepWeb', u)} />}
-          {step === 6 && <Step6 data={data.step6} onChange={(u) => updateStep('step6', u)} />}
-          {step === 7 && <Step7 data={data} onGoToStep={goToStep} confirmed={confirmed} setConfirmed={setConfirmed} />}
+          {step === 6 && <StepDesign data={data.stepDesign} onChange={(u) => updateStep('stepDesign', u)} />}
+          {step === 7 && <Step6 data={data.step6} onChange={(u) => updateStep('step6', u)} />}
+          {step === 8 && <Step7 data={data} onGoToStep={goToStep} confirmed={confirmed} setConfirmed={setConfirmed} />}
         </div>
       </main>
 
       {/* 하단 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
         <div className="max-w-4xl mx-auto px-6 py-4 flex gap-3">
-          {step > 0 && step < 7 && (
+          {step > 0 && step < 8 && (
             <button
               onClick={prevStep}
               className="h-12 px-6 bg-white border border-[#D1D5DB] text-[#374151] rounded-lg font-medium"
@@ -452,7 +490,7 @@ export default function NewClinicPage() {
               이전
             </button>
           )}
-          {step < 7 ? (
+          {step < 8 ? (
             <button
               onClick={nextStep}
               disabled={
@@ -1586,6 +1624,77 @@ function StepWeb({
   );
 }
 
+// Step Design: 디자인/브랜딩 (로고·CI·브랜드 영상 핵심)
+function StepDesign({
+  data, onChange,
+}: {
+  data: FormData['stepDesign'];
+  onChange: (u: Partial<FormData['stepDesign']>) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+        <svg className="w-5 h-5 text-[#2563EB] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p className="text-sm text-[#2563EB]">
+          로고·CI·브랜드 영상 제작 시 작성해 주세요. <strong>세부 진행(시안 수·수정 횟수 등)은 디자인 설문지에서 따로 받습니다.</strong>
+        </p>
+      </div>
+
+      <WebSection title="🎨 로고 & 컬러">
+        <div>
+          <FieldLabel>로고 타입</FieldLabel>
+          <ChipSelector options={LOGO_TYPES} selected={data.logoType ? [data.logoType] : []} onChange={(v) => onChange({ logoType: v[0] || '' })} multiple={false} />
+        </div>
+        <div>
+          <FieldLabel>로고 표기</FieldLabel>
+          <ChipSelector options={LOGO_NOTATION} selected={data.logoNotation ? [data.logoNotation] : []} onChange={(v) => onChange({ logoNotation: v[0] || '' })} multiple={false} />
+        </div>
+        <div>
+          <FieldLabel>영문 표기 스펠링</FieldLabel>
+          <TextInput value={data.englishSpelling} onChange={(v) => onChange({ englishSpelling: v })} placeholder="예: Seoul Ido / SEOULIDO (모든 자료에 일관 적용)" />
+        </div>
+        <div>
+          <FieldLabel>로고 모티브 / 시각 요소</FieldLabel>
+          <TextInput value={data.logoMotif} onChange={(v) => onChange({ logoMotif: v })} placeholder="예: 이니셜 + 자연 모티브 / '치아는 직접 안 들어갔으면'" />
+        </div>
+        <div>
+          <FieldLabel>선호 컬러 계열</FieldLabel>
+          <ChipSelector options={COLOR_PREFERENCES} selected={data.colorPreference} onChange={(v) => onChange({ colorPreference: v })} />
+        </div>
+        <div>
+          <FieldLabel>피하고 싶은 컬러</FieldLabel>
+          <TextInput value={data.avoidColor} onChange={(v) => onChange({ avoidColor: v })} placeholder="예: 빨강은 위협적이라 싫음" />
+        </div>
+      </WebSection>
+
+      <WebSection title="🎬 브랜드 영상">
+        <div>
+          <FieldLabel>영상 핵심 메시지</FieldLabel>
+          <TextInput value={data.videoMessage} onChange={(v) => onChange({ videoMessage: v })} placeholder="예: 따뜻한 진료 분위기 + 최신 장비 전문성" />
+        </div>
+        <div>
+          <FieldLabel>영상 레퍼런스</FieldLabel>
+          <TextInput value={data.videoReference} onChange={(v) => onChange({ videoReference: v })} placeholder="인상 깊은 병원·브랜드 영상 링크" />
+        </div>
+        <div>
+          <FieldLabel>활용 채널</FieldLabel>
+          <ChipSelector options={VIDEO_CHANNELS} selected={data.videoChannels} onChange={(v) => onChange({ videoChannels: v })} />
+        </div>
+        <div>
+          <FieldLabel>제작 항목</FieldLabel>
+          <ChipSelector options={VIDEO_ITEMS} selected={data.videoItems} onChange={(v) => onChange({ videoItems: v })} />
+        </div>
+        <div>
+          <FieldLabel>BGM</FieldLabel>
+          <ChipSelector options={VIDEO_BGM} selected={data.videoBgm ? [data.videoBgm] : []} onChange={(v) => onChange({ videoBgm: v[0] || '' })} multiple={false} />
+        </div>
+      </WebSection>
+    </div>
+  );
+}
+
 // Step 7: 최종 확인
 function SummarySection({
   title, stepIndex, onGoToStep, children,
@@ -1626,7 +1735,7 @@ function Step7({
   confirmed: boolean;
   setConfirmed: (v: boolean) => void;
 }) {
-  const { step1, step2, step3, step4, step5, stepWeb, step6 } = data;
+  const { step1, step2, step3, step4, step5, stepWeb, stepDesign, step6 } = data;
 
   return (
     <div className="space-y-4">
@@ -1737,7 +1846,20 @@ function Step7({
         <SummaryItem label="오픈 일정" value={stepWeb.homepageDeadline} />
       </SummarySection>
 
-      <SummarySection title="계약 상품" stepIndex={6} onGoToStep={onGoToStep}>
+      <SummarySection title="디자인/브랜딩" stepIndex={6} onGoToStep={onGoToStep}>
+        <SummaryItem label="로고 타입" value={stepDesign.logoType} />
+        <SummaryItem label="로고 표기" value={stepDesign.logoNotation} />
+        <SummaryItem label="영문 표기" value={stepDesign.englishSpelling} />
+        <SummaryItem label="로고 모티브" value={stepDesign.logoMotif} />
+        <SummaryItem label="선호 컬러" value={(stepDesign.colorPreference || []).join(', ')} />
+        <SummaryItem label="피하는 컬러" value={stepDesign.avoidColor} />
+        <SummaryItem label="영상 메시지" value={stepDesign.videoMessage} />
+        <SummaryItem label="영상 채널" value={(stepDesign.videoChannels || []).join(', ')} />
+        <SummaryItem label="영상 항목" value={(stepDesign.videoItems || []).join(', ')} />
+        <SummaryItem label="BGM" value={stepDesign.videoBgm} />
+      </SummarySection>
+
+      <SummarySection title="계약 상품" stepIndex={7} onGoToStep={onGoToStep}>
         <SummaryItem
           label="서비스"
           value={step6.services.map((s) => {
