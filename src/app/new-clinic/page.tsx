@@ -43,6 +43,9 @@ import {
   VIDEO_CHANNELS,
   VIDEO_ITEMS,
   VIDEO_BGM,
+  HOMEPAGE_MENUS,
+  FEEDBACK_CHANNELS,
+  PHOTO_TYPES,
 } from '@/data/dental';
 
 // ── 스텝 레지스트리 (단일 소스) — 인덱스 하드코딩 대신 여기서 모든 게 파생 ──
@@ -155,7 +158,9 @@ interface FormData {
     locationTarget: string;
     /** 인테리어 컨셉 (Step 3에서 이동) */
     interiorStyle: string;
-    /** 브랜드 컬러 */
+    /** 브랜드 컬러 계열(칩) — 디자인팀 컬러 정본 (옛 stepDesign.colorPreference 통합) */
+    brandColorTones: string[];
+    /** 브랜드 컬러 (자유 텍스트) */
     brandColor: string;
     hasProfilePhoto: boolean;
     hasLogo: boolean;
@@ -219,6 +224,12 @@ interface FormData {
     // 일정/유지보수
     homepageDeadline: string;
     maintenance: string;
+    // 페이지 구성 & 검수 (웹퍼블팀 신규)
+    menuStructure: string[];
+    mustHavePages: string;
+    reviewer: string;
+    feedbackChannel: string;
+    photoTypes: string[];
   };
   /** 디자인/브랜딩 — 로고·CI·브랜드 영상 핵심 (디자인팀) */
   stepDesign: {
@@ -271,7 +282,7 @@ const INITIAL_DATA: FormData = {
     oneLiner: '', slogan: '', brandVision: '', brandTone: '',
     philosophy: '',
     doctorPromo: '', clinicPromo: '', treatmentPromo: '',
-    locationTarget: '', interiorStyle: '', brandColor: '',
+    locationTarget: '', interiorStyle: '', brandColorTones: [], brandColor: '',
     hasProfilePhoto: false, hasLogo: false,
     logoFiles: [], licenseFiles: [], certificateFiles: [], businessFiles: [],
     permitFiles: [], signageFiles: [], bannerFiles: [], constructionFiles: [],
@@ -291,6 +302,7 @@ const INITIAL_DATA: FormData = {
     desiredDomain: '', ssl: '',
     features: [], cmsNeed: '', renewalType: '', oldSiteUrl: '',
     homepageDeadline: '', maintenance: '',
+    menuStructure: [], mustHavePages: '', reviewer: '', feedbackChannel: '', photoTypes: [],
   },
   stepDesign: {
     logoType: '', logoNotation: '', englishSpelling: '', logoMotif: '',
@@ -1202,11 +1214,19 @@ function Step4({
       </div>
       <div>
         <FieldLabel>브랜드 컬러</FieldLabel>
-        <TextInput
-          value={data.brandColor}
-          onChange={(v) => onChange({ brandColor: v })}
-          placeholder="있으시면 작성 (예: 메인 네이비 #1E3A5F, 포인트 골드)"
+        <p className="text-xs text-[#6B7280] mb-2">선호 계열을 고르고, 구체적인 색이 있으면 아래에 적어 주세요. (로고·CI 작업에도 그대로 사용됩니다)</p>
+        <ChipSelector
+          options={COLOR_PREFERENCES}
+          selected={data.brandColorTones}
+          onChange={(v) => onChange({ brandColorTones: v })}
         />
+        <div className="mt-2">
+          <TextInput
+            value={data.brandColor}
+            onChange={(v) => onChange({ brandColor: v })}
+            placeholder="구체적 컬러 (예: 메인 네이비 #1E3A5F, 포인트 골드)"
+          />
+        </div>
       </div>
 
       {/* 보유 여부 토글 */}
@@ -1401,11 +1421,12 @@ function Step5({
         />
       </div>
       <div>
-        <FieldLabel>벤치마킹 병원</FieldLabel>
+        <FieldLabel>벤치마킹 · 참고 사이트 (병원명 / URL)</FieldLabel>
+        <p className="text-xs text-[#6B7280] mb-2">마케팅·디자인·홈페이지 작업에 공통으로 참고합니다. 병원명·링크 섞어서 적어 주세요.</p>
         <TextArea
           value={data.benchmarkClinics}
           onChange={(v) => onChange({ benchmarkClinics: v })}
-          placeholder="예: 트리움치과, 연세행복한치과 - 홈페이지 디자인 및 진료 콘텐츠 참고"
+          placeholder="예: 트리움치과 / https://example-clinic.com - 홈페이지 디자인·콘텐츠 참고"
         />
       </div>
       <div>
@@ -1618,10 +1639,6 @@ function StepWeb({
           <TextInput value={data.mainKeywords} onChange={(v) => onChange({ mainKeywords: v })} placeholder="예: 프리미엄, 신뢰, 자연스러움, 전문성" />
         </div>
         <div>
-          <FieldLabel>참고 / 좋아하는 사이트 URL</FieldLabel>
-          <TextArea value={data.referenceSites} onChange={(v) => onChange({ referenceSites: v })} placeholder="마음에 드는 홈페이지 주소를 적어 주세요 (여러 개 가능)" rows={2} />
-        </div>
-        <div>
           <FieldLabel>디자인 작업 시 중점 사항</FieldLabel>
           <TextInput value={data.designFocus} onChange={(v) => onChange({ designFocus: v })} placeholder="예: 인물 위주 / 사진 위주 / 깔끔한 텍스트 중심" />
         </div>
@@ -1697,6 +1714,30 @@ function StepWeb({
         <div>
           <FieldLabel>오픈 후 유지보수 계약 희망 여부</FieldLabel>
           <ChipSelector options={MAINTENANCE_OPTIONS} selected={data.maintenance ? [data.maintenance] : []} onChange={(v) => onChange({ maintenance: v[0] || '' })} multiple={false} />
+        </div>
+      </WebSection>
+
+      {/* 페이지 구성 & 검수 (웹퍼블팀) */}
+      <WebSection title="🗂️ 페이지 구성 & 검수">
+        <div>
+          <FieldLabel>원하는 메뉴 구성</FieldLabel>
+          <ChipSelector options={HOMEPAGE_MENUS} selected={data.menuStructure} onChange={(v) => onChange({ menuStructure: v })} />
+        </div>
+        <div>
+          <FieldLabel>꼭 들어갔으면 하는 페이지</FieldLabel>
+          <TextArea value={data.mustHavePages} onChange={(v) => onChange({ mustHavePages: v })} placeholder="메뉴 외 특별히 필요한 페이지 (예: 임플란트 특화 랜딩, 비급여 안내)" rows={2} />
+        </div>
+        <div>
+          <FieldLabel>제공 가능한 사진 종류</FieldLabel>
+          <ChipSelector options={PHOTO_TYPES} selected={data.photoTypes} onChange={(v) => onChange({ photoTypes: v })} />
+        </div>
+        <div>
+          <FieldLabel>내부 검수 담당자</FieldLabel>
+          <TextInput value={data.reviewer} onChange={(v) => onChange({ reviewer: v })} placeholder="시안 확인·피드백 담당 (이름 / 연락처)" />
+        </div>
+        <div>
+          <FieldLabel>피드백 전달 방식</FieldLabel>
+          <ChipSelector options={FEEDBACK_CHANNELS} selected={data.feedbackChannel ? [data.feedbackChannel] : []} onChange={(v) => onChange({ feedbackChannel: v[0] || '' })} multiple={false} />
         </div>
       </WebSection>
     </div>
@@ -1782,10 +1823,7 @@ function StepDesign({
           <FieldLabel>로고 모티브 / 시각 요소</FieldLabel>
           <TextInput value={data.logoMotif} onChange={(v) => onChange({ logoMotif: v })} placeholder="예: 이니셜 + 자연 모티브 / '치아는 직접 안 들어갔으면'" />
         </div>
-        <div>
-          <FieldLabel>선호 컬러 계열</FieldLabel>
-          <ChipSelector options={COLOR_PREFERENCES} selected={data.colorPreference} onChange={(v) => onChange({ colorPreference: v })} />
-        </div>
+        <p className="text-xs text-[#6B7280]">컬러는 ‘브랜딩 &amp; 철학’ 단계의 <strong>브랜드 컬러</strong>에서 받은 값을 그대로 사용합니다. (중복 입력 안 함)</p>
         <div>
           <FieldLabel>피하고 싶은 컬러</FieldLabel>
           <TextInput value={data.avoidColor} onChange={(v) => onChange({ avoidColor: v })} placeholder="예: 빨강은 위협적이라 싫음" />
@@ -1941,6 +1979,7 @@ function Step7({
         <SummaryItem label="진료 철학" value={step4.philosophy} />
         <SummaryItem label="입지·타겟" value={step4.locationTarget} />
         <SummaryItem label="인테리어 컨셉" value={step4.interiorStyle} />
+        <SummaryItem label="컬러 계열" value={(step4.brandColorTones || []).join(', ')} />
         <SummaryItem label="브랜드 컬러" value={step4.brandColor} />
       </SummarySection>
 
@@ -1977,7 +2016,6 @@ function Step7({
           <SummaryItem label="로고 표기" value={stepDesign.logoNotation} />
           <SummaryItem label="영문 표기" value={stepDesign.englishSpelling} />
           <SummaryItem label="로고 모티브" value={stepDesign.logoMotif} />
-          <SummaryItem label="선호 컬러" value={(stepDesign.colorPreference || []).join(', ')} />
           <SummaryItem label="피하는 컬러" value={stepDesign.avoidColor} />
           <SummaryItem label="영상 메시지" value={stepDesign.videoMessage} />
           <SummaryItem label="영상 채널" value={(stepDesign.videoChannels || []).join(', ')} />

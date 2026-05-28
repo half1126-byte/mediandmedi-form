@@ -121,10 +121,10 @@ describe('createMainRecord — 신규 필드 매핑 (디자인/브랜딩·홈페
     step1: { clinicName: 'E2E_테스트치과', doctorName: '테스트원장', openDate: '2026-12-01', region: { city: '서울특별시', district: '강남구' }, doctors: [{ name: '테스트원장', title: '원장', specialty: '보철과' }] },
     step2: { dentalSubjects: ['일반 임플란트'], topSubjects: ['일반 임플란트'], implantMaterials: { 오스템: ['SA'] }, schedule: {}, holidays: [], holidayClose: true, lunchTime: { start: '12:30', end: '13:30' } },
     step3: { chairs: 5, equipment: ['CT(CBCT)'], facilities: ['수술실'], parking: { available: '가능' } },
-    step4: { oneLiner: 'E2E 한줄', slogan: 'E2E 슬로건', brandVision: 'E2E 비전', brandTone: '따뜻·전문', brandColor: '네이비', hasProfilePhoto: false },
+    step4: { oneLiner: 'E2E 한줄', slogan: 'E2E 슬로건', brandVision: 'E2E 비전', brandTone: '따뜻·전문', brandColorTones: ['블루(신뢰·전문)'], brandColor: '네이비', hasProfilePhoto: false },
     step5: { referralSource: ['지인 소개'], budgetRange: '300만원 ~ 500만원', marketingGoals: ['신규 환자 유입'], desiredChannels: ['네이버 블로그'] },
-    stepWeb: { subway: '강남역 1번 출구', desiredDomain: 'e2etest.com', ssl: '있음(보유 중)', features: ['온라인 예약'], renewalType: '신규 제작', homepageDeadline: '2026년 11월', maintenance: '희망함' },
-    stepDesign: { logoType: '심볼+워드마크 결합형', logoNotation: '한글+영문 병기', englishSpelling: 'E2E Dental', logoMotif: '이니셜', colorPreference: ['블루(신뢰·전문)'], avoidColor: '빨강', videoMessage: '따뜻한 진료', videoChannels: ['홈페이지(16:9)'], videoItems: ['드론(외부/주변)', '의료진 1분 인트로'], videoBgm: '라이선스 음원' },
+    stepWeb: { subway: '강남역 1번 출구', desiredDomain: 'e2etest.com', ssl: '있음(보유 중)', features: ['온라인 예약'], renewalType: '신규 제작', homepageDeadline: '2026년 11월', maintenance: '희망함', menuStructure: ['병원 소개', '의료진 소개'], photoTypes: ['원장 프로필', '시술 전후'], reviewer: '실장 김OO', feedbackChannel: '카카오톡' },
+    stepDesign: { logoType: '심볼+워드마크 결합형', logoNotation: '한글+영문 병기', englishSpelling: 'E2E Dental', logoMotif: '이니셜', avoidColor: '빨강', videoMessage: '따뜻한 진료', videoChannels: ['홈페이지(16:9)'], videoItems: ['드론(외부/주변)', '의료진 1분 인트로'], videoBgm: '라이선스 음원' },
     step6: { services: [], isStarterPackage: false, specialNotes: 'E2E 테스트' },
   };
 
@@ -148,15 +148,21 @@ describe('createMainRecord — 신규 필드 매핑 (디자인/브랜딩·홈페
     expect(body).toContain('브랜드 비전: E2E 비전');
     expect(body).toContain('브랜드 톤앤매너: 따뜻·전문');
 
-    // 홈페이지/웹 섹션
+    // 컬러는 Step4(브랜딩)에 통합 — 디자인의 옛 colorPreference 대신 브랜드 컬러 계열로
+    expect(body).toContain('브랜드 컬러 계열: 블루(신뢰·전문)');
+    expect(body).not.toContain('선호 컬러:');
+
+    // 홈페이지/웹 섹션 + 웹퍼블 신규 항목
     expect(body).toContain('홈페이지/웹');
     expect(body).toContain('도메인: e2etest.com');
     expect(body).toContain('SSL: 있음(보유 중)');
+    expect(body).toContain('원하는 메뉴: 병원 소개, 의료진 소개');
+    expect(body).toContain('제공 사진 종류: 원장 프로필, 시술 전후');
+    expect(body).toContain('내부 검수 담당자: 실장 김OO');
 
     // 디자인/브랜딩 섹션
     expect(body).toContain('디자인/브랜딩');
     expect(body).toContain('로고 타입: 심볼+워드마크 결합형');
-    expect(body).toContain('선호 컬러: 블루(신뢰·전문)');
     expect(body).toContain('영상 제작 항목: 드론(외부/주변), 의료진 1분 인트로');
     expect(body).toContain('영상 BGM: 라이선스 음원');
   });

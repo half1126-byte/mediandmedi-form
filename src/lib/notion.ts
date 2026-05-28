@@ -632,6 +632,10 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   if (s4.philosophy) blocks.push(bullet(`진료 철학: ${s4.philosophy}`));
   if (s4.locationTarget) blocks.push(bullet(`입지·타겟: ${s4.locationTarget}`));
   if (s4.interiorStyle) blocks.push(bullet(`인테리어 컨셉: ${s4.interiorStyle}`));
+  const colorTones = (s4.brandColorTones as string[])?.length
+    ? (s4.brandColorTones as string[])
+    : ((sd.colorPreference as string[]) || []); // 구버전 저장본 폴백
+  if (colorTones.length) blocks.push(bullet(`브랜드 컬러 계열: ${colorTones.join(', ')}`));
   if (s4.brandColor) blocks.push(bullet(`브랜드 컬러: ${s4.brandColor}`));
   if (s4.hasProfilePhoto) blocks.push(bullet('프로필 사진 보유'));
   if (s4.hasLogo) blocks.push(bullet('로고 파일 보유'));
@@ -687,6 +691,11 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   webOnemore('기존 홈페이지 URL', sw.oldSiteUrl);
   webOnemore('오픈 목표 일정', sw.homepageDeadline);
   webOnemore('유지보수', sw.maintenance);
+  if ((sw.menuStructure as string[])?.length) webItems.push(`원하는 메뉴: ${(sw.menuStructure as string[]).join(', ')}`);
+  webOnemore('꼭 들어갈 페이지', sw.mustHavePages);
+  if ((sw.photoTypes as string[])?.length) webItems.push(`제공 사진 종류: ${(sw.photoTypes as string[]).join(', ')}`);
+  webOnemore('내부 검수 담당자', sw.reviewer);
+  webOnemore('피드백 방식', sw.feedbackChannel);
   if (webItems.length > 0) {
     blocks.push(heading('홈페이지/웹'));
     webItems.forEach((t) => blocks.push(bullet(t)));
@@ -701,7 +710,6 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   designOne('로고 표기', sd.logoNotation);
   designOne('영문 표기', sd.englishSpelling);
   designOne('로고 모티브', sd.logoMotif);
-  if ((sd.colorPreference as string[])?.length) designItems.push(`선호 컬러: ${(sd.colorPreference as string[]).join(', ')}`);
   designOne('피하는 컬러', sd.avoidColor);
   designOne('영상 메시지', sd.videoMessage);
   designOne('영상 레퍼런스', sd.videoReference);
