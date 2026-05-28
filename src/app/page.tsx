@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { APP_VERSION, APP_UPDATED } from '@/data/version';
 
 const MEETING_DB_URL = 'https://www.notion.so/f7b5f3e9ce2142599d0eedda716e588a';
 
@@ -114,6 +115,9 @@ export default function Home() {
 
         <p className="text-center text-xs text-[#9CA3AF] mt-8 animate-fade-in-delay-2">
           &copy; 메디앤메디 전략기획팀
+        </p>
+        <p className="text-center text-[11px] text-[#9CA3AF] mt-1 animate-fade-in-delay-2">
+          v{APP_VERSION} · {APP_UPDATED} 업데이트
         </p>
         <a href="/admin/schedule" className="text-xs text-gray-400 hover:text-gray-600 mt-4 block text-center">
           관리자 대시보드
