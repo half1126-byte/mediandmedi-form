@@ -32,6 +32,7 @@ export interface SavedFormData {
   sessionId: string;
   clinicName?: string;
   currentStep: number;
+  currentStepId?: string; // 가변 스텝: 복원 위치 정본 (구버전 저장본엔 없음 → currentStep 폴백)
   totalSteps: number;
   data: Record<string, unknown>;
   savedAt: string;
