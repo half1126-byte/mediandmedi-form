@@ -48,7 +48,7 @@ import {
 // ── 스텝 레지스트리 (단일 소스) — 인덱스 하드코딩 대신 여기서 모든 게 파생 ──
 // visible: 노출 조건(PR-2 게이팅 진입점) / validate: '다음' 활성 조건(true=통과)
 type StepId =
-  | 'basic' | 'medical' | 'facility' | 'branding' | 'marketing'
+  | 'basic' | 'scope' | 'medical' | 'facility' | 'branding' | 'marketing'
   | 'web' | 'design' | 'contract' | 'review';
 
 interface StepDef {
@@ -62,13 +62,14 @@ interface StepDef {
 const STEP_REGISTRY: StepDef[] = [
   { id: 'basic', label: '기본 정보', timeMin: 2, visible: () => true,
     validate: (d) => !!d.step1.clinicName && !!d.step1.doctorName && !!d.step1.openDate && !!d.step1.region.city && !!d.step1.region.district },
+  { id: 'scope', label: '작업 범위', timeMin: 1, visible: () => true },
   { id: 'medical', label: '진료 정보', timeMin: 3, visible: () => true,
     validate: (d) => d.step2.dentalSubjects.length > 0 },
   { id: 'facility', label: '시설/장비', timeMin: 2, visible: () => true },
   { id: 'branding', label: '브랜딩 & 철학', timeMin: 2, visible: () => true },
   { id: 'marketing', label: '마케팅 방향', timeMin: 2, visible: () => true },
-  { id: 'web', label: '홈페이지/웹', timeMin: 3, visible: () => true },
-  { id: 'design', label: '디자인/브랜딩', timeMin: 2, visible: () => true },
+  { id: 'web', label: '홈페이지/웹', timeMin: 3, visible: (d) => !!d.scope?.web },
+  { id: 'design', label: '디자인/브랜딩', timeMin: 2, visible: (d) => !!d.scope?.logo || !!d.scope?.video },
   { id: 'contract', label: '계약 상품', timeMin: 2, visible: () => true },
   { id: 'review', label: '최종 확인', timeMin: 1, visible: () => true },
 ];
@@ -83,6 +84,14 @@ WEEKDAYS.forEach((day) => {
 });
 
 interface FormData {
+  /** 작업 범위 (담당자 초반 설정) — web/design 스텝 게이팅 트리거 */
+  scope: {
+    marketing: boolean;
+    viral: boolean;
+    web: boolean;
+    logo: boolean;
+    video: boolean;
+  };
   step1: {
     clinicName: string;
     doctorName: string;
@@ -235,6 +244,7 @@ interface FormData {
 }
 
 const INITIAL_DATA: FormData = {
+  scope: { marketing: true, viral: false, web: false, logo: false, video: false },
   step1: {
     clinicName: '', doctorName: '', openDate: '',
     region: { city: '', district: '' }, address: '', phone: '', fax: '',
@@ -344,6 +354,20 @@ export default function NewClinicPage() {
           ...(saved[k] || {}),
         };
       });
+      // 구버전 저장본 호환: scope 키가 없으면 stepWeb/stepDesign 입력 유무로 추론
+      // (안 그러면 기본 scope(web/design=false)로 인해 기존 입력이 게이팅으로 숨겨짐)
+      if (!saved.scope) {
+        const hasVal = (o: unknown) =>
+          !!o && Object.values(o as Record<string, unknown>).some((v) =>
+            Array.isArray(v) ? v.length > 0 : v != null && v !== '' && v !== false);
+        merged.scope = {
+          marketing: true,
+          viral: merged.scope.viral,
+          web: hasVal(saved.stepWeb),
+          logo: hasVal(saved.stepDesign),
+          video: hasVal(saved.stepDesign),
+        };
+      }
       setData(merged);
       // 복원 위치: currentStepId 우선, 없으면 구버전 인덱스(currentStep)를 활성 스텝에 매핑
       const active = STEP_REGISTRY.filter((s) => s.visible(merged));
@@ -507,13 +531,14 @@ export default function NewClinicPage() {
       <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-6 pb-28">
         <div key={stepId} className="animate-fade-slide-in">
           {current.id === 'basic' && <Step1 data={data.step1} onChange={(u) => updateStep('step1', u)} />}
+          {current.id === 'scope' && <StepScope data={data.scope} onChange={(u) => updateStep('scope', u)} />}
           {current.id === 'medical' && <Step2 data={data.step2} onChange={(u) => updateStep('step2', u)} />}
           {current.id === 'facility' && <Step3 data={data.step3} onChange={(u) => updateStep('step3', u)} />}
           {current.id === 'branding' && <Step4 data={data.step4} onChange={(u) => updateStep('step4', u)} />}
           {current.id === 'marketing' && <Step5 data={data.step5} onChange={(u) => updateStep('step5', u)} />}
           {current.id === 'web' && <StepWeb data={data.stepWeb} onChange={(u) => updateStep('stepWeb', u)} />}
           {current.id === 'design' && <StepDesign data={data.stepDesign} onChange={(u) => updateStep('stepDesign', u)} />}
-          {current.id === 'contract' && <Step6 data={data.step6} onChange={(u) => updateStep('step6', u)} />}
+          {current.id === 'contract' && <Step6 data={data.step6} scope={data.scope} onChange={(u) => updateStep('step6', u)} />}
           {current.id === 'review' && <Step7 data={data} onGoToStep={goToStepById} confirmed={confirmed} setConfirmed={setConfirmed} />}
         </div>
       </main>
@@ -1432,11 +1457,20 @@ function Step5({
 
 // Step 6: 계약 상품
 function Step6({
-  data, onChange,
+  data, scope, onChange,
 }: {
   data: FormData['step6'];
+  scope: FormData['scope'];
   onChange: (u: Partial<FormData['step6']>) => void;
 }) {
+  // 계약 서비스 팀 ↔ 작업 범위(scope) 불일치 경고 (자동 변경 X, 안내만)
+  const teams = new Set(
+    data.services.map((s) => SERVICES_LIST.find((sv) => sv.id === s.serviceId)?.team).filter(Boolean)
+  );
+  const scopeMismatch: string[] = [];
+  if (teams.has('웹팀') && !scope.web) scopeMismatch.push('홈페이지 제작');
+  if (teams.has('디자인팀') && !scope.logo && !scope.video) scopeMismatch.push('로고·CI / 브랜드 영상');
+
   return (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
@@ -1447,6 +1481,15 @@ function Step6({
           여기부터는 <strong>담당자</strong>가 입력합니다
         </p>
       </div>
+
+      {scopeMismatch.length > 0 && (
+        <div className="bg-[#FEF3C7] border-l-4 border-[#D97706] rounded-r-lg p-3">
+          <p className="text-xs text-[#92400E] leading-relaxed">
+            ⚠️ 계약에 <strong>{scopeMismatch.join(', ')}</strong> 서비스가 있는데 ‘작업 범위’에서 빠져 있습니다.
+            작업 범위에서 선택하면 해당 입력 단계가 나타납니다. (지금 입력은 그대로 유지됩니다)
+          </p>
+        </div>
+      )}
 
       <div>
         <FieldLabel>계약 서비스 선택</FieldLabel>
@@ -1656,6 +1699,50 @@ function StepWeb({
           <ChipSelector options={MAINTENANCE_OPTIONS} selected={data.maintenance ? [data.maintenance] : []} onChange={(v) => onChange({ maintenance: v[0] || '' })} multiple={false} />
         </div>
       </WebSection>
+    </div>
+  );
+}
+
+// Step Scope: 작업 범위 (담당자 초반 설정 — web/design 스텝 게이팅 트리거)
+const SCOPE_OPTIONS: { key: keyof FormData['scope']; label: string }[] = [
+  { key: 'marketing', label: '마케팅' },
+  { key: 'viral', label: '바이럴' },
+  { key: 'web', label: '홈페이지 제작' },
+  { key: 'logo', label: '로고·CI' },
+  { key: 'video', label: '브랜드 영상' },
+];
+
+function StepScope({
+  data, onChange,
+}: {
+  data: FormData['scope'];
+  onChange: (u: Partial<FormData['scope']>) => void;
+}) {
+  const selected = SCOPE_OPTIONS.filter((o) => data[o.key]).map((o) => o.label);
+  const handle = (labels: string[]) => {
+    const next: Partial<FormData['scope']> = {};
+    SCOPE_OPTIONS.forEach((o) => { next[o.key] = labels.includes(o.label); });
+    onChange(next);
+  };
+  return (
+    <div className="space-y-6">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+        <svg className="w-5 h-5 text-[#2563EB] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p className="text-sm text-[#2563EB]">
+          <strong>담당자</strong>가 이번 거래처에 진행할 작업을 선택합니다. <strong>선택한 작업의 질문만</strong> 이후 단계에 나타납니다.
+        </p>
+      </div>
+      <div>
+        <FieldLabel required>이번에 진행할 작업 범위</FieldLabel>
+        <p className="text-xs text-[#6B7280] mb-3">예: 마케팅만 진행하면 홈페이지·디자인 입력 단계는 자동으로 숨겨집니다. (여러 개 선택 가능)</p>
+        <ChipSelector
+          options={SCOPE_OPTIONS.map((o) => o.label)}
+          selected={selected}
+          onChange={handle}
+        />
+      </div>
     </div>
   );
 }
@@ -1870,30 +1957,34 @@ function Step7({
         <SummaryItem label="채널 증정선물" value={step5.channelGift} />
       </SummarySection>
 
-      <SummarySection title="홈페이지/웹" stepId="web" onGoToStep={onGoToStep}>
-        <SummaryItem label="오시는 길" value={[stepWeb.subway, stepWeb.bus, stepWeb.locationNote].filter(Boolean).join(' / ')} />
-        <SummaryItem label="원장 약력" value={[stepWeb.education, stepWeb.career].filter(Boolean).join(' / ')} />
-        <SummaryItem label="메인 키워드" value={stepWeb.mainKeywords} />
-        <SummaryItem label="참고 사이트" value={stepWeb.referenceSites} />
-        <SummaryItem label="도메인" value={stepWeb.desiredDomain} />
-        <SummaryItem label="SSL" value={stepWeb.ssl} />
-        <SummaryItem label="필요 기능" value={(stepWeb.features || []).join(', ')} />
-        <SummaryItem label="리뉴얼" value={stepWeb.renewalType} />
-        <SummaryItem label="오픈 일정" value={stepWeb.homepageDeadline} />
-      </SummarySection>
+      {data.scope.web && (
+        <SummarySection title="홈페이지/웹" stepId="web" onGoToStep={onGoToStep}>
+          <SummaryItem label="오시는 길" value={[stepWeb.subway, stepWeb.bus, stepWeb.locationNote].filter(Boolean).join(' / ')} />
+          <SummaryItem label="원장 약력" value={[stepWeb.education, stepWeb.career].filter(Boolean).join(' / ')} />
+          <SummaryItem label="메인 키워드" value={stepWeb.mainKeywords} />
+          <SummaryItem label="참고 사이트" value={stepWeb.referenceSites} />
+          <SummaryItem label="도메인" value={stepWeb.desiredDomain} />
+          <SummaryItem label="SSL" value={stepWeb.ssl} />
+          <SummaryItem label="필요 기능" value={(stepWeb.features || []).join(', ')} />
+          <SummaryItem label="리뉴얼" value={stepWeb.renewalType} />
+          <SummaryItem label="오픈 일정" value={stepWeb.homepageDeadline} />
+        </SummarySection>
+      )}
 
-      <SummarySection title="디자인/브랜딩" stepId="design" onGoToStep={onGoToStep}>
-        <SummaryItem label="로고 타입" value={stepDesign.logoType} />
-        <SummaryItem label="로고 표기" value={stepDesign.logoNotation} />
-        <SummaryItem label="영문 표기" value={stepDesign.englishSpelling} />
-        <SummaryItem label="로고 모티브" value={stepDesign.logoMotif} />
-        <SummaryItem label="선호 컬러" value={(stepDesign.colorPreference || []).join(', ')} />
-        <SummaryItem label="피하는 컬러" value={stepDesign.avoidColor} />
-        <SummaryItem label="영상 메시지" value={stepDesign.videoMessage} />
-        <SummaryItem label="영상 채널" value={(stepDesign.videoChannels || []).join(', ')} />
-        <SummaryItem label="영상 항목" value={(stepDesign.videoItems || []).join(', ')} />
-        <SummaryItem label="BGM" value={stepDesign.videoBgm} />
-      </SummarySection>
+      {(data.scope.logo || data.scope.video) && (
+        <SummarySection title="디자인/브랜딩" stepId="design" onGoToStep={onGoToStep}>
+          <SummaryItem label="로고 타입" value={stepDesign.logoType} />
+          <SummaryItem label="로고 표기" value={stepDesign.logoNotation} />
+          <SummaryItem label="영문 표기" value={stepDesign.englishSpelling} />
+          <SummaryItem label="로고 모티브" value={stepDesign.logoMotif} />
+          <SummaryItem label="선호 컬러" value={(stepDesign.colorPreference || []).join(', ')} />
+          <SummaryItem label="피하는 컬러" value={stepDesign.avoidColor} />
+          <SummaryItem label="영상 메시지" value={stepDesign.videoMessage} />
+          <SummaryItem label="영상 채널" value={(stepDesign.videoChannels || []).join(', ')} />
+          <SummaryItem label="영상 항목" value={(stepDesign.videoItems || []).join(', ')} />
+          <SummaryItem label="BGM" value={stepDesign.videoBgm} />
+        </SummarySection>
+      )}
 
       <SummarySection title="계약 상품" stepId="contract" onGoToStep={onGoToStep}>
         <SummaryItem

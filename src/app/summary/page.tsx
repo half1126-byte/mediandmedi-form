@@ -130,6 +130,7 @@ function SummaryContent() {
   const step5 = (formData?.step5 || {}) as Record<string, unknown>;
   const stepWeb = (formData?.stepWeb || {}) as Record<string, unknown>;
   const stepDesign = (formData?.stepDesign || {}) as Record<string, unknown>;
+  const scope = (formData?.scope || {}) as Record<string, boolean>;
   const step6 = (formData?.step6 || {}) as Record<string, unknown>;
   const region = (step1.region || {}) as Record<string, string>;
   const parking = (step3.parking || {}) as Record<string, string>;
@@ -206,7 +207,7 @@ function SummaryContent() {
               <InfoRow label="채널" value={((step5.desiredChannels as string[]) || []).join(', ')} />
             </SummarySection>
 
-            {(stepWeb.desiredDomain || (stepWeb.features as string[])?.length || stepWeb.mainKeywords) ? (
+            {(scope.web || stepWeb.desiredDomain || (stepWeb.features as string[])?.length || stepWeb.mainKeywords) ? (
               <SummarySection title="홈페이지/웹">
                 <InfoRow label="도메인" value={stepWeb.desiredDomain as string} />
                 <InfoRow label="메인 키워드" value={stepWeb.mainKeywords as string} />
@@ -216,7 +217,7 @@ function SummaryContent() {
               </SummarySection>
             ) : null}
 
-            {(stepDesign.logoType || (stepDesign.colorPreference as string[])?.length || (stepDesign.videoItems as string[])?.length) ? (
+            {(scope.logo || scope.video || stepDesign.logoType || (stepDesign.colorPreference as string[])?.length || (stepDesign.videoItems as string[])?.length) ? (
               <SummarySection title="디자인/브랜딩">
                 <InfoRow label="로고 타입" value={stepDesign.logoType as string} />
                 <InfoRow label="선호 컬러" value={((stepDesign.colorPreference as string[]) || []).join(', ')} />
