@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import ProgressBar from '@/components/ProgressBar';
 import ChipSelector from '@/components/ChipSelector';
@@ -45,18 +45,33 @@ import {
   VIDEO_BGM,
 } from '@/data/dental';
 
-const STEP_LABELS = [
-  '기본 정보',
-  '진료 정보',
-  '시설/장비',
-  '브랜딩 & 철학',
-  '마케팅 방향',
-  '홈페이지/웹',
-  '디자인/브랜딩',
-  '계약 상품',
-  '최종 확인',
+// ── 스텝 레지스트리 (단일 소스) — 인덱스 하드코딩 대신 여기서 모든 게 파생 ──
+// visible: 노출 조건(PR-2 게이팅 진입점) / validate: '다음' 활성 조건(true=통과)
+type StepId =
+  | 'basic' | 'medical' | 'facility' | 'branding' | 'marketing'
+  | 'web' | 'design' | 'contract' | 'review';
+
+interface StepDef {
+  id: StepId;
+  label: string;
+  timeMin: number;
+  visible: (d: FormData) => boolean;
+  validate?: (d: FormData) => boolean;
+}
+
+const STEP_REGISTRY: StepDef[] = [
+  { id: 'basic', label: '기본 정보', timeMin: 2, visible: () => true,
+    validate: (d) => !!d.step1.clinicName && !!d.step1.doctorName && !!d.step1.openDate && !!d.step1.region.city && !!d.step1.region.district },
+  { id: 'medical', label: '진료 정보', timeMin: 3, visible: () => true,
+    validate: (d) => d.step2.dentalSubjects.length > 0 },
+  { id: 'facility', label: '시설/장비', timeMin: 2, visible: () => true },
+  { id: 'branding', label: '브랜딩 & 철학', timeMin: 2, visible: () => true },
+  { id: 'marketing', label: '마케팅 방향', timeMin: 2, visible: () => true },
+  { id: 'web', label: '홈페이지/웹', timeMin: 3, visible: () => true },
+  { id: 'design', label: '디자인/브랜딩', timeMin: 2, visible: () => true },
+  { id: 'contract', label: '계약 상품', timeMin: 2, visible: () => true },
+  { id: 'review', label: '최종 확인', timeMin: 1, visible: () => true },
 ];
-const TOTAL_STEPS = 9;
 
 const DEFAULT_SCHEDULE: Record<string, { enabled: boolean; start: string; end: string }> = {};
 WEEKDAYS.forEach((day) => {
@@ -280,7 +295,7 @@ const INITIAL_DATA: FormData = {
 
 export default function NewClinicPage() {
   const router = useRouter();
-  const [step, setStep] = useState(0);
+  const [stepId, setStepId] = useState<StepId>('basic');
   const [confirmed, setConfirmed] = useState(false);
   const [data, setData] = useState<FormData>(INITIAL_DATA);
   const [sessionId, setSessionId] = useState('');
@@ -289,6 +304,20 @@ export default function NewClinicPage() {
   const [submitStep, setSubmitStep] = useState(0);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+
+  // 활성 스텝(게이팅 반영) + 현재 위치 파생 — 모든 인덱스/라벨/네비가 여기서 나옴
+  const activeSteps = useMemo(() => STEP_REGISTRY.filter((s) => s.visible(data)), [data]);
+  const stepIndex = Math.max(0, activeSteps.findIndex((s) => s.id === stepId));
+  const current = activeSteps[stepIndex] ?? activeSteps[0];
+  const totalSteps = activeSteps.length;
+  const isReview = current.id === 'review';
+
+  // stepId가 더 이상 활성 목록에 없으면(게이팅으로 사라짐) 범위 내로 보정
+  useEffect(() => {
+    if (!activeSteps.some((s) => s.id === stepId)) {
+      setStepId(activeSteps[Math.min(stepIndex, activeSteps.length - 1)].id);
+    }
+  }, [activeSteps, stepId, stepIndex]);
 
   // 초기화: 기존 저장 확인
   useEffect(() => {
@@ -316,8 +345,15 @@ export default function NewClinicPage() {
         };
       });
       setData(merged);
-      // 저장된 스텝이 현재 단계 범위를 벗어나면 클램프
-      setStep(Math.min(Math.max(loaded.currentStep ?? 0, 0), TOTAL_STEPS - 1));
+      // 복원 위치: currentStepId 우선, 없으면 구버전 인덱스(currentStep)를 활성 스텝에 매핑
+      const active = STEP_REGISTRY.filter((s) => s.visible(merged));
+      const savedId = (loaded as { currentStepId?: StepId }).currentStepId;
+      if (savedId && active.some((s) => s.id === savedId)) {
+        setStepId(savedId);
+      } else {
+        const idx = Math.min(Math.max(loaded.currentStep ?? 0, 0), active.length - 1);
+        setStepId(active[idx].id);
+      }
     }
     setShowRestore(null);
   };
@@ -333,16 +369,17 @@ export default function NewClinicPage() {
   const getAutosaveData = useCallback((): SavedFormData => ({
     sessionId,
     clinicName: data.step1.clinicName,
-    currentStep: step,
-    totalSteps: TOTAL_STEPS,
+    currentStep: stepIndex,
+    currentStepId: stepId,
+    totalSteps,
     data: data as unknown as Record<string, unknown>,
     savedAt: new Date().toISOString(),
-  }), [sessionId, data, step]);
+  }), [sessionId, data, stepIndex, stepId, totalSteps]);
 
   const { saveNow } = useAutosave(
     sessionId,
     getAutosaveData,
-    [data, step]
+    [data, stepId]
   );
 
   const scrollToTop = () => {
@@ -351,23 +388,24 @@ export default function NewClinicPage() {
 
   const nextStep = () => {
     saveNow();
-    if (step < TOTAL_STEPS - 1) {
-      setStep(step + 1);
+    if (stepIndex < totalSteps - 1) {
+      setStepId(activeSteps[stepIndex + 1].id);
       scrollToTop();
     }
   };
 
   const prevStep = () => {
     saveNow();
-    if (step > 0) {
-      setStep(step - 1);
+    if (stepIndex > 0) {
+      setStepId(activeSteps[stepIndex - 1].id);
       scrollToTop();
     }
   };
 
-  const goToStep = (s: number) => {
+  const goToStepById = (id: StepId) => {
+    if (!activeSteps.some((s) => s.id === id)) return;
     saveNow();
-    setStep(s);
+    setStepId(id);
     setConfirmed(false);
     scrollToTop();
   };
@@ -446,7 +484,7 @@ export default function NewClinicPage() {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between px-6 py-3">
             <button
-              onClick={() => step === 0 ? router.push('/') : prevStep()}
+              onClick={() => stepIndex === 0 ? router.push('/') : prevStep()}
               className="w-10 h-10 flex items-center justify-center min-w-[44px] min-h-[44px]"
             >
               <svg className="w-5 h-5 text-[#374151]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -457,32 +495,33 @@ export default function NewClinicPage() {
             <div className="w-10" />
           </div>
           <ProgressBar
-            currentStep={step}
-            totalSteps={TOTAL_STEPS}
-            stepLabels={STEP_LABELS}
+            currentStep={stepIndex}
+            totalSteps={totalSteps}
+            stepLabels={activeSteps.map((s) => s.label)}
+            stepTimes={activeSteps.map((s) => s.timeMin)}
           />
         </div>
       </header>
 
       {/* 폼 콘텐츠 */}
       <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-6 pb-28">
-        <div key={step} className="animate-fade-slide-in">
-          {step === 0 && <Step1 data={data.step1} onChange={(u) => updateStep('step1', u)} />}
-          {step === 1 && <Step2 data={data.step2} onChange={(u) => updateStep('step2', u)} />}
-          {step === 2 && <Step3 data={data.step3} onChange={(u) => updateStep('step3', u)} />}
-          {step === 3 && <Step4 data={data.step4} onChange={(u) => updateStep('step4', u)} />}
-          {step === 4 && <Step5 data={data.step5} onChange={(u) => updateStep('step5', u)} />}
-          {step === 5 && <StepWeb data={data.stepWeb} onChange={(u) => updateStep('stepWeb', u)} />}
-          {step === 6 && <StepDesign data={data.stepDesign} onChange={(u) => updateStep('stepDesign', u)} />}
-          {step === 7 && <Step6 data={data.step6} onChange={(u) => updateStep('step6', u)} />}
-          {step === 8 && <Step7 data={data} onGoToStep={goToStep} confirmed={confirmed} setConfirmed={setConfirmed} />}
+        <div key={stepId} className="animate-fade-slide-in">
+          {current.id === 'basic' && <Step1 data={data.step1} onChange={(u) => updateStep('step1', u)} />}
+          {current.id === 'medical' && <Step2 data={data.step2} onChange={(u) => updateStep('step2', u)} />}
+          {current.id === 'facility' && <Step3 data={data.step3} onChange={(u) => updateStep('step3', u)} />}
+          {current.id === 'branding' && <Step4 data={data.step4} onChange={(u) => updateStep('step4', u)} />}
+          {current.id === 'marketing' && <Step5 data={data.step5} onChange={(u) => updateStep('step5', u)} />}
+          {current.id === 'web' && <StepWeb data={data.stepWeb} onChange={(u) => updateStep('stepWeb', u)} />}
+          {current.id === 'design' && <StepDesign data={data.stepDesign} onChange={(u) => updateStep('stepDesign', u)} />}
+          {current.id === 'contract' && <Step6 data={data.step6} onChange={(u) => updateStep('step6', u)} />}
+          {current.id === 'review' && <Step7 data={data} onGoToStep={goToStepById} confirmed={confirmed} setConfirmed={setConfirmed} />}
         </div>
       </main>
 
       {/* 하단 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
         <div className="max-w-4xl mx-auto px-6 py-4 flex gap-3">
-          {step > 0 && step < 8 && (
+          {stepIndex > 0 && !isReview && (
             <button
               onClick={prevStep}
               className="h-12 px-6 bg-white border border-[#D1D5DB] text-[#374151] rounded-lg font-medium"
@@ -490,13 +529,10 @@ export default function NewClinicPage() {
               이전
             </button>
           )}
-          {step < 8 ? (
+          {!isReview ? (
             <button
               onClick={nextStep}
-              disabled={
-                (step === 0 && (!data.step1.clinicName || !data.step1.doctorName || !data.step1.openDate || !data.step1.region.city || !data.step1.region.district)) ||
-                (step === 1 && data.step2.dentalSubjects.length === 0)
-              }
+              disabled={current.validate ? !current.validate(data) : false}
               className="flex-1 h-12 bg-[#2563EB] text-white rounded-lg font-semibold
                          hover:bg-[#1d4ed8] active:scale-[0.98] transition-all
                          disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1697,16 +1733,16 @@ function StepDesign({
 
 // Step 7: 최종 확인
 function SummarySection({
-  title, stepIndex, onGoToStep, children,
+  title, stepId, onGoToStep, children,
 }: {
-  title: string; stepIndex: number; onGoToStep: (step: number) => void; children: React.ReactNode;
+  title: string; stepId: StepId; onGoToStep: (id: StepId) => void; children: React.ReactNode;
 }) {
   return (
     <div className="bg-white rounded-xl border border-[#E5E7EB] p-4 space-y-2">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-[#374151]">{title}</h3>
         <button
-          onClick={() => onGoToStep(stepIndex)}
+          onClick={() => onGoToStep(stepId)}
           className="text-xs text-[#2563EB] font-medium hover:underline"
         >
           수정
@@ -1731,7 +1767,7 @@ function Step7({
   data, onGoToStep, confirmed, setConfirmed,
 }: {
   data: FormData;
-  onGoToStep: (step: number) => void;
+  onGoToStep: (id: StepId) => void;
   confirmed: boolean;
   setConfirmed: (v: boolean) => void;
 }) {
@@ -1755,7 +1791,7 @@ function Step7({
         각 섹션의 [수정] 버튼으로 해당 단계로 돌아갈 수 있습니다.
       </p>
 
-      <SummarySection title="기본 정보" stepIndex={0} onGoToStep={onGoToStep}>
+      <SummarySection title="기본 정보" stepId="basic" onGoToStep={onGoToStep}>
         <SummaryItem label="치과명" value={step1.clinicName} />
         <SummaryItem label="원장명" value={step1.doctorName} />
         <SummaryItem label="개원예정일" value={step1.openDate} />
@@ -1778,7 +1814,7 @@ function Step7({
         )}
       </SummarySection>
 
-      <SummarySection title="진료 정보" stepIndex={1} onGoToStep={onGoToStep}>
+      <SummarySection title="진료 정보" stepId="medical" onGoToStep={onGoToStep}>
         <SummaryItem label="진료과목" value={step2.dentalSubjects.join(', ')} />
         <SummaryItem label="주력진료" value={step2.topSubjects.join(', ')} />
         {step2.alignerOptions && step2.alignerOptions.length > 0 && (
@@ -1799,7 +1835,7 @@ function Step7({
         <SummaryItem label="점심시간" value={`${step2.lunchTime.start} ~ ${step2.lunchTime.end}`} />
       </SummarySection>
 
-      <SummarySection title="시설/장비" stepIndex={2} onGoToStep={onGoToStep}>
+      <SummarySection title="시설/장비" stepId="facility" onGoToStep={onGoToStep}>
         <SummaryItem label="체어 수" value={`${step3.chairs}대`} />
         <SummaryItem label="장비" value={step3.equipment.join(', ')} />
         <SummaryItem label="시설" value={step3.facilities.join(', ')} />
@@ -1807,7 +1843,7 @@ function Step7({
         <SummaryItem label="기공소" value={step3.hasLabRoom ? `보유${step3.labEquipment.length > 0 ? ` (${step3.labEquipment.join(', ')})` : ''}` : '미보유'} />
       </SummarySection>
 
-      <SummarySection title="브랜딩 & 철학" stepIndex={3} onGoToStep={onGoToStep}>
+      <SummarySection title="브랜딩 & 철학" stepId="branding" onGoToStep={onGoToStep}>
         <SummaryItem label="한줄소개" value={step4.oneLiner} />
         <SummaryItem label="슬로건" value={step4.slogan} />
         <SummaryItem label="브랜드 비전" value={step4.brandVision} />
@@ -1821,7 +1857,7 @@ function Step7({
         <SummaryItem label="브랜드 컬러" value={step4.brandColor} />
       </SummarySection>
 
-      <SummarySection title="마케팅 방향" stepIndex={4} onGoToStep={onGoToStep}>
+      <SummarySection title="마케팅 방향" stepId="marketing" onGoToStep={onGoToStep}>
         <SummaryItem label="유입경로" value={step5.referralSource.join(', ')} />
         <SummaryItem label="소개해 주신 분" value={step5.referralName} />
         <SummaryItem label="예산" value={step5.budgetRange} />
@@ -1834,7 +1870,7 @@ function Step7({
         <SummaryItem label="채널 증정선물" value={step5.channelGift} />
       </SummarySection>
 
-      <SummarySection title="홈페이지/웹" stepIndex={5} onGoToStep={onGoToStep}>
+      <SummarySection title="홈페이지/웹" stepId="web" onGoToStep={onGoToStep}>
         <SummaryItem label="오시는 길" value={[stepWeb.subway, stepWeb.bus, stepWeb.locationNote].filter(Boolean).join(' / ')} />
         <SummaryItem label="원장 약력" value={[stepWeb.education, stepWeb.career].filter(Boolean).join(' / ')} />
         <SummaryItem label="메인 키워드" value={stepWeb.mainKeywords} />
@@ -1846,7 +1882,7 @@ function Step7({
         <SummaryItem label="오픈 일정" value={stepWeb.homepageDeadline} />
       </SummarySection>
 
-      <SummarySection title="디자인/브랜딩" stepIndex={6} onGoToStep={onGoToStep}>
+      <SummarySection title="디자인/브랜딩" stepId="design" onGoToStep={onGoToStep}>
         <SummaryItem label="로고 타입" value={stepDesign.logoType} />
         <SummaryItem label="로고 표기" value={stepDesign.logoNotation} />
         <SummaryItem label="영문 표기" value={stepDesign.englishSpelling} />
@@ -1859,7 +1895,7 @@ function Step7({
         <SummaryItem label="BGM" value={stepDesign.videoBgm} />
       </SummarySection>
 
-      <SummarySection title="계약 상품" stepIndex={7} onGoToStep={onGoToStep}>
+      <SummarySection title="계약 상품" stepId="contract" onGoToStep={onGoToStep}>
         <SummaryItem
           label="서비스"
           value={step6.services.map((s) => {
