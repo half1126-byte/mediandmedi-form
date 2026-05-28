@@ -539,6 +539,7 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   const s5 = (data.step5 || {}) as Record<string, unknown>;
   const sw = (data.stepWeb || {}) as Record<string, unknown>;
   const sd = (data.stepDesign || {}) as Record<string, unknown>;
+  const sc = (data.scope || {}) as Record<string, boolean>;
   const s6 = (data.step6 || {}) as Record<string, unknown>;
 
   const blocks: Array<Record<string, unknown>> = [];
@@ -552,6 +553,17 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
       color: 'gray_background',
     },
   });
+
+  // 작업 범위 (담당자 설정)
+  const scopeLabels: string[] = [];
+  if (sc.marketing) scopeLabels.push('마케팅');
+  if (sc.viral) scopeLabels.push('바이럴');
+  if (sc.web) scopeLabels.push('홈페이지 제작');
+  if (sc.logo) scopeLabels.push('로고·CI');
+  if (sc.video) scopeLabels.push('브랜드 영상');
+  if (scopeLabels.length > 0) {
+    blocks.push(bullet(`이번 작업 범위: ${scopeLabels.join(', ')}`));
+  }
 
   // 의료진
   const doctors = (s1.doctors as { name: string; title: string; specialty: string }[]) || [];
