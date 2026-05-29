@@ -119,9 +119,9 @@ describe('createMainRecord — 신규 필드 매핑 (디자인/브랜딩·홈페
 
   const e2ePayload = {
     step1: { clinicName: 'E2E_테스트치과', doctorName: '테스트원장', openDate: '2026-12-01', region: { city: '서울특별시', district: '강남구' }, doctors: [{ name: '테스트원장', title: '원장', specialty: '보철과' }] },
-    step2: { dentalSubjects: ['일반 임플란트'], topSubjects: ['일반 임플란트'], implantMaterials: { 오스템: ['SA'] }, schedule: {}, holidays: [], holidayClose: true, lunchTime: { start: '12:30', end: '13:30' } },
-    step3: { chairs: 5, equipment: ['CT(CBCT)'], facilities: ['수술실'], parking: { available: '가능' } },
-    step4: { oneLiner: 'E2E 한줄', slogan: 'E2E 슬로건', brandVision: 'E2E 비전', brandTone: '따뜻·전문', brandColorTones: ['블루(신뢰·전문)'], brandColor: '네이비', hasProfilePhoto: false },
+    step2: { dentalSubjects: ['일반 임플란트', '투명교정'], customSubjects: '코골이 치료', topSubjects: ['일반 임플란트'], implantMaterials: { 오스템: ['SA'] }, alignerOptions: ['인비절라인', '기타'], alignerOther: '클리어라인', schedule: {}, holidays: [], holidayClose: true, lunchTime: { start: '12:30', end: '13:30' } },
+    step3: { chairs: 5, equipment: ['CT(CBCT)'], equipmentDetail: '바텍 그린스마트 CT', facilities: ['수술실'], parking: { available: '가능', detail: '지하 20대' } },
+    step4: { oneLiner: 'E2E 한줄', slogan: 'E2E 슬로건', brandVision: 'E2E 비전', brandTone: '따뜻·전문', brandColorTones: ['블루(신뢰·전문)'], brandColor: '네이비', benchmarkClinics: '트리움치과 / example.com', hasProfilePhoto: false },
     step5: { referralSource: ['지인 소개'], budgetRange: '300만원 ~ 500만원', marketingGoals: ['신규 환자 유입'], desiredChannels: ['네이버 블로그'] },
     stepWeb: { subway: '강남역 1번 출구', desiredDomain: 'e2etest.com', ssl: '있음(보유 중)', features: ['온라인 예약'], renewalType: '신규 제작', homepageDeadline: '2026년 11월', maintenance: '희망함', menuStructure: ['병원 소개', '의료진 소개'], photoTypes: ['원장 프로필', '시술 전후'], reviewer: '실장 김OO', feedbackChannel: '카카오톡' },
     stepDesign: { logoType: '심볼+워드마크 결합형', logoNotation: '한글+영문 병기', englishSpelling: 'E2E Dental', logoMotif: '이니셜', avoidColor: '빨강', videoMessage: '따뜻한 진료', videoChannels: ['홈페이지(16:9)'], videoItems: ['드론(외부/주변)', '의료진 1분 인트로'], videoBgm: '라이선스 음원' },
@@ -146,8 +146,18 @@ describe('createMainRecord — 신규 필드 매핑 (디자인/브랜딩·홈페
     // 진료 — 공휴일 휴진 여부 (이전엔 노션에 누락되던 필드)
     expect(body).toContain('공휴일: 휴진');
 
+    // 진료 — 직접 입력 과목 + 투명교정 직접 입력
+    expect(body).toContain('직접 입력 과목: 코골이 치료');
+    expect(body).toContain('투명교정: 인비절라인, 기타, 클리어라인');
+
+    // 시설·장비 — 장비 상세 직접 입력
+    expect(body).toContain('장비 상세: 바텍 그린스마트 CT');
+
     // 브랜딩 신규 필드
     expect(body).toContain('슬로건: E2E 슬로건');
+
+    // 벤치마킹·참고 사이트 — 마케팅 → 브랜딩으로 이동
+    expect(body).toContain('벤치마킹·참고 사이트: 트리움치과 / example.com');
     expect(body).toContain('브랜드 비전: E2E 비전');
     expect(body).toContain('브랜드 톤앤매너: 따뜻·전문');
 

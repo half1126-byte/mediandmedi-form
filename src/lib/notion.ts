@@ -587,6 +587,7 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
 
   // 진료
   blocks.push(heading('진료'));
+  if (s2.customSubjects) blocks.push(bullet(`직접 입력 과목: ${s2.customSubjects}`));
   if ((s2.topSubjects as string[])?.length) {
     blocks.push(bullet(`주력진료: ${(s2.topSubjects as string[]).join(', ')}`));
   }
@@ -595,8 +596,9 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
     .map(([b, ps]) => (ps.length ? `${b}(${ps.join('/')})` : b))
     .join(', ');
   if (implantSummary) blocks.push(bullet(`임플란트 재료: ${implantSummary}`));
-  if ((s2.alignerOptions as string[])?.length) {
-    blocks.push(bullet(`투명교정: ${(s2.alignerOptions as string[]).join(', ')}`));
+  if ((s2.alignerOptions as string[])?.length || s2.alignerOther) {
+    const aligners = [...((s2.alignerOptions as string[]) || []), s2.alignerOther as string].filter(Boolean);
+    blocks.push(bullet(`투명교정: ${aligners.join(', ')}`));
   }
   if ((s2.pediatricOrthoOptions as string[])?.length) {
     blocks.push(bullet(`소아교정: ${(s2.pediatricOrthoOptions as string[]).join(', ')}`));
@@ -616,6 +618,7 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   blocks.push(heading('시설·장비'));
   if (s3.chairs) blocks.push(bullet(`체어 ${s3.chairs}대`));
   if ((s3.equipment as string[])?.length) blocks.push(bullet(`장비: ${(s3.equipment as string[]).join(', ')}`));
+  if (s3.equipmentDetail) blocks.push(bullet(`장비 상세: ${s3.equipmentDetail}`));
   if ((s3.facilities as string[])?.length) blocks.push(bullet(`시설: ${(s3.facilities as string[]).join(', ')}`));
   const parking = (s3.parking as Record<string, string>) || {};
   if (parking.available) blocks.push(bullet(`주차: ${parking.available}${parking.detail ? ` (${parking.detail})` : ''}`));
@@ -638,6 +641,9 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
     : ((sd.colorPreference as string[]) || []); // 구버전 저장본 폴백
   if (colorTones.length) blocks.push(bullet(`브랜드 컬러 계열: ${colorTones.join(', ')}`));
   if (s4.brandColor) blocks.push(bullet(`브랜드 컬러: ${s4.brandColor}`));
+  // 벤치마킹·참고 사이트: 브랜딩으로 이동(구버전 저장본은 s5에서 폴백)
+  const benchmark = (s4.benchmarkClinics as string) || (s5.benchmarkClinics as string);
+  if (benchmark) blocks.push(bullet(`벤치마킹·참고 사이트: ${benchmark}`));
   if (s4.hasProfilePhoto) blocks.push(bullet('프로필 사진 보유'));
   if (s4.hasLogo) blocks.push(bullet('로고 파일 보유'));
 
@@ -655,7 +661,6 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   if ((s5.desiredChannels as string[])?.length) {
     blocks.push(bullet(`원하는 채널: ${(s5.desiredChannels as string[]).join(', ')}`));
   }
-  if (s5.benchmarkClinics) blocks.push(bullet(`벤치마킹: ${s5.benchmarkClinics}`));
   if (s5.openingEvent) blocks.push(bullet(`개원이벤트: ${s5.openingEvent}`));
   if (s5.didInfo) blocks.push(bullet(`DID: ${s5.didInfo}`));
   if (s5.reviewGift) blocks.push(bullet(`리뷰 증정선물: ${s5.reviewGift}`));
