@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as ftp from 'basic-ftp';
+import { Readable } from 'stream';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,7 +36,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function bufferToReadable(buffer: Buffer): import('stream').Readable {
-  const { Readable } = require('stream');
+function bufferToReadable(buffer: Buffer): Readable {
   return Readable.from(buffer);
 }

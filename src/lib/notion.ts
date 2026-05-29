@@ -609,6 +609,7 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   if (scheduleLine) blocks.push(bullet(`진료시간: ${scheduleLine}`));
   const lunch = (s2.lunchTime || {}) as { start?: string; end?: string };
   if (lunch.start && lunch.end) blocks.push(bullet(`점심시간: ${lunch.start}~${lunch.end}`));
+  if (typeof s2.holidayClose === 'boolean') blocks.push(bullet(`공휴일: ${s2.holidayClose ? '휴진' : '진료'}`));
   if (s2.nightWeekend) blocks.push(bullet(`야간/주말: ${s2.nightWeekend}`));
 
   // 시설·장비
