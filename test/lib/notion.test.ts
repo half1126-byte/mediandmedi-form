@@ -143,6 +143,9 @@ describe('createMainRecord — 신규 필드 매핑 (디자인/브랜딩·홈페
 
     const body = bodyText(arg.children);
 
+    // 진료 — 공휴일 휴진 여부 (이전엔 노션에 누락되던 필드)
+    expect(body).toContain('공휴일: 휴진');
+
     // 브랜딩 신규 필드
     expect(body).toContain('슬로건: E2E 슬로건');
     expect(body).toContain('브랜드 비전: E2E 비전');
