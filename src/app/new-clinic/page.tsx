@@ -116,11 +116,15 @@ interface FormData {
   };
   step2: {
     dentalSubjects: string[];
+    /** 진료과목 직접 입력 (목록에 없는 과목) */
+    customSubjects: string;
     topSubjects: string[];
     /** 임플란트 재료: 제조사 → 선택된 제품군 */
     implantMaterials: Record<string, string[]>;
     /** 투명교정 세부 옵션 (교정→투명교정 선택 시) */
     alignerOptions: string[];
+    /** 투명교정 직접 입력 (alignerOptions에 '기타' 선택 시) */
+    alignerOther: string;
     /** 소아교정 세부 옵션 (교정→소아교정 선택 시) */
     pediatricOrthoOptions: string[];
     schedule: Record<string, { enabled: boolean; start: string; end: string }>;
@@ -132,6 +136,8 @@ interface FormData {
   step3: {
     chairs: number;
     equipment: string[];
+    /** 보유 장비 상세 (제조사·모델명) — 홈페이지 제작 시 활용 */
+    equipmentDetail: string;
     facilities: string[];
     parking: { available: string; detail: string };
     hasLabRoom: boolean;
@@ -162,6 +168,8 @@ interface FormData {
     brandColorTones: string[];
     /** 브랜드 컬러 (자유 텍스트) */
     brandColor: string;
+    /** 벤치마킹·참고 사이트 (옛 step5에서 브랜딩으로 이동) — 마케팅·디자인·웹 공통 */
+    benchmarkClinics: string;
     hasProfilePhoto: boolean;
     hasLogo: boolean;
     logoFiles: UploadedFile[];
@@ -182,7 +190,6 @@ interface FormData {
     marketingGoals: string[];
     desiredChannels: string[];
     additionalRequest: string;
-    benchmarkClinics: string;
     openingEvent: string;
     /** DID 정보 (Step 6에서 이동) */
     didInfo: string;
@@ -265,16 +272,16 @@ const INITIAL_DATA: FormData = {
     careerImages: [],
   },
   step2: {
-    dentalSubjects: [], topSubjects: [],
+    dentalSubjects: [], customSubjects: '', topSubjects: [],
     implantMaterials: {},
-    alignerOptions: [],
+    alignerOptions: [], alignerOther: '',
     pediatricOrthoOptions: [],
     schedule: DEFAULT_SCHEDULE,
     holidays: [], holidayClose: true,
     lunchTime: { start: '12:30', end: '13:30' }, nightWeekend: '',
   },
   step3: {
-    chairs: 5, equipment: [], facilities: [],
+    chairs: 5, equipment: [], equipmentDetail: '', facilities: [],
     parking: { available: '가능', detail: '' },
     hasLabRoom: false, labEquipment: [], blueprintFiles: [],
   },
@@ -283,6 +290,7 @@ const INITIAL_DATA: FormData = {
     philosophy: '',
     doctorPromo: '', clinicPromo: '', treatmentPromo: '',
     locationTarget: '', interiorStyle: '', brandColorTones: [], brandColor: '',
+    benchmarkClinics: '',
     hasProfilePhoto: false, hasLogo: false,
     logoFiles: [], licenseFiles: [], certificateFiles: [], businessFiles: [],
     permitFiles: [], signageFiles: [], bannerFiles: [], constructionFiles: [],
@@ -291,7 +299,7 @@ const INITIAL_DATA: FormData = {
     referralSource: [], referralName: '',
     previousMarketing: '', budgetRange: '',
     marketingGoals: [], desiredChannels: [],
-    additionalRequest: '', benchmarkClinics: '', openingEvent: '',
+    additionalRequest: '', openingEvent: '',
     didInfo: '', reviewGift: '', channelGift: '',
   },
   stepWeb: {
@@ -313,6 +321,17 @@ const INITIAL_DATA: FormData = {
     services: [], isStarterPackage: false,
     contractStartDate: '', monthlyFee: '', specialNotes: '',
   },
+};
+
+// 홈에서 고른 계약 유형(preset) → 작업 범위(scope) 프리셋.
+// 담당자가 작업범위 단계에서 다시 조정할 수 있음(편의 기본값).
+const PRESET_SCOPE: Record<string, FormData['scope']> = {
+  // 마케팅 계약 — 이미 홈페이지 보유. 마케팅·바이럴만.
+  marketing: { marketing: true, viral: true, web: false, logo: false, video: false },
+  // 홈페이지 계약 — 홈페이지 제작만.
+  web: { marketing: false, viral: false, web: true, logo: false, video: false },
+  // 패키지 계약 — 전체.
+  package: { marketing: true, viral: true, web: true, logo: true, video: true },
 };
 
 export default function NewClinicPage() {
@@ -348,6 +367,14 @@ export default function NewClinicPage() {
       setShowRestore(saves[0]);
     } else {
       setSessionId(generateSessionId());
+    }
+  }, []);
+
+  // 홈에서 고른 계약 유형(preset) → 작업 범위 프리셋 적용 (신규 작성 시)
+  useEffect(() => {
+    const preset = new URLSearchParams(window.location.search).get('preset');
+    if (preset && PRESET_SCOPE[preset]) {
+      setData((d) => ({ ...d, scope: { ...PRESET_SCOPE[preset] } }));
     }
   }, []);
 
@@ -841,6 +868,14 @@ function Step2({
           selected={data.dentalSubjects}
           onChange={(v) => onChange({ dentalSubjects: v })}
         />
+        <div className="mt-3">
+          <p className="text-xs text-[#6B7280] mb-2">목록에 없는 진료과목은 직접 입력해 주세요 (쉼표로 구분)</p>
+          <TextInput
+            value={data.customSubjects}
+            onChange={(v) => onChange({ customSubjects: v })}
+            placeholder="예: 코골이 치료, 안면 보톡스"
+          />
+        </div>
       </div>
       {data.dentalSubjects.length > 0 && (
         <div>
@@ -857,13 +892,22 @@ function Step2({
       {/* 투명교정 선택 시 서브옵션 노출 */}
       {data.dentalSubjects.includes('투명교정') && (
         <div>
-          <FieldLabel>투명교정 — 사용 브랜드</FieldLabel>
-          <p className="text-xs text-[#6B7280] mb-3">사용하시는 브랜드를 모두 선택해 주세요</p>
+          <FieldLabel>투명교정 — 사용 브랜드(재료)</FieldLabel>
+          <p className="text-xs text-[#6B7280] mb-3">사용하시는 브랜드를 선택하거나, 기타를 골라 직접 입력해 주세요</p>
           <ChipSelector
             options={ALIGNER_OPTIONS}
             selected={data.alignerOptions || []}
             onChange={(v) => onChange({ alignerOptions: v })}
           />
+          {(data.alignerOptions || []).includes('기타') && (
+            <div className="mt-2">
+              <TextInput
+                value={data.alignerOther}
+                onChange={(v) => onChange({ alignerOther: v })}
+                placeholder="사용하시는 투명교정 브랜드를 직접 입력해 주세요"
+              />
+            </div>
+          )}
         </div>
       )}
       {/* 소아교정 선택 시 서브옵션 노출 */}
@@ -1047,6 +1091,15 @@ function Step3({
           selected={data.equipment}
           onChange={(v) => onChange({ equipment: v })}
         />
+        <div className="mt-3">
+          <p className="text-xs text-[#6B7280] mb-2">장비 제조사·모델명을 적어 주세요 (홈페이지 장비 소개에 사용)</p>
+          <TextArea
+            value={data.equipmentDetail}
+            onChange={(v) => onChange({ equipmentDetail: v })}
+            placeholder="예: 바텍 그린스마트 CT, 메디트 i700 구강스캐너, 오스템 디지털 X선"
+            rows={2}
+          />
+        </div>
       </div>
       <div>
         <FieldLabel>시설</FieldLabel>
@@ -1059,20 +1112,19 @@ function Step3({
       <div>
         <FieldLabel>주차</FieldLabel>
         <ChipSelector
-          options={['가능', '불가', '발렛', '기타']}
+          options={['가능', '불가', '발렛']}
           selected={[data.parking.available]}
           onChange={(v) => onChange({ parking: { ...data.parking, available: v[0] || '가능' } })}
           multiple={false}
         />
-        {data.parking.available === '기타' && (
-          <div className="mt-2">
-            <TextInput
-              value={data.parking.detail}
-              onChange={(v) => onChange({ parking: { ...data.parking, detail: v } })}
-              placeholder="주차 관련 상세 내용"
-            />
-          </div>
-        )}
+        <div className="mt-2">
+          <p className="text-xs text-[#6B7280] mb-2">주차 상세 정보를 적어 주세요 (대수·위치·요금·제휴 등)</p>
+          <TextInput
+            value={data.parking.detail}
+            onChange={(v) => onChange({ parking: { ...data.parking, detail: v } })}
+            placeholder="예: 건물 지하 1~3층 20대, 2시간 무료, 발렛 별도 1,000원"
+          />
+        </div>
       </div>
       <div className="flex items-center gap-3">
         <button
@@ -1227,6 +1279,15 @@ function Step4({
             placeholder="구체적 컬러 (예: 메인 네이비 #1E3A5F, 포인트 골드)"
           />
         </div>
+      </div>
+      <div>
+        <FieldLabel>벤치마킹 · 참고 사이트 (병원명 / URL)</FieldLabel>
+        <p className="text-xs text-[#6B7280] mb-2">마케팅·디자인·홈페이지 작업에 공통으로 참고합니다. 병원명·링크 섞어서 적어 주세요.</p>
+        <TextArea
+          value={data.benchmarkClinics}
+          onChange={(v) => onChange({ benchmarkClinics: v })}
+          placeholder="예: 트리움치과 / https://example-clinic.com - 홈페이지 디자인·콘텐츠 참고"
+        />
       </div>
 
       {/* 보유 여부 토글 */}
@@ -1418,15 +1479,6 @@ function Step5({
           options={MARKETING_CHANNELS}
           selected={data.desiredChannels}
           onChange={(v) => onChange({ desiredChannels: v })}
-        />
-      </div>
-      <div>
-        <FieldLabel>벤치마킹 · 참고 사이트 (병원명 / URL)</FieldLabel>
-        <p className="text-xs text-[#6B7280] mb-2">마케팅·디자인·홈페이지 작업에 공통으로 참고합니다. 병원명·링크 섞어서 적어 주세요.</p>
-        <TextArea
-          value={data.benchmarkClinics}
-          onChange={(v) => onChange({ benchmarkClinics: v })}
-          placeholder="예: 트리움치과 / https://example-clinic.com - 홈페이지 디자인·콘텐츠 참고"
         />
       </div>
       <div>
@@ -1941,9 +1993,12 @@ function Step7({
 
       <SummarySection title="진료 정보" stepId="medical" onGoToStep={onGoToStep}>
         <SummaryItem label="진료과목" value={step2.dentalSubjects.join(', ')} />
+        {step2.customSubjects && (
+          <SummaryItem label="직접 입력 과목" value={step2.customSubjects} />
+        )}
         <SummaryItem label="주력진료" value={step2.topSubjects.join(', ')} />
         {step2.alignerOptions && step2.alignerOptions.length > 0 && (
-          <SummaryItem label="투명교정 브랜드" value={step2.alignerOptions.join(', ')} />
+          <SummaryItem label="투명교정 브랜드" value={[...step2.alignerOptions, step2.alignerOther].filter(Boolean).join(', ')} />
         )}
         {step2.pediatricOrthoOptions && step2.pediatricOrthoOptions.length > 0 && (
           <SummaryItem label="소아교정 장치" value={step2.pediatricOrthoOptions.join(', ')} />
@@ -1963,6 +2018,9 @@ function Step7({
       <SummarySection title="시설/장비" stepId="facility" onGoToStep={onGoToStep}>
         <SummaryItem label="체어 수" value={`${step3.chairs}대`} />
         <SummaryItem label="장비" value={step3.equipment.join(', ')} />
+        {step3.equipmentDetail && (
+          <SummaryItem label="장비 상세" value={step3.equipmentDetail} />
+        )}
         <SummaryItem label="시설" value={step3.facilities.join(', ')} />
         <SummaryItem label="주차" value={step3.parking.detail ? `${step3.parking.available} (${step3.parking.detail})` : step3.parking.available} />
         <SummaryItem label="기공소" value={step3.hasLabRoom ? `보유${step3.labEquipment.length > 0 ? ` (${step3.labEquipment.join(', ')})` : ''}` : '미보유'} />
@@ -1981,6 +2039,7 @@ function Step7({
         <SummaryItem label="인테리어 컨셉" value={step4.interiorStyle} />
         <SummaryItem label="컬러 계열" value={(step4.brandColorTones || []).join(', ')} />
         <SummaryItem label="브랜드 컬러" value={step4.brandColor} />
+        <SummaryItem label="벤치마킹·참고 사이트" value={step4.benchmarkClinics} />
       </SummarySection>
 
       <SummarySection title="마케팅 방향" stepId="marketing" onGoToStep={onGoToStep}>
@@ -1989,7 +2048,6 @@ function Step7({
         <SummaryItem label="예산" value={step5.budgetRange} />
         <SummaryItem label="목표" value={step5.marketingGoals.join(', ')} />
         <SummaryItem label="채널" value={step5.desiredChannels.join(', ')} />
-        <SummaryItem label="벤치마킹" value={step5.benchmarkClinics} />
         <SummaryItem label="개원이벤트" value={step5.openingEvent} />
         <SummaryItem label="DID 정보" value={step5.didInfo} />
         <SummaryItem label="리뷰 증정선물" value={step5.reviewGift} />

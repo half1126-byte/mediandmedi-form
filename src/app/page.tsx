@@ -13,9 +13,10 @@ export default function Home() {
     catch { return false; }
   });
   const [showChoice, setShowChoice] = useState(false);
+  const [showNewClinicChoice, setShowNewClinicChoice] = useState(false);
 
   const handleNewClinic = () => {
-    router.push('/new-clinic');
+    setShowNewClinicChoice(true);
   };
 
   const handleStartMeeting = () => {
@@ -34,8 +35,43 @@ export default function Home() {
           <p className="text-sm text-[#6B7280] mt-2">거래처 미팅 데이터 수집</p>
         </div>
 
-        {/* 제출 후 재접속 시 선택지 */}
-        {previousSubmissions && !showChoice ? (
+        {/* 신규개원 → 계약 유형 선택 (작업 범위 프리셋) */}
+        {showNewClinicChoice ? (
+          <div className="space-y-3 mb-8 animate-fade-in">
+            <p className="text-center text-sm font-medium text-[#374151] mb-2">어떤 계약인가요?</p>
+            <p className="text-center text-xs text-[#6B7280] mb-4">계약 유형을 고르면 필요한 질문만 보여드립니다.</p>
+            <button
+              onClick={() => router.push('/new-clinic?preset=marketing')}
+              className="w-full p-4 bg-white border border-[#D1D5DB] rounded-xl text-left
+                         hover:border-[#2563EB] active:scale-[0.98] transition-all"
+            >
+              <div className="font-semibold text-[#1E3A5F]">마케팅 계약</div>
+              <div className="text-xs text-[#6B7280] mt-1">이미 홈페이지가 있는 경우 · 마케팅/바이럴만</div>
+            </button>
+            <button
+              onClick={() => router.push('/new-clinic?preset=web')}
+              className="w-full p-4 bg-white border border-[#D1D5DB] rounded-xl text-left
+                         hover:border-[#2563EB] active:scale-[0.98] transition-all"
+            >
+              <div className="font-semibold text-[#1E3A5F]">홈페이지 계약</div>
+              <div className="text-xs text-[#6B7280] mt-1">홈페이지 제작만 진행</div>
+            </button>
+            <button
+              onClick={() => router.push('/new-clinic?preset=package')}
+              className="w-full p-4 bg-[#2563EB] text-white rounded-xl text-left
+                         hover:bg-[#1d4ed8] active:scale-[0.98] transition-all"
+            >
+              <div className="font-semibold">패키지 계약</div>
+              <div className="text-xs text-blue-100 mt-1">모든 상품 (마케팅·바이럴·홈페이지·로고·영상)</div>
+            </button>
+            <button
+              onClick={() => setShowNewClinicChoice(false)}
+              className="w-full h-12 text-[#6B7280] text-sm hover:text-[#374151] transition-all"
+            >
+              ← 뒤로
+            </button>
+          </div>
+        ) : previousSubmissions && !showChoice ? (
           <div className="space-y-3 mb-8">
             <button
               onClick={() => {
