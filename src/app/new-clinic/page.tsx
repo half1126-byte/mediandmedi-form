@@ -345,9 +345,18 @@ export default function NewClinicPage() {
   const [submitStep, setSubmitStep] = useState(0);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  // 원장님 링크(홈에서 계약유형 버튼 → preset) 여부. true면 담당자 전용 단계(작업범위·계약상품) 숨김.
+  const [directorMode, setDirectorMode] = useState(false);
 
   // 활성 스텝(게이팅 반영) + 현재 위치 파생 — 모든 인덱스/라벨/네비가 여기서 나옴
-  const activeSteps = useMemo(() => STEP_REGISTRY.filter((s) => s.visible(data)), [data]);
+  // 원장님 모드에선 담당자 전용 단계(scope·contract) 제외.
+  const activeSteps = useMemo(
+    () => STEP_REGISTRY.filter((s) => {
+      if (directorMode && (s.id === 'scope' || s.id === 'contract')) return false;
+      return s.visible(data);
+    }),
+    [data, directorMode]
+  );
   const stepIndex = Math.max(0, activeSteps.findIndex((s) => s.id === stepId));
   const current = activeSteps[stepIndex] ?? activeSteps[0];
   const totalSteps = activeSteps.length;
@@ -370,11 +379,13 @@ export default function NewClinicPage() {
     }
   }, []);
 
-  // 홈에서 고른 계약 유형(preset) → 작업 범위 프리셋 적용 (신규 작성 시)
+  // 홈에서 고른 계약 유형(preset) → 작업 범위 프리셋 적용 + 원장님 모드 활성화
+  // (preset 링크 = 원장님께 보내는 링크 → 담당자 전용 단계 숨김)
   useEffect(() => {
     const preset = new URLSearchParams(window.location.search).get('preset');
     if (preset && PRESET_SCOPE[preset]) {
       setData((d) => ({ ...d, scope: { ...PRESET_SCOPE[preset] } }));
+      setDirectorMode(true);
     }
   }, []);
 
@@ -578,7 +589,7 @@ export default function NewClinicPage() {
           {current.id === 'web' && <StepWeb data={data.stepWeb} onChange={(u) => updateStep('stepWeb', u)} />}
           {current.id === 'design' && <StepDesign data={data.stepDesign} onChange={(u) => updateStep('stepDesign', u)} />}
           {current.id === 'contract' && <Step6 data={data.step6} scope={data.scope} onChange={(u) => updateStep('step6', u)} />}
-          {current.id === 'review' && <Step7 data={data} onGoToStep={goToStepById} confirmed={confirmed} setConfirmed={setConfirmed} />}
+          {current.id === 'review' && <Step7 data={data} onGoToStep={goToStepById} confirmed={confirmed} setConfirmed={setConfirmed} directorMode={directorMode} />}
         </div>
       </main>
 
@@ -1941,12 +1952,13 @@ function SummaryItem({ label, value }: { label: string; value: string | undefine
 }
 
 function Step7({
-  data, onGoToStep, confirmed, setConfirmed,
+  data, onGoToStep, confirmed, setConfirmed, directorMode,
 }: {
   data: FormData;
   onGoToStep: (id: StepId) => void;
   confirmed: boolean;
   setConfirmed: (v: boolean) => void;
+  directorMode: boolean;
 }) {
   const { step1, step2, step3, step4, step5, stepWeb, stepDesign, step6 } = data;
 
@@ -2082,18 +2094,20 @@ function Step7({
         </SummarySection>
       )}
 
-      <SummarySection title="계약 상품" stepId="contract" onGoToStep={onGoToStep}>
-        <SummaryItem
-          label="서비스"
-          value={step6.services.map((s) => {
-            const svc = SERVICES_LIST.find((sv) => sv.id === s.serviceId);
-            return svc ? `${svc.name}${s.quantity ? ` ${s.quantity}${svc.unit}` : ''}` : s.serviceId;
-          }).join(', ')}
-        />
-        <SummaryItem label="패키지" value={step6.isStarterPackage ? '초기개원 패키지' : '일반'} />
-        <SummaryItem label="계약시작" value={step6.contractStartDate} />
-        <SummaryItem label="월계약금" value={step6.monthlyFee} />
-      </SummarySection>
+      {!directorMode && (
+        <SummarySection title="계약 상품" stepId="contract" onGoToStep={onGoToStep}>
+          <SummaryItem
+            label="서비스"
+            value={step6.services.map((s) => {
+              const svc = SERVICES_LIST.find((sv) => sv.id === s.serviceId);
+              return svc ? `${svc.name}${s.quantity ? ` ${s.quantity}${svc.unit}` : ''}` : s.serviceId;
+            }).join(', ')}
+          />
+          <SummaryItem label="패키지" value={step6.isStarterPackage ? '초기개원 패키지' : '일반'} />
+          <SummaryItem label="계약시작" value={step6.contractStartDate} />
+          <SummaryItem label="월계약금" value={step6.monthlyFee} />
+        </SummarySection>
+      )}
 
       {/* 확인 게이트: 체크해야 제출 활성화 */}
       <label className="flex items-start gap-3 bg-white rounded-xl border-2 border-[#2563EB] p-4 cursor-pointer hover:bg-[#EFF6FF] transition-colors">
