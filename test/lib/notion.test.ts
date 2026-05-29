@@ -118,6 +118,7 @@ describe('createMainRecord — 신규 필드 매핑 (디자인/브랜딩·홈페
   }
 
   const e2ePayload = {
+    scope: { marketing: true, viral: false, web: true, logo: true, video: false },
     step1: { clinicName: 'E2E_테스트치과', doctorName: '테스트원장', openDate: '2026-12-01', region: { city: '서울특별시', district: '강남구' }, doctors: [{ name: '테스트원장', title: '원장', specialty: '보철과' }] },
     step2: { dentalSubjects: ['일반 임플란트', '투명교정'], customSubjects: '코골이 치료', topSubjects: ['일반 임플란트'], implantMaterials: { 오스템: ['SA'] }, alignerOptions: ['인비절라인', '기타'], alignerOther: '클리어라인', schedule: {}, holidays: [], holidayClose: true, lunchTime: { start: '12:30', end: '13:30' } },
     step3: { chairs: 5, equipment: ['CT(CBCT)'], equipmentDetail: '바텍 그린스마트 CT', facilities: ['수술실'], parking: { available: '가능', detail: '지하 20대' } },
@@ -134,12 +135,17 @@ describe('createMainRecord — 신규 필드 매핑 (디자인/브랜딩·홈페
     expect(id).toBe('page-e2e');
 
     const arg = mockCreate.mock.calls[0][0] as {
-      properties: Record<string, { title?: Array<{ text: { content: string } }> }>;
+      properties: Record<string, { title?: Array<{ text: { content: string } }>; multi_select?: Array<{ name: string }> }>;
       children: Array<Record<string, unknown>>;
     };
 
     // 핵심 properties
     expect(arg.properties['거래처명'].title?.[0].text.content).toBe('E2E_테스트치과');
+
+    // 계약 서비스(팀): 작업 범위(scope) → 팀 매핑이 속성에 반영 (스키마 무변경, 노션 표 필터용)
+    const teams = (arg.properties['계약 서비스'].multi_select || []).map((t) => t.name);
+    expect(teams).toEqual(expect.arrayContaining(['마케팅팀', '웹팀', '디자인팀']));
+    expect(teams).not.toContain('바이럴팀');
 
     const body = bodyText(arg.children);
 

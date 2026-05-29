@@ -372,6 +372,7 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
   const s4 = (data.step4 || {}) as Record<string, unknown>;
   const s5 = (data.step5 || {}) as Record<string, unknown>;
   const s6 = (data.step6 || {}) as Record<string, unknown>;
+  const scope = (data.scope || {}) as Record<string, boolean>;
   const region = (s1.region || {}) as Record<string, string>;
 
   const addressParts = [region.district, region.dong, s1.address as string]
@@ -507,17 +508,20 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     props['특이사항'] = { rich_text: [{ text: { content: (s6.specialNotes as string).substring(0, 1900) } }] };
   }
 
-  // 계약 서비스: 선택한 서비스의 팀 목록(중복 제거)
+  // 계약 서비스(팀): 작업 범위(scope) + 선택한 계약 서비스의 팀 합집합 (중복 제거)
+  // → 계약 유형(마케팅/홈페이지/패키지)이 이 속성으로 노션 표에서 필터·그룹된다.
+  const teamSet = new Set<string>();
+  if (scope.marketing) teamSet.add('마케팅팀');
+  if (scope.viral) teamSet.add('바이럴팀');
+  if (scope.web) teamSet.add('웹팀');
+  if (scope.logo || scope.video) teamSet.add('디자인팀');
   const services = (s6.services as { serviceId: string }[]) || [];
-  if (services.length > 0) {
-    const teams = Array.from(new Set(
-      services
-        .map((svc) => SERVICES.find((s) => s.id === svc.serviceId)?.team)
-        .filter((t) => Boolean(t)) as string[]
-    ));
-    if (teams.length > 0) {
-      props['계약 서비스'] = { multi_select: teams.map((t) => ({ name: t })) };
-    }
+  services.forEach((svc) => {
+    const team = SERVICES.find((s) => s.id === svc.serviceId)?.team;
+    if (team) teamSet.add(team);
+  });
+  if (teamSet.size > 0) {
+    props['계약 서비스'] = { multi_select: Array.from(teamSet).map((t) => ({ name: t })) };
   }
 
   const doctors = (s1.doctors as { name: string; title: string; specialty: string }[]) || [];
