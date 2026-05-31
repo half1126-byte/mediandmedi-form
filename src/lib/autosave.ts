@@ -37,6 +37,7 @@ export interface SavedFormData {
   data: Record<string, unknown>;
   savedAt: string;
   submitted?: boolean;
+  directorMode?: boolean; // 원장님 모드(preset 링크) — 복원 시 담당자 전용 단계 숨김 유지
 }
 
 function getKey(sessionId: string): string {
