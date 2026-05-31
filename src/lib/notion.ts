@@ -61,6 +61,15 @@ export async function createMainRecord(
   const dbId = process.env.NOTION_MAIN_DB_ID;
   if (!dbId) throw new Error('NOTION_MAIN_DB_ID not configured');
 
+  // 멱등성: 제출 재시도(노션 생성 성공 후 응답 유실 등) 시 같은 거래처명이 이미 있으면
+  // 새 페이지를 또 만들지 않고 기존 페이지 ID를 돌려준다. (중복 거래처 페이지 방지)
+  const s1 = (data.step1 || {}) as Record<string, unknown>;
+  const clinicName = (s1.clinicName as string) || '';
+  if (clinicName) {
+    const existing = await findClinicByName(clinicName, dbId);
+    if (existing) return existing;
+  }
+
   const coreProps = buildMainProperties(data);
   const children = buildMainPageChildren(data);
 

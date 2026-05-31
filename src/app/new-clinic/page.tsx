@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ProgressBar from '@/components/ProgressBar';
 import ChipSelector from '@/components/ChipSelector';
@@ -67,7 +67,7 @@ const STEP_REGISTRY: StepDef[] = [
     validate: (d) => !!d.step1.clinicName && !!d.step1.doctorName && !!d.step1.openDate && !!d.step1.region.city && !!d.step1.region.district },
   { id: 'scope', label: '작업 범위', timeMin: 1, visible: () => true },
   { id: 'medical', label: '진료 정보', timeMin: 3, visible: () => true,
-    validate: (d) => d.step2.dentalSubjects.length > 0 },
+    validate: (d) => d.step2.dentalSubjects.length > 0 || !!d.step2.customSubjects.trim() },
   { id: 'facility', label: '시설/장비', timeMin: 2, visible: () => true },
   { id: 'branding', label: '브랜딩 & 철학', timeMin: 2, visible: () => true },
   { id: 'marketing', label: '마케팅 방향', timeMin: 2, visible: () => true },
@@ -345,6 +345,8 @@ export default function NewClinicPage() {
   const [submitStep, setSubmitStep] = useState(0);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  // 제출 PIN — 재시도해도 동일 값 유지(멱등 요약 링크)
+  const submitPinRef = useRef('');
   // 원장님 링크(홈에서 계약유형 버튼 → preset) 여부. true면 담당자 전용 단계(작업범위·계약상품) 숨김.
   const [directorMode, setDirectorMode] = useState(false);
 
@@ -418,9 +420,16 @@ export default function NewClinicPage() {
           video: hasVal(saved.stepDesign),
         };
       }
+      // 원장님 모드(preset 링크) 복원 — 담당자 전용 단계가 다시 노출되지 않게 유지
+      const restoredDirector = !!(loaded as { directorMode?: boolean }).directorMode;
+      setDirectorMode(restoredDirector);
       setData(merged);
       // 복원 위치: currentStepId 우선, 없으면 구버전 인덱스(currentStep)를 활성 스텝에 매핑
-      const active = STEP_REGISTRY.filter((s) => s.visible(merged));
+      // (directorMode면 scope·contract 단계는 제외해 activeSteps와 일치시킴)
+      const active = STEP_REGISTRY.filter((s) => {
+        if (restoredDirector && (s.id === 'scope' || s.id === 'contract')) return false;
+        return s.visible(merged);
+      });
       const savedId = (loaded as { currentStepId?: StepId }).currentStepId;
       if (savedId && active.some((s) => s.id === savedId)) {
         setStepId(savedId);
@@ -448,7 +457,8 @@ export default function NewClinicPage() {
     totalSteps,
     data: data as unknown as Record<string, unknown>,
     savedAt: new Date().toISOString(),
-  }), [sessionId, data, stepIndex, stepId, totalSteps]);
+    directorMode,
+  }), [sessionId, data, stepIndex, stepId, totalSteps, directorMode]);
 
   const { saveNow } = useAutosave(
     sessionId,
@@ -495,12 +505,17 @@ export default function NewClinicPage() {
   };
 
   const handleSubmit = async () => {
+    if (submitting) return; // 진행 중 중복 호출(재시도 버튼 연타 등) 방지
     setSubmitting(true);
     setSubmitStep(0);
     setSubmitError(null);
 
     try {
-      const pin = String(Math.floor(1000 + Math.random() * 9000));
+      // 재시도해도 동일 PIN 유지 (매 시도 새 값 생성 금지 — 요약 링크 일관성)
+      if (!submitPinRef.current) {
+        submitPinRef.current = String(Math.floor(1000 + Math.random() * 9000));
+      }
+      const pin = submitPinRef.current;
 
       const response = await fetch('/api/submit', {
         method: 'POST',
@@ -627,13 +642,25 @@ export default function NewClinicPage() {
             </button>
           )}
         </div>
+        {!isReview && current.validate && !current.validate(data) && (
+          <div className="max-w-4xl mx-auto px-6 pb-3 -mt-1">
+            <p className="text-xs text-[#9CA3AF] text-center">
+              {current.id === 'basic'
+                ? '치과명·원장님 성함·개원예정일·지역을 입력하면 다음으로 넘어갈 수 있어요.'
+                : current.id === 'medical'
+                ? '진료과목을 1개 이상 선택하거나, 목록에 없으면 직접 입력하면 다음으로 넘어갈 수 있어요.'
+                : '필수 항목을 입력하면 다음으로 넘어갈 수 있어요.'}
+            </p>
+          </div>
+        )}
         {submitError && (
           <div className="max-w-4xl mx-auto px-6 pb-4">
             <div className="bg-red-50 text-[#DC2626] text-sm p-3 rounded-lg flex items-center justify-between">
               <span>{submitError}</span>
               <button
                 onClick={handleSubmit}
-                className="text-[#DC2626] font-semibold underline ml-2"
+                disabled={submitting}
+                className="text-[#DC2626] font-semibold underline ml-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 다시 시도 {retryCount > 0 && `(${retryCount})`}
               </button>
