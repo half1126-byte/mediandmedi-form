@@ -2,7 +2,14 @@ import { Client } from '@notionhq/client';
 import { SERVICES } from '@/data/services';
 import { clinicNamesMatch, normalizeClinicName } from './normalize';
 
-const authKey = process.env.NOTION_MEETING_API_KEY || process.env.NOTION_API_KEY;
+// 환경변수의 공백/개행 제거 — Vercel 등에 복붙으로 값을 넣을 때 끝에 개행이 섞이면
+// DB ID/키가 깨져 제출이 통째로 실패한다. 읽는 지점마다 trim.
+function envTrim(name: string): string | undefined {
+  const v = (process.env[name] || '').trim();
+  return v || undefined;
+}
+
+const authKey = envTrim('NOTION_MEETING_API_KEY') || envTrim('NOTION_API_KEY');
 
 if (!authKey) {
   console.warn('[notion] NOTION_MEETING_API_KEY/NOTION_API_KEY 환경변수 미설정 — Notion 연동 비활성');
@@ -58,7 +65,7 @@ const LEGACY_CLINICS_DB_ID = '3539a82d-b9c4-8174-ada9-c2269dea9515';
 export async function createMainRecord(
   data: Record<string, unknown>
 ): Promise<string> {
-  const dbId = process.env.NOTION_MAIN_DB_ID;
+  const dbId = envTrim('NOTION_MAIN_DB_ID');
   if (!dbId) throw new Error('NOTION_MAIN_DB_ID not configured');
 
   // 멱등성: 제출 재시도(노션 생성 성공 후 응답 유실 등) 시 같은 거래처명이 이미 있으면
@@ -100,7 +107,7 @@ export async function createTaskRecord(
     parentId: string;
   }
 ): Promise<{ success: boolean; error?: string }> {
-  const dbId = process.env.NOTION_TASK_DB_ID;
+  const dbId = envTrim('NOTION_TASK_DB_ID');
   if (!dbId) return { success: false, error: 'NOTION_TASK_DB_ID not configured' };
 
   try {
@@ -134,7 +141,7 @@ export async function createTaskRecord(
 export async function createChangeRecord(
   data: Record<string, unknown>
 ): Promise<string> {
-  const dbId = process.env.NOTION_CHANGE_DB_ID;
+  const dbId = envTrim('NOTION_CHANGE_DB_ID');
   if (!dbId) throw new Error('NOTION_CHANGE_DB_ID not configured');
 
   const clinicName = (data.clinicName as string) || '';
@@ -189,7 +196,7 @@ export async function createChangeRecord(
 export async function createScheduleChangeRecord(
   data: Record<string, unknown>
 ): Promise<string> {
-  const dbId = process.env.NOTION_SCHEDULE_DB_ID;
+  const dbId = envTrim('NOTION_SCHEDULE_DB_ID');
   if (!dbId) throw new Error('NOTION_SCHEDULE_DB_ID not configured');
 
   const clinicName = (data.clinicName as string) || '';
@@ -324,7 +331,7 @@ function today(): string {
  * dbIdOverride가 주어지면 해당 DB에서, 아니면 NOTION_MAIN_DB_ID에서 검색.
  */
 async function findClinicByName(clinicName: string, dbIdOverride?: string): Promise<string | null> {
-  const dbId = dbIdOverride || process.env.NOTION_MAIN_DB_ID;
+  const dbId = dbIdOverride || envTrim('NOTION_MAIN_DB_ID');
   if (!dbId || !clinicName) return null;
   try {
     const res = await withRetry(() =>
