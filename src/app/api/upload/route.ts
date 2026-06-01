@@ -21,12 +21,14 @@ const ALLOWED_EXTENSIONS: Record<string, string[]> = {
 
 const ALLOWED_CATEGORIES = Object.keys(ALLOWED_EXTENSIONS);
 
+// Vercel 서버리스 함수는 요청 본문을 ~4.5MB로 제한(FUNCTION_PAYLOAD_TOO_LARGE).
+// 그 이상은 핸들러 진입 전에 플랫폼이 413으로 막으므로, 한도를 현실에 맞춘다.
+// (큰 사진은 클라이언트에서 자동 압축, 그래도 큰 파일/PDF는 4MB 가드로 명확히 안내)
 const MAX_SIZE: Record<string, number> = {
-  blueprint: 50 * 1024 * 1024, // 3D 도면은 50MB
-  default: 30 * 1024 * 1024,    // 기타 30MB
+  default: 4 * 1024 * 1024, // 4MB
 };
 
-const MAX_SIZE_HARD = 50 * 1024 * 1024;
+const MAX_SIZE_HARD = 4 * 1024 * 1024;
 
 function sanitizeFilename(name: string): string {
   return name.replace(/[^\w가-힣.\-]/g, '_');
@@ -98,12 +100,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 환경변수 검증
-  const host = process.env.FTP_HOST;
-  const user = process.env.FTP_USER;
-  const pass = process.env.FTP_PASS;
-  const uploadPath = process.env.FTP_UPLOAD_PATH || '/www/planner/uploads';
-  const publicUrl = process.env.FTP_PUBLIC_URL || 'https://medischedule.co.kr/uploads';
+  // 환경변수 검증 — .trim()으로 복붙 시 섞여 들어간 공백/개행 제거.
+  // (FTP_HOST에 개행이 있으면 getaddrinfo ENOTFOUND로 모든 업로드가 실패한다)
+  const host = (process.env.FTP_HOST || '').trim();
+  const user = (process.env.FTP_USER || '').trim();
+  const pass = (process.env.FTP_PASS || '').trim();
+  const uploadPath = (process.env.FTP_UPLOAD_PATH || '').trim() || '/www/planner/uploads';
+  const publicUrl = (process.env.FTP_PUBLIC_URL || '').trim() || 'https://medischedule.co.kr/uploads';
 
   if (!host || !user || !pass) {
     return NextResponse.json(
