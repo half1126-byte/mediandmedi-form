@@ -151,7 +151,14 @@ export async function POST(request: NextRequest) {
       try { await client.cd(cand); usedPath = cand; break; } catch { /* 다음 후보 */ }
     }
     if (!usedPath) {
-      throw new Error(`업로드 폴더 접근 실패 (시도: ${cdCandidates.join(', ')})`);
+      // 진단(임시): Vercel 세션이 실제로 보는 home/구조를 회신에 담아 정확한 경로 파악
+      let diag = '';
+      try {
+        const pwd = await client.pwd();
+        const ls = (await client.list()).slice(0, 50).map((f) => (f.isDirectory ? 'D:' : '') + f.name).join(',');
+        diag = ` | pwd=${pwd} | home=[${ls}]`;
+      } catch (e) { diag = ` | pwd/list 실패: ${e instanceof Error ? e.message : e}`; }
+      throw new Error(`업로드 폴더 접근 실패 (시도: ${cdCandidates.join(', ')})${diag}`);
     }
     await client.uploadFrom(Readable.from(buffer), remoteName); // cwd에 상대 파일명으로 STOR
 
