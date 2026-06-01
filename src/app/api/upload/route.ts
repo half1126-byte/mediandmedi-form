@@ -106,7 +106,6 @@ export async function POST(request: NextRequest) {
   const user = (process.env.FTP_USER || '').trim();
   const pass = (process.env.FTP_PASS || '').trim();
   const uploadPath = (process.env.FTP_UPLOAD_PATH || '').trim() || '/www/planner/uploads';
-  const publicUrl = (process.env.FTP_PUBLIC_URL || '').trim() || 'https://medischedule.co.kr/uploads';
 
   if (!host || !user || !pass) {
     return NextResponse.json(
@@ -121,10 +120,14 @@ export async function POST(request: NextRequest) {
   const dateStr = new Date().toISOString().slice(0, 10);
   const timestamp = Date.now();
 
-  // 폴더 구조: /uploads/{category}/{clinicName_date}/{timestamp-filename}
-  // category와 safeClinicName 모두 검증/sanitize 완료
-  const remoteDir = `${uploadPath}/${category}/${safeClinicName}_${dateStr}`;
-  const remotePath = `${remoteDir}/${timestamp}-${safeFilename}`;
+  // FTP 계정 home = /www (웹 루트, chroot). ensureDir는 절대경로일 때 cd('/')를 먼저 시도해
+  // 550으로 실패하므로 사용하지 않는다. 기존 폴더(uploadPath)로 cd 후 평면 파일명으로 업로드.
+  // (같은 호스팅의 다른 앱도 이 폴더에 평면 업로드 중 — 식별 정보는 파일명에 인코딩)
+  const remoteName = `${dateStr}-${category}-${safeClinicName}-${timestamp}-${safeFilename}`;
+  const remotePath = `${uploadPath}/${remoteName}`;
+  // 공개 URL: 웹 루트(/www) 기준으로 변환 (예: /www/planner/uploads → /planner/uploads)
+  const webPath = uploadPath.replace(/^\/www/, '');
+  const url = `https://medischedule.co.kr${webPath}/${remoteName}`;
 
   const client = new Client(30000);
   client.ftp.verbose = false;
@@ -137,11 +140,8 @@ export async function POST(request: NextRequest) {
       secure: false, // 호스팅 서버가 FTPS 미지원 → 일반 FTP
     });
 
-    await client.ensureDir(remoteDir);
-    await client.uploadFrom(Readable.from(buffer), `${timestamp}-${safeFilename}`);
-
-    // 공개 URL 구성
-    const url = `${publicUrl}/${category}/${safeClinicName}_${dateStr}/${timestamp}-${safeFilename}`;
+    await client.cd(uploadPath);                          // 존재하는 절대경로 (cd 동작 확인됨)
+    await client.uploadFrom(Readable.from(buffer), remoteName); // cwd에 상대 파일명으로 STOR
 
     return NextResponse.json({
       success: true,
