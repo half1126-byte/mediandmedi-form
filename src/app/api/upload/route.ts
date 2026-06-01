@@ -120,14 +120,20 @@ export async function POST(request: NextRequest) {
   const dateStr = new Date().toISOString().slice(0, 10);
   const timestamp = Date.now();
 
-  // FTP 계정 home = /www (웹 루트, chroot). ensureDir는 절대경로일 때 cd('/')를 먼저 시도해
-  // 550으로 실패하므로 사용하지 않는다. 기존 폴더(uploadPath)로 cd 후 평면 파일명으로 업로드.
-  // (같은 호스팅의 다른 앱도 이 폴더에 평면 업로드 중 — 식별 정보는 파일명에 인코딩)
+  // FTP 계정은 chroot 환경. ensureDir는 절대경로일 때 cd('/')를 먼저 시도해 550으로 실패하므로
+  // 사용하지 않고, 기존 폴더로 cd 후 평면 파일명으로 업로드한다(같은 호스팅 다른 앱과 동일 패턴).
+  // 단, 세션의 jail 루트가 환경마다 달라(/ 또는 /www) 절대/상대 경로가 갈리므로 후보를 순차 시도.
   const remoteName = `${dateStr}-${category}-${safeClinicName}-${timestamp}-${safeFilename}`;
-  const remotePath = `${uploadPath}/${remoteName}`;
-  // 공개 URL: 웹 루트(/www) 기준으로 변환 (예: /www/planner/uploads → /planner/uploads)
-  const webPath = uploadPath.replace(/^\/www/, '');
+  // 공개 URL은 항상 웹 루트(/www) 기준 — 실제 저장 위치는 /www/planner/uploads
+  const webPath = uploadPath.replace(/^\/www/, '');               // /planner/uploads
   const url = `https://medischedule.co.kr${webPath}/${remoteName}`;
+  const remotePath = `${uploadPath}/${remoteName}`;
+  // cd 후보: 절대(/www/planner/uploads) · jail절대(/planner/uploads) · 상대(planner/uploads)
+  const cdCandidates = Array.from(new Set([
+    uploadPath,
+    webPath,
+    webPath.replace(/^\//, ''),
+  ].filter(Boolean)));
 
   const client = new Client(30000);
   client.ftp.verbose = false;
@@ -140,7 +146,13 @@ export async function POST(request: NextRequest) {
       secure: false, // 호스팅 서버가 FTPS 미지원 → 일반 FTP
     });
 
-    await client.cd(uploadPath);                          // 존재하는 절대경로 (cd 동작 확인됨)
+    let usedPath = '';
+    for (const cand of cdCandidates) {
+      try { await client.cd(cand); usedPath = cand; break; } catch { /* 다음 후보 */ }
+    }
+    if (!usedPath) {
+      throw new Error(`업로드 폴더 접근 실패 (시도: ${cdCandidates.join(', ')})`);
+    }
     await client.uploadFrom(Readable.from(buffer), remoteName); // cwd에 상대 파일명으로 STOR
 
     return NextResponse.json({
@@ -148,6 +160,7 @@ export async function POST(request: NextRequest) {
       url,
       filename: file.name,
       remotePath,
+      usedPath,
       size: file.size,
     });
   } catch (error) {
