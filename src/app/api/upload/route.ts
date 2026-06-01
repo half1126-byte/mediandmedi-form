@@ -124,9 +124,10 @@ export async function POST(request: NextRequest) {
   // 사용하지 않고, 기존 폴더로 cd 후 평면 파일명으로 업로드한다(같은 호스팅 다른 앱과 동일 패턴).
   // 단, 세션의 jail 루트가 환경마다 달라(/ 또는 /www) 절대/상대 경로가 갈리므로 후보를 순차 시도.
   const remoteName = `${dateStr}-${category}-${safeClinicName}-${timestamp}-${safeFilename}`;
-  // 공개 URL은 항상 웹 루트(/www) 기준 — 실제 저장 위치는 /www/planner/uploads
+  // 공개 URL은 항상 웹 루트(/www) 기준 — 실제 저장 위치는 /www/planner/uploads.
+  // 호스트가 HTTPS 미지원(TLS alert)이라 http로 서빙됨(기존 파일 200 확인). FTP_PUBLIC_URL=/uploads는 오설정.
   const webPath = uploadPath.replace(/^\/www/, '');               // /planner/uploads
-  const url = `https://medischedule.co.kr${webPath}/${remoteName}`;
+  const url = `http://medischedule.co.kr${webPath}/${remoteName}`;
   const remotePath = `${uploadPath}/${remoteName}`;
   // cd 후보: 절대(/www/planner/uploads) · jail절대(/planner/uploads) · 상대(planner/uploads)
   const cdCandidates = Array.from(new Set([
@@ -151,14 +152,7 @@ export async function POST(request: NextRequest) {
       try { await client.cd(cand); usedPath = cand; break; } catch { /* 다음 후보 */ }
     }
     if (!usedPath) {
-      // 진단(임시): Vercel 세션이 실제로 보는 home/구조를 회신에 담아 정확한 경로 파악
-      let diag = '';
-      try {
-        const pwd = await client.pwd();
-        const ls = (await client.list()).slice(0, 50).map((f) => (f.isDirectory ? 'D:' : '') + f.name).join(',');
-        diag = ` | pwd=${pwd} | home=[${ls}]`;
-      } catch (e) { diag = ` | pwd/list 실패: ${e instanceof Error ? e.message : e}`; }
-      throw new Error(`업로드 폴더 접근 실패 (시도: ${cdCandidates.join(', ')})${diag}`);
+      throw new Error(`업로드 폴더 접근 실패 (시도: ${cdCandidates.join(', ')})`);
     }
     await client.uploadFrom(Readable.from(buffer), remoteName); // cwd에 상대 파일명으로 STOR
 
