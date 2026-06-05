@@ -664,6 +664,7 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   // 벤치마킹·참고 사이트: 브랜딩으로 이동(구버전 저장본은 s5에서 폴백)
   const benchmark = (s4.benchmarkClinics as string) || (s5.benchmarkClinics as string);
   if (benchmark) blocks.push(bullet(`벤치마킹·참고 사이트: ${benchmark}`));
+  if (s4.driveLink) blocks.push(bullet(`자료 첨부(드라이브): ${s4.driveLink}`));
   if (s4.hasProfilePhoto) blocks.push(bullet('프로필 사진 보유'));
   if (s4.hasLogo) blocks.push(bullet('로고 파일 보유'));
 

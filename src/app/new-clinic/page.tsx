@@ -18,7 +18,7 @@ import {
   clearForm,
   type SavedFormData,
 } from '@/lib/autosave';
-import FileUpload, { type UploadedFile } from '@/components/FileUpload';
+import { type UploadedFile } from '@/components/FileUpload';
 import { SERVICES as SERVICES_LIST } from '@/data/services';
 import {
   DENTAL_CATEGORIES,
@@ -170,6 +170,8 @@ interface FormData {
     brandColor: string;
     /** 벤치마킹·참고 사이트 (옛 step5에서 브랜딩으로 이동) — 마케팅·디자인·웹 공통 */
     benchmarkClinics: string;
+    /** 자료 첨부 — 구글 드라이브/클라우드 공유 링크 (파일 직접 업로드 대체) */
+    driveLink: string;
     hasProfilePhoto: boolean;
     hasLogo: boolean;
     logoFiles: UploadedFile[];
@@ -290,7 +292,7 @@ const INITIAL_DATA: FormData = {
     philosophy: '',
     doctorPromo: '', clinicPromo: '', treatmentPromo: '',
     locationTarget: '', interiorStyle: '', brandColorTones: [], brandColor: '',
-    benchmarkClinics: '',
+    benchmarkClinics: '', driveLink: '',
     hasProfilePhoto: false, hasLogo: false,
     logoFiles: [], licenseFiles: [], certificateFiles: [], businessFiles: [],
     permitFiles: [], signageFiles: [], bannerFiles: [], constructionFiles: [],
@@ -874,17 +876,6 @@ function Step1({
         </div>
       </div>
 
-      <FileUpload
-        label="의료진 약력 이미지"
-        category="career"
-        clinicName={data.clinicName}
-        accept="image/jpeg,image/png"
-        multiple
-        maxFiles={10}
-        files={data.careerImages}
-        onChange={(files) => onChange({ careerImages: files })}
-        hint="이력서/약력서 사진을 업로드하실 수 있습니다 (선택, jpg/png)"
-      />
     </div>
   );
 }
@@ -1190,16 +1181,6 @@ function Step3({
           />
         </div>
       )}
-      <FileUpload
-        label="인테리어 3D 도면"
-        category="blueprint"
-        accept="application/pdf,image/jpeg,image/png"
-        multiple
-        maxFiles={5}
-        files={data.blueprintFiles}
-        onChange={(files) => onChange({ blueprintFiles: files })}
-        hint="3D 도면 또는 평면도를 업로드해 주세요 (선택, PDF/jpg/png, 최대 50MB)"
-      />
     </div>
   );
 }
@@ -1362,94 +1343,24 @@ function Step4({
         <span className="text-sm text-[#374151]">로고 파일 보유</span>
       </div>
 
-      {/* 첨부 자료 섹션 */}
-      <div className="bg-[#F8FAFC] rounded-xl p-5 space-y-5 border border-[#E5E7EB]">
+      {/* 자료 첨부 — 구글 드라이브 링크 (파일 직접 업로드 대신) */}
+      <div className="bg-[#F8FAFC] rounded-xl p-5 space-y-3 border border-[#E5E7EB]">
         <div>
-          <h3 className="text-base font-bold text-[#374151]">📎 첨부 자료</h3>
-          <p className="text-xs text-[#6B7280] mt-1">보유하신 자료를 업로드해 주세요. 모두 선택 사항입니다.</p>
+          <h3 className="text-base font-bold text-[#374151]">📎 자료 첨부 (구글 드라이브 링크)</h3>
+          <p className="text-xs text-[#6B7280] mt-1 leading-relaxed">
+            로고·면허증·전문의 자격증·사업자등록증·개설필증·간판/현수막·공사 현장 사진·의료진 약력·인테리어 도면 등
+            보유하신 자료를 <strong>원장님 구글 드라이브(또는 클라우드)에 한 폴더로 모아</strong> 그 <strong>공유 링크</strong>를 붙여넣어 주세요. (선택)
+          </p>
         </div>
-
-        <FileUpload
-          label="로고 파일"
-          category="logo"
-          accept=".png,.jpg,.jpeg,.svg,.ai,.pdf"
-          multiple
-          maxFiles={5}
-          files={data.logoFiles}
-          onChange={(files) => onChange({ logoFiles: files })}
-          hint="치과 로고 파일 (png/jpg/svg/ai/pdf) — 원본 파일 권장"
+        <TextInput
+          value={data.driveLink}
+          onChange={(v) => onChange({ driveLink: v })}
+          placeholder="예: https://drive.google.com/drive/folders/..."
         />
-
-        <FileUpload
-          label="치과의사 면허증"
-          category="license"
-          accept=".pdf,.jpg,.jpeg,.png"
-          files={data.licenseFiles}
-          onChange={(files) => onChange({ licenseFiles: files })}
-          hint="원장님 면허증 사본 (PDF/jpg/png)"
-        />
-
-        <FileUpload
-          label="전문의 자격증"
-          category="certificate"
-          accept=".pdf,.jpg,.jpeg,.png"
-          multiple
-          maxFiles={5}
-          files={data.certificateFiles}
-          onChange={(files) => onChange({ certificateFiles: files })}
-          hint="전문의 자격증이 있으시면 업로드해 주세요 (여러 장 가능)"
-        />
-
-        <FileUpload
-          label="사업자등록증"
-          category="business"
-          accept=".pdf,.jpg,.jpeg,.png"
-          files={data.businessFiles}
-          onChange={(files) => onChange({ businessFiles: files })}
-          hint="PDF 또는 이미지"
-        />
-
-        <FileUpload
-          label="개설필증"
-          category="permit"
-          accept=".pdf,.jpg,.jpeg,.png"
-          files={data.permitFiles}
-          onChange={(files) => onChange({ permitFiles: files })}
-          hint="의료기관 개설 신고증"
-        />
-
-        <FileUpload
-          label="간판 사진"
-          category="signage"
-          accept=".jpg,.jpeg,.png"
-          multiple
-          maxFiles={5}
-          files={data.signageFiles}
-          onChange={(files) => onChange({ signageFiles: files })}
-          hint="간판이 설치되어 있으면 사진을 올려 주세요"
-        />
-
-        <FileUpload
-          label="현수막 사진"
-          category="banner"
-          accept=".jpg,.jpeg,.png"
-          multiple
-          maxFiles={5}
-          files={data.bannerFiles}
-          onChange={(files) => onChange({ bannerFiles: files })}
-          hint="개원 안내 현수막 사진"
-        />
-
-        <FileUpload
-          label="공사 현장 사진"
-          category="construction"
-          accept=".jpg,.jpeg,.png"
-          multiple
-          maxFiles={10}
-          files={data.constructionFiles}
-          onChange={(files) => onChange({ constructionFiles: files })}
-          hint="인테리어 진행 상황 사진 (최대 10장)"
-        />
+        <p className="text-[11px] text-[#9CA3AF] leading-relaxed">
+          공유 설정은 <strong>‘링크가 있는 모든 사용자 - 뷰어’</strong>로 해주시면 담당자가 열람할 수 있습니다.
+          (직접 파일을 올리는 게 아니라 원장님 드라이브 링크만 받으므로, 다른 거래처 자료가 노출되지 않습니다.)
+        </p>
       </div>
     </div>
   );
@@ -1861,18 +1772,26 @@ function StepScope({
         <svg className="w-5 h-5 text-[#2563EB] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <p className="text-sm text-[#2563EB]">
-          <strong>담당자</strong>가 이번 거래처에 진행할 작업을 선택합니다. <strong>선택한 작업의 질문만</strong> 이후 단계에 나타납니다.
+        <p className="text-sm text-[#2563EB] leading-relaxed">
+          저희와 <strong>함께 진행하실 분야</strong>를 골라 주세요. 고르신 분야에 해당하는 질문만 이어서 보여드려,
+          <strong> 필요한 것만 빠르게</strong> 작성하실 수 있습니다. (나중에 담당자와 조정 가능)
         </p>
       </div>
       <div>
-        <FieldLabel required>이번에 진행할 작업 범위</FieldLabel>
-        <p className="text-xs text-[#6B7280] mb-3">예: 마케팅만 진행하면 홈페이지·디자인 입력 단계는 자동으로 숨겨집니다. (여러 개 선택 가능)</p>
+        <FieldLabel required>함께 진행할 분야 (해당되는 것 모두 선택)</FieldLabel>
+        <p className="text-xs text-[#6B7280] mb-3">잘 모르시겠으면 일단 떠오르는 대로 고르셔도 됩니다. 이후 단계에서 자세히 여쭤봅니다.</p>
         <ChipSelector
           options={SCOPE_OPTIONS.map((o) => o.label)}
           selected={selected}
           onChange={handle}
         />
+        <div className="mt-4 space-y-1.5 text-xs text-[#6B7280]">
+          <p>· <strong>마케팅</strong> — 네이버 블로그·플레이스, 검색광고 등 온라인 홍보</p>
+          <p>· <strong>바이럴</strong> — 카페·당근·SNS 입소문, 후기 관리</p>
+          <p>· <strong>홈페이지 제작</strong> — 병원 홈페이지 신규 제작·리뉴얼</p>
+          <p>· <strong>로고·CI</strong> — 로고, 브랜드 색·서체 등 디자인 정체성</p>
+          <p>· <strong>브랜드 영상</strong> — 병원 소개·홍보 영상 촬영·제작</p>
+        </div>
       </div>
     </div>
   );
@@ -2079,6 +1998,7 @@ function Step7({
         <SummaryItem label="컬러 계열" value={(step4.brandColorTones || []).join(', ')} />
         <SummaryItem label="브랜드 컬러" value={step4.brandColor} />
         <SummaryItem label="벤치마킹·참고 사이트" value={step4.benchmarkClinics} />
+        <SummaryItem label="자료 첨부(드라이브)" value={step4.driveLink} />
       </SummarySection>
 
       <SummarySection title="마케팅 방향" stepId="marketing" onGoToStep={onGoToStep}>
