@@ -288,9 +288,10 @@ export async function createScheduleChangeRecord(
     })
   );
 
-  // 달력 이미지가 있으면 페이지 본문에 이미지 블록 추가
-  const calendarImageUrl = data.calendarImageUrl as string | undefined;
-  if (calendarImageUrl) {
+  // 달력 이미지(노션에 직접 업로드한 file_upload)가 있으면 페이지 본문에 이미지 블록 추가.
+  // (FTP 폐기 → 노션 자체 파일 업로드. 클라이언트가 webp로 변환해 저용량으로 보냄)
+  const calendarFileUploadId = data.calendarFileUploadId as string | undefined;
+  if (calendarFileUploadId) {
     try {
       await withRetry(() =>
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -305,7 +306,7 @@ export async function createScheduleChangeRecord(
             {
               object: 'block',
               type: 'image',
-              image: { type: 'external', external: { url: calendarImageUrl } },
+              image: { type: 'file_upload', file_upload: { id: calendarFileUploadId } },
             },
           ],
         })
@@ -316,6 +317,28 @@ export async function createScheduleChangeRecord(
   }
 
   return response.id;
+}
+
+/**
+ * 노션에 파일을 직접 업로드(file_upload)하고 그 id를 반환. (FTP 대체)
+ * 단일 파트 업로드 — 달력 webp처럼 작은 파일용.
+ */
+export async function uploadFileToNotion(buffer: Buffer, contentType: string): Promise<string> {
+  const ext = contentType.includes('png') ? 'png' : contentType.includes('jpeg') ? 'jpg' : 'webp';
+  const filename = `calendar.${ext}`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fu: any = await withRetry(() =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (notion as any).fileUploads.create({ filename, content_type: contentType })
+  );
+  await withRetry(() =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (notion as any).fileUploads.send({
+      file_upload_id: fu.id,
+      file: { filename, data: new Blob([new Uint8Array(buffer)], { type: contentType }) },
+    })
+  );
+  return fu.id as string;
 }
 
 function textProp(content: string) {
