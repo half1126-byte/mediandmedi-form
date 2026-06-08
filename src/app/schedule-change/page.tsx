@@ -64,6 +64,9 @@ export default function ScheduleChangePage() {
   const [mustNotes, setMustNotes] = useState<{ day: string; content: string }[]>([]);
   const [noteDay, setNoteDay] = useState('매주');
   const [noteContent, setNoteContent] = useState('');
+  // 달력 칸 시간 표기 (태그별 시간 + 마스터 토글)
+  const [tagTimes, setTagTimes] = useState<Record<string, string>>({});
+  const [showTimes, setShowTimes] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -198,7 +201,8 @@ export default function ScheduleChangePage() {
       if (!tags.length) continue;
       const d = parseInt(date.split('-')[2]);
       const h = isHoliday(date);
-      summaryRows.push({ day: d, line: `${h ? `${d}일(${h.name})` : `${d}일`}: ${tags.join(', ')}` });
+      const tagsLabel = tags.map(t => (showTimes && tagTimes[t]?.trim()) ? `${t}(${tagTimes[t].trim()})` : t).join(', ');
+      summaryRows.push({ day: d, line: `${h ? `${d}일(${h.name})` : `${d}일`}: ${tagsLabel}` });
     }
     for (const [date, label] of Object.entries(customLabels)) {
       if (!label.trim()) continue;
@@ -235,6 +239,7 @@ export default function ScheduleChangePage() {
           calendarText: calendarTextFinal || undefined,
           clinicHours: clinicHours || undefined,
           customLabels,
+          tagTimes: showTimes ? tagTimes : {},
           specialNote: specialNote.trim() || undefined,
           extraRequest: extraRequest.trim(), holidayReason: holidayReason.trim(),
           calendarFileUploadId: calendarFileUploadId || undefined,
@@ -488,6 +493,27 @@ export default function ScheduleChangePage() {
                   <span>☝️</span> 위에서 일정 종류를 먼저 선택해 주세요
                 </div>
               )}
+
+              {/* 달력 칸 시간 표기 토글 + 태그별 시간 입력 */}
+              <div className="mt-3 pt-3 border-t border-[#E5E7EB] space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={showTimes} onChange={e => setShowTimes(e.target.checked)} className="w-4 h-4 accent-[#2563EB]" />
+                  <span className="text-sm font-medium text-[#374151]">📅 달력 칸에 시간 표기</span>
+                  <span className="text-[11px] text-[#9CA3AF]">(태그별 시간)</span>
+                </label>
+                {showTimes && activeMode && activeMode !== '직접입력' && (
+                  <input
+                    value={tagTimes[activeMode] || ''}
+                    onChange={e => setTagTimes({ ...tagTimes, [activeMode]: e.target.value })}
+                    placeholder={`${activeMode} 시간 (선택) 예: ~13:00`}
+                    className="w-full h-10 px-3 rounded-xl border border-[#D1D5DB] text-sm
+                               focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
+                  />
+                )}
+                {showTimes && (!activeMode || activeMode === '직접입력') && (
+                  <p className="text-[11px] text-[#9CA3AF]">위에서 태그를 선택하면 그 태그의 시간을 입력할 수 있어요.</p>
+                )}
+              </div>
             </div>
 
             {/* 달력 */}
@@ -532,6 +558,7 @@ export default function ScheduleChangePage() {
                   const isSat = dayOfWeek === 6;
                   const primaryTag = tags[0] ? SCHEDULE_TAGS.find(s => s.label === tags[0]) : null;
                   const customLabel = customLabels[dateStr];
+                  const cellTime = showTimes ? (tags.map(tg => tagTimes[tg]?.trim()).find(Boolean) || '') : '';
 
                   return (
                     <button
@@ -578,6 +605,9 @@ export default function ScheduleChangePage() {
                             <span className="w-full text-center text-[8px] text-[#9CA3AF]">+{tags.length - 3}</span>
                           )}
                         </div>
+                      )}
+                      {cellTime && (
+                        <span className="mt-0.5 text-[9px] font-bold leading-none text-[#1E3A5F]">{cellTime}</span>
                       )}
                       {customLabel && (
                         <div className="mt-1 w-full px-1">
@@ -847,6 +877,12 @@ export default function ScheduleChangePage() {
           {
             label: '직접입력 휴무',
             value: Object.entries(customLabels).map(([d, l]) => `${parseInt(d.split('-')[2])}일 ${l}`).join(', '),
+          },
+          {
+            label: '달력 시간 표기',
+            value: showTimes
+              ? (Object.entries(tagTimes).filter(([, v]) => v.trim()).map(([k, v]) => `${k} ${v.trim()}`).join(', ') || 'ON (시간 미입력)')
+              : '',
           },
           { label: '휴진 사유', value: holidayReason },
           { label: '이벤트', value: events },

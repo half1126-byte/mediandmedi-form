@@ -282,13 +282,19 @@ export async function createScheduleChangeRecord(
   if (holidayReason) {
     properties['휴진사유'] = { rich_text: [{ text: { content: holidayReason } }] };
   }
-  if (tagToDates['휴진'].length > 0) properties['휴진일'] = textProp(sortDates(tagToDates['휴진']));
-  if (tagToDates['토요일진료'].length > 0) properties['토요일진료'] = textProp(sortDates(tagToDates['토요일진료']));
-  if (tagToDates['일요일진료'].length > 0) properties['일요일진료'] = textProp(sortDates(tagToDates['일요일진료']));
-  if (tagToDates['오전진료'].length > 0) properties['오전진료'] = textProp(sortDates(tagToDates['오전진료']));
-  if (tagToDates['오후진료'].length > 0) properties['오후진료'] = textProp(sortDates(tagToDates['오후진료']));
-  if (tagToDates['야간진료'].length > 0) properties['야간진료_변경'] = textProp(sortDates(tagToDates['야간진료']));
-  if (tagToDates['공휴일진료'].length > 0) properties['공휴일진료'] = textProp(sortDates(tagToDates['공휴일진료']));
+  // 태그별 시간(달력 시간 표기 ON일 때만 전달됨) → 해당 태그 칸 값 뒤에 "(시간)" 부기
+  const tagTimes = (data.tagTimes as Record<string, string>) || {};
+  const withTime = (tag: string, dates: string) => {
+    const t = tagTimes[tag]?.trim();
+    return t ? `${dates} (${t})` : dates;
+  };
+  if (tagToDates['휴진'].length > 0) properties['휴진일'] = textProp(withTime('휴진', sortDates(tagToDates['휴진'])));
+  if (tagToDates['토요일진료'].length > 0) properties['토요일진료'] = textProp(withTime('토요일진료', sortDates(tagToDates['토요일진료'])));
+  if (tagToDates['일요일진료'].length > 0) properties['일요일진료'] = textProp(withTime('일요일진료', sortDates(tagToDates['일요일진료'])));
+  if (tagToDates['오전진료'].length > 0) properties['오전진료'] = textProp(withTime('오전진료', sortDates(tagToDates['오전진료'])));
+  if (tagToDates['오후진료'].length > 0) properties['오후진료'] = textProp(withTime('오후진료', sortDates(tagToDates['오후진료'])));
+  if (tagToDates['야간진료'].length > 0) properties['야간진료_변경'] = textProp(withTime('야간진료', sortDates(tagToDates['야간진료'])));
+  if (tagToDates['공휴일진료'].length > 0) properties['공휴일진료'] = textProp(withTime('공휴일진료', sortDates(tagToDates['공휴일진료'])));
 
   const response = await withRetry(() =>
     notion.pages.create({
