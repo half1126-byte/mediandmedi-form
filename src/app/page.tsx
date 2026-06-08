@@ -1,26 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { APP_VERSION, APP_UPDATED } from '@/data/version';
 
-const MEETING_DB_URL = 'https://www.notion.so/f7b5f3e9ce2142599d0eedda716e588a';
-
 export default function Home() {
   const router = useRouter();
-  const [previousSubmissions, setPreviousSubmissions] = useState(() => {
-    try { return !!localStorage.getItem('mediandmedi-last-submission'); }
-    catch { return false; }
-  });
-  const [showChoice, setShowChoice] = useState(false);
   const [showNewClinicChoice, setShowNewClinicChoice] = useState(false);
+
+  // 개인정보 보호: 공용 기기 대비 — 홈 진입 시 이전 제출 요약/PIN 흔적을 기기에서 정리
+  useEffect(() => {
+    try {
+      localStorage.removeItem('mediandmedi-last-submission');
+      Object.keys(localStorage).forEach((k) => {
+        if (k.startsWith('mediandmedi-submitted-') || k.startsWith('mediandmedi-pin-')) {
+          localStorage.removeItem(k);
+        }
+      });
+    } catch { /* localStorage 접근 불가 시 무시 */ }
+  }, []);
 
   const handleNewClinic = () => {
     setShowNewClinicChoice(true);
-  };
-
-  const handleStartMeeting = () => {
-    window.location.href = MEETING_DB_URL;
   };
 
   return (
@@ -71,46 +72,8 @@ export default function Home() {
               ← 뒤로
             </button>
           </div>
-        ) : previousSubmissions && !showChoice ? (
-          <div className="space-y-3 mb-8">
-            <button
-              onClick={() => {
-                setShowChoice(true);
-                setPreviousSubmissions(false);
-              }}
-              className="w-full h-14 bg-[#2563EB] text-white rounded-xl font-semibold text-base
-                         hover:bg-[#1d4ed8] active:scale-[0.98] transition-all"
-            >
-              새 미팅 시작
-            </button>
-            <button
-              onClick={() => {
-                const lastId = localStorage.getItem('mediandmedi-last-submission');
-                if (lastId) {
-                  router.push(`/summary?id=${lastId}`);
-                }
-              }}
-              className="w-full h-14 bg-white text-[#374151] border border-[#D1D5DB] rounded-xl
-                         font-medium text-base hover:border-[#2563EB] hover:text-[#2563EB]
-                         active:scale-[0.98] transition-all"
-            >
-              이전 제출 내역 보기
-            </button>
-          </div>
         ) : (
           <div className="space-y-4 animate-fade-in-delay">
-            <button
-              onClick={handleStartMeeting}
-              className="w-full h-14 bg-[#DC2626] text-white rounded-xl font-semibold text-base
-                         hover:bg-[#b91c1c] active:scale-[0.98] transition-all
-                         flex items-center justify-center gap-2 shadow-lg shadow-red-200"
-            >
-              <span className="relative flex items-center justify-center w-5 h-5">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-40 animate-ping"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
-              </span>
-              미팅 녹음 시작
-            </button>
             <button
               onClick={handleNewClinic}
               className="w-full h-14 bg-[#2563EB] text-white rounded-xl font-semibold text-base
