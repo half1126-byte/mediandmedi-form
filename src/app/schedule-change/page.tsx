@@ -6,7 +6,7 @@ import { isHoliday } from '@/data/holidays';
 import ReviewModal from '@/components/ReviewModal';
 
 type ScheduleTag = '휴진' | '토요일진료' | '일요일진료' | '오전진료' | '오후진료' | '야간진료' | '공휴일진료';
-type ActiveMode = ScheduleTag | null;
+type ActiveMode = ScheduleTag | '직접입력' | null;
 
 const SCHEDULE_TAGS: { label: ScheduleTag; color: string; bg: string; emoji: string }[] = [
   { label: '휴진',     color: '#DC2626', bg: '#FEE2E2', emoji: '🔴' },
@@ -50,6 +50,21 @@ export default function ScheduleChangePage() {
   const [calendarText, setCalendarText] = useState('');
   const [specialNote, setSpecialNote] = useState('');
   const [extraRequest, setExtraRequest] = useState('');
+
+  // 진료 시간 (평일/토/일/점심)
+  const [weekdayHours, setWeekdayHours] = useState('');
+  const [satHours, setSatHours] = useState('');
+  const [sunHours, setSunHours] = useState('');
+  const [lunchTime, setLunchTime] = useState('');
+  // 커스텀 휴무(직접입력) — 날짜별 사유
+  const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
+  const [editingDate, setEditingDate] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  // 필수표기 빌더
+  const [mustNotes, setMustNotes] = useState<{ day: string; content: string }[]>([]);
+  const [noteDay, setNoteDay] = useState('매주');
+  const [noteContent, setNoteContent] = useState('');
+
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
@@ -79,6 +94,11 @@ export default function ScheduleChangePage() {
       setTimeout(() => setShowModeHint(false), 2500);
       return;
     }
+    if (activeMode === '직접입력') {
+      setEditingDate(dateStr);
+      setEditingText(customLabels[dateStr] || '');
+      return;
+    }
     const current = dateSchedules[dateStr] || [];
     const hasTag = current.includes(activeMode as ScheduleTag);
     setDateSchedules({
@@ -86,6 +106,56 @@ export default function ScheduleChangePage() {
       [dateStr]: hasTag ? current.filter(t => t !== activeMode) : [...current, activeMode as ScheduleTag],
     });
   };
+
+  // 요일 일괄 적용: 활성 태그를 그 달의 해당 요일 전체에 토글 (예: 매주 토요일진료)
+  const applyTagToWeekday = (weekdayIdx: number) => {
+    if (!activeMode || activeMode === '직접입력') {
+      setShowModeHint(true);
+      setTimeout(() => setShowModeHint(false), 2500);
+      return;
+    }
+    const tag = activeMode as ScheduleTag;
+    const matching: string[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      if (new Date(calYear, calMonth - 1, d).getDay() === weekdayIdx) matching.push(formatDate(calYear, calMonth, d));
+    }
+    if (matching.length === 0) return;
+    const allTagged = matching.every(ds => (dateSchedules[ds] || []).includes(tag));
+    const next = { ...dateSchedules };
+    for (const ds of matching) {
+      const cur = next[ds] || [];
+      if (allTagged) next[ds] = cur.filter(t => t !== tag);
+      else if (!cur.includes(tag)) next[ds] = [...cur, tag];
+    }
+    setDateSchedules(next);
+  };
+
+  // 커스텀 휴무(직접입력) 저장/삭제
+  const saveCustomLabel = () => {
+    if (!editingDate) return;
+    const text = editingText.trim();
+    const next = { ...customLabels };
+    if (text) next[editingDate] = text; else delete next[editingDate];
+    setCustomLabels(next);
+    setEditingDate(null);
+    setEditingText('');
+  };
+  const removeCustomLabel = () => {
+    if (!editingDate) return;
+    const next = { ...customLabels };
+    delete next[editingDate];
+    setCustomLabels(next);
+    setEditingDate(null);
+    setEditingText('');
+  };
+
+  // 필수표기 빌더 추가/삭제
+  const addMustNote = () => {
+    if (!noteContent.trim()) return;
+    setMustNotes([...mustNotes, { day: noteDay, content: noteContent.trim() }]);
+    setNoteContent('');
+  };
+  const removeMustNote = (idx: number) => setMustNotes(mustNotes.filter((_, i) => i !== idx));
 
   const togglePrintSize = (size: string) =>
     setPrintSizes(prev => prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]);
@@ -122,14 +192,32 @@ export default function ScheduleChangePage() {
     setShowReview(false);
     setSubmitting(true);
     setError('');
-    const scheduleSummary = Object.entries(dateSchedules)
-      .filter(([, tags]) => tags.length > 0)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, tags]) => {
-        const d = parseInt(date.split('-')[2]);
-        const h = isHoliday(date);
-        return `${h ? `${d}일(${h.name})` : `${d}일`}: ${tags.join(', ')}`;
-      }).join('\n');
+    // 일정데이터: 태그 일정 + 커스텀 휴무(직접입력)를 날짜순으로 합침
+    const summaryRows: { day: number; line: string }[] = [];
+    for (const [date, tags] of Object.entries(dateSchedules)) {
+      if (!tags.length) continue;
+      const d = parseInt(date.split('-')[2]);
+      const h = isHoliday(date);
+      summaryRows.push({ day: d, line: `${h ? `${d}일(${h.name})` : `${d}일`}: ${tags.join(', ')}` });
+    }
+    for (const [date, label] of Object.entries(customLabels)) {
+      if (!label.trim()) continue;
+      const d = parseInt(date.split('-')[2]);
+      summaryRows.push({ day: d, line: `${d}일: ${label.trim()}` });
+    }
+    const scheduleSummary = summaryRows.sort((a, b) => a.day - b.day).map(r => r.line).join('\n');
+
+    // 진료 시간: 평일/토/일/점심 합치기
+    const clinicHours = [
+      weekdayHours.trim() && `평일 ${weekdayHours.trim()}`,
+      satHours.trim() && `토요일 ${satHours.trim()}`,
+      sunHours.trim() && `일요일 ${sunHours.trim()}`,
+      lunchTime.trim() && `점심 ${lunchTime.trim()}`,
+    ].filter(Boolean).join(' / ');
+
+    // 필수표기: 빌더 리스트 + 자유칸 합치기
+    const mustText = mustNotes.map(n => `${n.day} ${n.content}`).join('\n');
+    const calendarTextFinal = [mustText, calendarText.trim()].filter(Boolean).join('\n');
 
     // 달력 이미지 캡처 → 노션 업로드 (실패해도 제출은 계속)
     const calendarFileUploadId = await captureCalendarImage();
@@ -144,7 +232,9 @@ export default function ScheduleChangePage() {
           scheduleData: scheduleSummary, dateSchedulesRaw: dateSchedules,
           events: events.trim(), printSizes,
           templateType: templateType || undefined,
-          calendarText: calendarText.trim() || undefined,
+          calendarText: calendarTextFinal || undefined,
+          clinicHours: clinicHours || undefined,
+          customLabels,
           specialNote: specialNote.trim() || undefined,
           extraRequest: extraRequest.trim(), holidayReason: holidayReason.trim(),
           calendarFileUploadId: calendarFileUploadId || undefined,
@@ -331,12 +421,26 @@ export default function ScheduleChangePage() {
                     </button>
                   );
                 })}
+                {/* 직접입력(커스텀 휴무) 모드 */}
+                <button
+                  onClick={() => setActiveMode(activeMode === '직접입력' ? null : '직접입력')}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95"
+                  style={activeMode === '직접입력' ? {
+                    backgroundColor: '#92400E', color: '#fff',
+                    boxShadow: '0 0 0 3px #92400E40, 0 2px 8px #92400E50', transform: 'scale(1.05)',
+                  } : {
+                    backgroundColor: '#FEF3C7', color: '#92400E', border: '1.5px solid #92400E30',
+                  }}
+                >
+                  ✏️ 직접입력
+                </button>
                 {/* 전체 지우기 */}
                 <button
                   onClick={() => {
-                    if (Object.keys(dateSchedules).length === 0) return;
+                    if (Object.keys(dateSchedules).length === 0 && Object.keys(customLabels).length === 0) return;
                     if (confirm('달력에 표시된 모든 일정을 초기화할까요?')) {
                       setDateSchedules({});
+                      setCustomLabels({});
                       setActiveMode(null);
                     }
                   }}
@@ -347,8 +451,29 @@ export default function ScheduleChangePage() {
                 </button>
               </div>
 
+              {/* 요일 일괄 적용 (예: 토요일진료 선택 → 토 → 매주 토요일 전체) */}
+              {activeMode && activeMode !== '직접입력' && (
+                <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                  <span className="text-xs text-[#6B7280] font-medium mr-1">요일 일괄:</span>
+                  {WEEKDAY_LABELS.map((d, i) => (
+                    <button key={d} onClick={() => applyTagToWeekday(i)}
+                      className={`w-9 h-9 rounded-lg text-xs font-bold border transition-all active:scale-95 bg-white border-[#E5E7EB] hover:border-[#2563EB] hover:bg-[#EFF6FF]
+                        ${i === 0 ? 'text-[#DC2626]' : i === 6 ? 'text-[#2563EB]' : 'text-[#374151]'}`}>
+                      {d}
+                    </button>
+                  ))}
+                  <span className="text-[11px] text-[#9CA3AF] ml-1">한 번 더 = 해제</span>
+                </div>
+              )}
+
               {/* 활성 모드 표시줄 */}
-              {activeMode && activeModeTag ? (
+              {activeMode === '직접입력' ? (
+                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold"
+                  style={{ backgroundColor: '#FEF3C7', color: '#92400E', border: '1.5px solid #92400E40' }}>
+                  <span className="text-base">✏️</span>
+                  직접입력 · 날짜를 탭해 사유(원장 휴가/세미나 등)를 적어 주세요
+                </div>
+              ) : activeMode && activeModeTag ? (
                 <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold"
                   style={{
                     backgroundColor: activeModeTag.bg,
@@ -406,6 +531,7 @@ export default function ScheduleChangePage() {
                   const isSun = dayOfWeek === 0;
                   const isSat = dayOfWeek === 6;
                   const primaryTag = tags[0] ? SCHEDULE_TAGS.find(s => s.label === tags[0]) : null;
+                  const customLabel = customLabels[dateStr];
 
                   return (
                     <button
@@ -417,7 +543,7 @@ export default function ScheduleChangePage() {
                           ? 'hover:opacity-80 cursor-pointer'
                           : 'cursor-pointer'}
                       `}
-                      style={primaryTag ? { backgroundColor: primaryTag.bg + '90' } : {}}
+                      style={primaryTag ? { backgroundColor: primaryTag.bg + '90' } : customLabel ? { backgroundColor: '#FEE2E290' } : {}}
                     >
                       <span className={`text-xs font-bold leading-none
                         ${primaryTag ? '' : hol || isSun ? 'text-[#DC2626]' : isSat ? 'text-[#2563EB]' : 'text-[#374151]'}`}
@@ -453,6 +579,14 @@ export default function ScheduleChangePage() {
                           )}
                         </div>
                       )}
+                      {customLabel && (
+                        <div className="mt-1 w-full px-1">
+                          <span className="block w-full text-center text-[9px] font-bold leading-tight py-0.5 rounded"
+                            style={{ backgroundColor: '#92400E', color: '#fff' }}>
+                            {customLabel}
+                          </span>
+                        </div>
+                      )}
                     </button>
                   );
                 })}
@@ -469,6 +603,25 @@ export default function ScheduleChangePage() {
             <div className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
               <h3 className="font-semibold text-[#374151]">추가 정보</h3>
+            </div>
+
+            {/* 진료 시간 (평일/토/일/점심) */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-[#374151]">🕐 진료 시간</label>
+              <div className="grid grid-cols-2 gap-2">
+                <input value={weekdayHours} onChange={e => setWeekdayHours(e.target.value)}
+                  placeholder="평일 예: 09:30~18:30"
+                  className="h-11 px-3 rounded-xl border border-[#D1D5DB] text-sm focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all" />
+                <input value={satHours} onChange={e => setSatHours(e.target.value)}
+                  placeholder="토요일 예: 09:00~13:00"
+                  className="h-11 px-3 rounded-xl border border-[#D1D5DB] text-sm focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all" />
+                <input value={sunHours} onChange={e => setSunHours(e.target.value)}
+                  placeholder="일요일 예: 휴무"
+                  className="h-11 px-3 rounded-xl border border-[#D1D5DB] text-sm focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all" />
+                <input value={lunchTime} onChange={e => setLunchTime(e.target.value)}
+                  placeholder="점심 예: 13:00~14:00"
+                  className="h-11 px-3 rounded-xl border border-[#D1D5DB] text-sm focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all" />
+              </div>
             </div>
 
             {/* 휴진 사유 - 휴진 선택 시만 표시 */}
@@ -545,16 +698,37 @@ export default function ScheduleChangePage() {
               </div>
             </div>
 
-            {/* 달력 표기 필수내용 */}
+            {/* 달력 표기 필수내용 (필수표기 빌더) */}
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-[#374151]">
-                달력에 꼭 표기해야 할 내용을 적어 주세요
-              </label>
+              <label className="block text-sm font-semibold text-[#374151]">달력에 꼭 표기할 내용</label>
+              <p className="text-xs text-[#6B7280]">요일 + 내용 입력 후 추가 (예: 화 + 야간진료 → &quot;화 야간진료&quot;)</p>
+              <div className="flex gap-2">
+                <select value={noteDay} onChange={e => setNoteDay(e.target.value)}
+                  className="h-11 px-2 rounded-xl border border-[#D1D5DB] text-sm bg-white focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20">
+                  {['매주', '월', '화', '수', '목', '금', '토', '일'].map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <input value={noteContent} onChange={e => setNoteContent(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMustNote(); } }}
+                  placeholder="예: 야간진료, 정기휴무"
+                  className="flex-1 h-11 px-3 rounded-xl border border-[#D1D5DB] text-sm focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all" />
+                <button onClick={addMustNote}
+                  className="h-11 px-4 bg-[#2563EB] text-white rounded-xl text-sm font-semibold hover:bg-[#1d4ed8] active:scale-95 transition-all">추가</button>
+              </div>
+              {mustNotes.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {mustNotes.map((n, idx) => (
+                    <span key={idx} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-lg bg-[#EFF6FF] border border-[#BFDBFE] text-sm text-[#1E3A5F]">
+                      <span className="font-semibold">{n.day}</span> {n.content}
+                      <button onClick={() => removeMustNote(idx)} className="text-[#9CA3AF] hover:text-[#DC2626] ml-0.5 leading-none">✕</button>
+                    </span>
+                  ))}
+                </div>
+              )}
               <textarea
                 value={calendarText}
                 onChange={e => setCalendarText(e.target.value)}
-                placeholder={`예:\n화 야간진료\n일 정기휴무\n목 정기휴무\n6월 4일, 11일 목요일 정상 진료`}
-                rows={4}
+                placeholder={`그 외 자유 표기사항 (선택)\n예: 6월 4일·11일 목요일 정상 진료`}
+                rows={2}
                 className="w-full px-4 py-3 rounded-xl border border-[#D1D5DB] text-sm resize-none
                            focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
               />
@@ -611,6 +785,40 @@ export default function ScheduleChangePage() {
         </div>
       </main>
 
+      {/* 커스텀 휴무(직접입력) 편집 모달 */}
+      {editingDate && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-6"
+          onClick={() => { setEditingDate(null); setEditingText(''); }}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-xs space-y-4 shadow-xl"
+            onClick={e => e.stopPropagation()}>
+            <div>
+              <p className="text-sm font-bold text-[#374151]">{parseInt(editingDate.split('-')[2])}일 직접 입력</p>
+              <p className="text-xs text-[#6B7280] mt-0.5">예: 원장 휴가, 세미나, 강연 — 적은 그대로 달력에 표시됩니다</p>
+            </div>
+            <input
+              type="text"
+              value={editingText}
+              onChange={e => setEditingText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveCustomLabel(); }}
+              placeholder="예: 원장 휴가"
+              autoFocus
+              className="w-full h-11 px-4 rounded-xl border border-[#D1D5DB] text-sm
+                         focus:outline-none focus:border-[#92400E] focus:ring-2 focus:ring-[#92400E]/20"
+            />
+            <div className="flex gap-2">
+              <button onClick={removeCustomLabel}
+                className="h-11 px-4 bg-white border border-[#D1D5DB] text-[#6B7280] rounded-lg text-sm font-medium">
+                삭제
+              </button>
+              <button onClick={saveCustomLabel}
+                className="flex-1 h-11 bg-[#92400E] text-white rounded-lg text-sm font-semibold hover:bg-[#7c360c]">
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ReviewModal
         open={showReview}
         title={`${calYear}년 ${calMonth}월 진료일정 확인`}
@@ -622,15 +830,32 @@ export default function ScheduleChangePage() {
           {
             label: '일정 표시 수',
             value: (() => {
-              const n = Object.values(dateSchedules).filter((tags) => tags.length > 0).length;
+              const n = Object.values(dateSchedules).filter((tags) => tags.length > 0).length
+                + Object.keys(customLabels).length;
               return n > 0 ? `${n}일` : '없음';
             })(),
+          },
+          {
+            label: '진료 시간',
+            value: [
+              weekdayHours.trim() && `평일 ${weekdayHours.trim()}`,
+              satHours.trim() && `토요일 ${satHours.trim()}`,
+              sunHours.trim() && `일요일 ${sunHours.trim()}`,
+              lunchTime.trim() && `점심 ${lunchTime.trim()}`,
+            ].filter(Boolean).join(' / '),
+          },
+          {
+            label: '직접입력 휴무',
+            value: Object.entries(customLabels).map(([d, l]) => `${parseInt(d.split('-')[2])}일 ${l}`).join(', '),
           },
           { label: '휴진 사유', value: holidayReason },
           { label: '이벤트', value: events },
           { label: '템플릿 타입', value: templateType },
           { label: '출력 사이즈', value: printSizes.join(', ') },
-          { label: '달력 표기 필수내용', value: calendarText },
+          {
+            label: '필수표기',
+            value: [mustNotes.map(n => `${n.day} ${n.content}`).join(' / '), calendarText.trim()].filter(Boolean).join(' / '),
+          },
           { label: '특이사항/병원요청', value: specialNote },
           { label: '기타 요청', value: extraRequest },
         ]}
