@@ -235,9 +235,15 @@ export async function createScheduleChangeRecord(
     '처리상태_폼': { select: { name: '접수' } },
   };
 
-  // targetMonth "YYYY-MM" 파싱 → 대상 연도/월 select (OLD는 "대상 연도" "대상 월" 공백 포함)
-  if (targetMonth) {
-    const ym = targetMonth.match(/^(\d{4})-?(\d{1,2})$/);
+  // 대상 연도/월: 폼이 보내는 calYear/calMonth 우선, 없으면 targetMonth 파싱.
+  // (폼은 targetMonth를 "2026년 7월" 형식으로 보내 기존 정규식 ^YYYY-MM$이 안 잡혔음 → 월별 필터 뷰 누락)
+  const calYear = data.calYear as number | string | undefined;
+  const calMonth = data.calMonth as number | string | undefined;
+  if (calYear && calMonth) {
+    properties['대상 연도'] = { select: { name: String(calYear) } };
+    properties['대상 월'] = { select: { name: String(parseInt(String(calMonth))) } };
+  } else if (targetMonth) {
+    const ym = targetMonth.match(/(\d{4})[년\s.\-]*(\d{1,2})/); // "2026-07" · "2026년 7월" 모두 허용
     if (ym) {
       properties['대상 연도'] = { select: { name: ym[1] } };
       properties['대상 월'] = { select: { name: String(parseInt(ym[2])) } };
