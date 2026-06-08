@@ -96,28 +96,22 @@ export default function ScheduleChangePage() {
   const captureCalendarImage = async (): Promise<string | null> => {
     if (!calendarRef.current) return null;
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(calendarRef.current, {
-        scale: 2,
-        useCORS: true,
+      // html2canvas(1.4.1)는 일부 모던 CSS에서 무음 실패 → 브라우저 네이티브 렌더 기반 html-to-image로 교체.
+      const { toBlob } = await import('html-to-image');
+      const blob = await toBlob(calendarRef.current, {
+        type: 'image/webp',     // webp 저용량
+        quality: 0.85,
+        pixelRatio: 2,          // 선명하게
         backgroundColor: '#ffffff',
-        logging: false,
+        cacheBust: true,
       });
-      return await new Promise<string | null>((resolve) => {
-        canvas.toBlob(async (blob) => {
-          if (!blob) { resolve(null); return; }
-          const ext = blob.type.includes('webp') ? 'webp' : blob.type.includes('png') ? 'png' : 'jpg';
-          const formData = new FormData();
-          formData.append('image', blob, `calendar.${ext}`);
-          try {
-            const up = await fetch('/api/upload-calendar', { method: 'POST', body: formData });
-            const upData = await up.json();
-            resolve(upData.success ? upData.fileUploadId : null);
-          } catch {
-            resolve(null);
-          }
-        }, 'image/webp', 0.85); // webp 저용량 (미지원 브라우저는 png로 폴백)
-      });
+      if (!blob) return null;
+      const ext = blob.type.includes('webp') ? 'webp' : blob.type.includes('png') ? 'png' : 'jpg';
+      const formData = new FormData();
+      formData.append('image', blob, `calendar.${ext}`);
+      const up = await fetch('/api/upload-calendar', { method: 'POST', body: formData });
+      const upData = await up.json();
+      return upData.success ? upData.fileUploadId : null;
     } catch {
       return null;
     }
