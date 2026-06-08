@@ -106,16 +106,17 @@ export default function ScheduleChangePage() {
       return await new Promise<string | null>((resolve) => {
         canvas.toBlob(async (blob) => {
           if (!blob) { resolve(null); return; }
+          const ext = blob.type.includes('webp') ? 'webp' : blob.type.includes('png') ? 'png' : 'jpg';
           const formData = new FormData();
-          formData.append('image', blob, 'calendar.png');
+          formData.append('image', blob, `calendar.${ext}`);
           try {
             const up = await fetch('/api/upload-calendar', { method: 'POST', body: formData });
             const upData = await up.json();
-            resolve(upData.success ? upData.url : null);
+            resolve(upData.success ? upData.fileUploadId : null);
           } catch {
             resolve(null);
           }
-        }, 'image/png');
+        }, 'image/webp', 0.85); // webp 저용량 (미지원 브라우저는 png로 폴백)
       });
     } catch {
       return null;
@@ -136,8 +137,8 @@ export default function ScheduleChangePage() {
         return `${h ? `${d}일(${h.name})` : `${d}일`}: ${tags.join(', ')}`;
       }).join('\n');
 
-    // 달력 이미지 캡처 (실패해도 제출은 계속)
-    const calendarImageUrl = await captureCalendarImage();
+    // 달력 이미지 캡처 → 노션 업로드 (실패해도 제출은 계속)
+    const calendarFileUploadId = await captureCalendarImage();
 
     try {
       const res = await fetch('/api/schedule-change', {
@@ -152,7 +153,7 @@ export default function ScheduleChangePage() {
           calendarText: calendarText.trim() || undefined,
           specialNote: specialNote.trim() || undefined,
           extraRequest: extraRequest.trim(), holidayReason: holidayReason.trim(),
-          calendarImageUrl: calendarImageUrl || undefined,
+          calendarFileUploadId: calendarFileUploadId || undefined,
         }),
       });
       const data = await res.json();
