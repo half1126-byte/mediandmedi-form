@@ -269,6 +269,9 @@ export async function createScheduleChangeRecord(
   if (data.calendarText) {
     properties['달력 표기 필수내용 원문'] = { rich_text: [{ text: { content: (data.calendarText as string).substring(0, 1900) } }] };
   }
+  if (data.clinicHours) {
+    properties['진료시간'] = { rich_text: [{ text: { content: (data.clinicHours as string).substring(0, 1900) } }] };
+  }
   if (data.specialNote) {
     properties['특이사항/병원요청'] = { rich_text: [{ text: { content: (data.specialNote as string).substring(0, 1900) } }] };
   }
