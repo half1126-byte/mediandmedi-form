@@ -225,8 +225,8 @@ export async function createScheduleChangeRecord(
   const sortDates = (arr: string[]) =>
     arr.sort((a, b) => parseInt(a) - parseInt(b)).join(', ');
 
-  // 진료일정 DB는 "작업명" 타이틀 사용
-  const titleText = targetMonth ? `${clinicName} - ${targetMonth}` : clinicName;
+  // 작업명(타이틀) = 거래처명만. 대상 연도/월은 별도 속성이라 제목에 월 중복 표기하지 않음.
+  const titleText = clinicName;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const properties: any = {
     '작업명': { title: [{ text: { content: titleText } }] },
