@@ -93,38 +93,44 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
   const firstDay = getFirstDay(year, month);
   const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
-  const taggedDays = Object.entries(dateTagMap).sort(([a], [b]) => parseInt(a) - parseInt(b));
-
-  const allChips: { day: number; tag: string; holiday?: string }[] = [];
-  for (const [dayStr, tags] of taggedDays) {
+  // 태그 종류별 날짜 묶음 (표시 일정 요약 — 태그당 한 줄)
+  const TAG_SUMMARY_ORDER: TagKey[] = ['오전진료', '오후진료', '야간진료', '토요일진료', '일요일진료', '공휴일진료', '휴진'];
+  const tagDayMap: Record<string, number[]> = {};
+  for (const [dayStr, tags] of Object.entries(dateTagMap)) {
     const day = parseInt(dayStr);
-    const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const holiday = isHoliday(dateKey)?.name;
     for (const tag of tags) {
-      allChips.push({ day, tag, holiday });
+      if (!tagDayMap[tag]) tagDayMap[tag] = [];
+      tagDayMap[tag].push(day);
     }
   }
+  Object.values(tagDayMap).forEach((arr) => arr.sort((a, b) => a - b));
+  const summaryTags = TAG_SUMMARY_ORDER.filter((tag) => tagDayMap[tag]?.length);
 
   return (
     <div className="space-y-4">
-      {allChips.length > 0 && (
+      {summaryTags.length > 0 && (
         <div>
           <p className="text-xs text-gray-400 mb-2">표시 일정</p>
-          <div className="flex flex-wrap gap-1.5">
-            {allChips.map((chip, i) => {
-              const t = SCHEDULE_TAGS[chip.tag as TagKey];
+          <div className="space-y-1.5">
+            {summaryTags.map((tag) => {
+              const t = SCHEDULE_TAGS[tag];
+              const days = tagDayMap[tag];
+              const time = tagTimeMap[tag];
               return (
-                <span
-                  key={i}
-                  className="px-2.5 py-1 rounded-md text-[13px] font-semibold"
-                  style={{
-                    backgroundColor: t?.bg || '#333',
-                    color: t?.light || '#fff',
-                    border: `1px solid ${t?.color ?? '#fff'}55`,
-                  }}
-                >
-                  {chip.day}일{chip.holiday ? `(${chip.holiday})` : ''} {chip.tag}
-                </span>
+                <div key={tag} className="flex items-start gap-2 text-[13px]">
+                  <span
+                    className="flex-shrink-0 px-2 py-0.5 rounded-md font-semibold whitespace-nowrap"
+                    style={{ backgroundColor: t.bg, color: t.light, border: `1px solid ${t.color}55` }}
+                  >
+                    {tag} {days.length}
+                  </span>
+                  {time && (
+                    <span className="flex-shrink-0 font-semibold pt-0.5 tabular-nums" style={{ color: t.light }}>
+                      {time}
+                    </span>
+                  )}
+                  <span className="text-gray-300 leading-relaxed pt-0.5">{days.join(' · ')}</span>
+                </div>
               );
             })}
           </div>
@@ -146,7 +152,7 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
         </div>
         <div className="grid grid-cols-7">
           {Array.from({ length: firstDay }).map((_, i) => (
-            <div key={`e${i}`} className="h-[78px] border-b border-r border-white/5" />
+            <div key={`e${i}`} className="h-[92px] border-b border-r border-white/5" />
           ))}
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
@@ -156,13 +162,15 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
             const tags = dateTagMap[day] || [];
             const primaryTag = getPrimaryTag(tags);
             const t = primaryTag ? SCHEDULE_TAGS[primaryTag] : null;
+            // 대표 태그(칸 배경색)를 맨 위로, 나머지 태그는 그 아래로
+            const sortedTags = primaryTag ? [primaryTag, ...tags.filter((x) => x !== primaryTag)] : tags;
             const isSun = dayOfWeek === 0;
             const isSat = dayOfWeek === 6;
 
             return (
               <div
                 key={day}
-                className="h-[78px] border-b border-r border-white/5 flex flex-col items-center justify-center gap-0.5 relative px-1"
+                className="h-[92px] border-b border-r border-white/5 flex flex-col items-center justify-center gap-0.5 overflow-hidden px-0.5"
                 style={t ? { backgroundColor: t.bg } : {}}
               >
                 <span
@@ -173,28 +181,20 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
                 >
                   {day}
                 </span>
-                {primaryTag && (
-                  <span
-                    className="text-[11px] leading-tight font-semibold text-center"
-                    style={{ color: t?.light }}
-                  >
-                    {primaryTag}
-                  </span>
-                )}
-                {primaryTag && tagTimeMap[primaryTag] && (
-                  <span
-                    className="text-[11px] leading-tight font-bold text-center tabular-nums"
-                    style={{ color: t?.light }}
-                  >
-                    {tagTimeMap[primaryTag]}
-                  </span>
-                )}
-                {tags.length > 1 && (
-                  <span className="text-[9px] font-medium" style={{ color: t?.light, opacity: 0.85 }}>
-                    +{tags.length - 1}
-                  </span>
-                )}
-                {holiday && !primaryTag && (
+                {sortedTags.map((tag) => {
+                  const tg = SCHEDULE_TAGS[tag as TagKey];
+                  const time = tagTimeMap[tag];
+                  return (
+                    <span
+                      key={tag}
+                      className="text-[10px] leading-tight font-semibold text-center"
+                      style={{ color: tg?.light }}
+                    >
+                      {tag}{time ? ` ${time}` : ''}
+                    </span>
+                  );
+                })}
+                {holiday && sortedTags.length === 0 && (
                   <span className="text-[9px] text-red-300 leading-tight text-center">
                     {holiday.length > 4 ? holiday.slice(0, 4) : holiday}
                   </span>
