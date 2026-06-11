@@ -6,9 +6,11 @@ export async function GET(request: NextRequest) {
   if (authError) return authError;
 
   const { searchParams } = new URL(request.url);
-  const month = searchParams.get('month'); // "2026년 5월" 형식
+  const month = searchParams.get('month'); // "2026년 7월" 형식
 
-  const apiKey = process.env.NOTION_API_KEY;
+  // 폼과 동일한 통합("메디앤메디 미팅") 키 — 진료일정 변경DB는 이 통합에 연결돼 있음.
+  // (기존 NOTION_API_KEY = "메디앤메디 미팅폼" 통합은 변경DB에 미연결이라 404 났음)
+  const apiKey = process.env.NOTION_MEETING_API_KEY || process.env.NOTION_API_KEY;
   const dbId = process.env.NOTION_SCHEDULE_DB_ID;
 
   if (!apiKey || !dbId) {
@@ -21,11 +23,17 @@ export async function GET(request: NextRequest) {
       page_size: 100,
     };
 
+    // 진료일정 변경DB는 대상 연도/대상 월(select)로 분리 저장 → 두 조건 AND 필터
     if (month) {
-      body.filter = {
-        property: '대상월',
-        rich_text: { equals: month },
-      };
+      const m = month.match(/(\d{4})[^\d]*(\d{1,2})/);
+      if (m) {
+        body.filter = {
+          and: [
+            { property: '대상 연도', select: { equals: m[1] } },
+            { property: '대상 월', select: { equals: String(parseInt(m[2])) } },
+          ],
+        };
+      }
     }
 
     const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
@@ -68,18 +76,23 @@ export async function GET(request: NextRequest) {
         return arr?.[0]?.plain_text || '';
       };
 
+      const year = getSelect(p['대상 연도']);
+      const mon = getSelect(p['대상 월']);
+
       return {
         id: page.id as string,
-        clinicName: getTitle(p['이름'] || p['title']),
-        clinicNameSelect: getSelect(p['거래처명']),
+        clinicName: getTitle(p['작업명']),
         doctorName: getText(p['성함']),
-        targetMonth: getText(p['대상월']),
+        targetMonth: year && mon ? `${year}년 ${mon}월` : '',
         scheduleData: getText(p['일정데이터']),
         events: getText(p['이벤트']),
         printSizes: getMultiSelect(p['출력사이즈']),
         extraRequest: getText(p['기타요청']),
-        status: getSelect(p['처리상태']),
-        assignee: getSelect(p['담당자']),
+        calendarText: getText(p['달력 표기 필수내용 원문']),
+        specialNote: getText(p['특이사항/병원요청']),
+        holidayReason: getText(p['휴진사유']),
+        status: getSelect(p['처리상태_폼']),
+        assignee: getText(p['담당자']),
         submittedAt: getDate(p['제출일']),
         tagData: {
           '휴진': getText(p['휴진일']),
@@ -87,7 +100,7 @@ export async function GET(request: NextRequest) {
           '일요일진료': getText(p['일요일진료']),
           '오전진료': getText(p['오전진료']),
           '오후진료': getText(p['오후진료']),
-          '야간진료': getText(p['야간진료']),
+          '야간진료': getText(p['야간진료_변경']),
           '공휴일진료': getText(p['공휴일진료']),
         },
       };

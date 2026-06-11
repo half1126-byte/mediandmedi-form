@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminToken } from '@/lib/admin-auth';
 
+// 폼과 동일한 통합("메디앤메디 미팅") — 진료일정 변경DB는 이 통합에 연결됨
+const notionKey = () => process.env.NOTION_MEETING_API_KEY || process.env.NOTION_API_KEY;
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const apiKey = process.env.NOTION_API_KEY;
+  const apiKey = notionKey();
   if (!apiKey) return NextResponse.json({ success: false }, { status: 500 });
 
   const authError = verifyAdminToken(request);
@@ -15,15 +18,8 @@ export async function PATCH(
   const body = await request.json() as Record<string, unknown>;
   const properties: Record<string, unknown> = {};
 
-  if (body.status) properties['처리상태'] = { select: { name: body.status } };
-  if (body.assignee !== undefined) {
-    properties['담당자'] = body.assignee
-      ? { select: { name: body.assignee } }
-      : { select: null };
-  }
-  if (body.memo !== undefined) {
-    properties['관리자메모'] = { rich_text: [{ text: { content: body.memo } }] };
-  }
+  // 변경DB의 처리상태 속성은 '처리상태_폼' (옵션: 접수/검토/처리완료)
+  if (body.status) properties['처리상태_폼'] = { select: { name: body.status } };
 
   const res = await fetch(`https://api.notion.com/v1/pages/${id}`, {
     method: 'PATCH',
@@ -43,7 +39,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const apiKey = process.env.NOTION_API_KEY;
+  const apiKey = notionKey();
   if (!apiKey) return NextResponse.json({ success: false }, { status: 500 });
 
   const authError2 = verifyAdminToken(request);

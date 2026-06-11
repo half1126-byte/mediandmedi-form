@@ -26,6 +26,9 @@ interface ScheduleRecord {
   events: string;
   printSizes: string[];
   extraRequest: string;
+  calendarText: string;
+  specialNote: string;
+  holidayReason: string;
   status: string;
   assignee: string;
   submittedAt: string;
@@ -177,21 +180,19 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
   );
 }
 
-const STATUS_OPTIONS = ['접수', '제작중', '검토요청', '완료'];
+// 변경DB '처리상태_폼' select 옵션과 1:1 일치 (신규 옵션 생성 방지)
+const STATUS_OPTIONS = ['접수', '검토', '처리완료'];
 const STATUS_COLORS: Record<string, string> = {
   '접수': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
-  '제작중': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  '검토요청': 'bg-orange-500/20 text-orange-300 border-orange-500/30',
-  '완료': 'bg-green-500/20 text-green-300 border-green-500/30',
+  '검토': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  '처리완료': 'bg-green-500/20 text-green-300 border-green-500/30',
 };
-const ASSIGNEES = ['미배정', '이하은', '김민지', '박서연'];
+// 변경DB '출력사이즈' multi_select 옵션과 일치
 const PRINT_SIZE_COLORS: Record<string, string> = {
-  '팝업(가로)': 'bg-purple-500/30 text-purple-200',
-  '팝업(세로)': 'bg-blue-500/30 text-blue-200',
-  'A4(가로)': 'bg-green-500/30 text-green-200',
-  'A4(세로)': 'bg-teal-500/30 text-teal-200',
-  '세로형 DID': 'bg-orange-500/30 text-orange-200',
-  '가로형 DID': 'bg-red-500/30 text-red-200',
+  'A4': 'bg-green-500/30 text-green-200',
+  '팝업': 'bg-purple-500/30 text-purple-200',
+  '가로 DID': 'bg-red-500/30 text-red-200',
+  '세로 DID': 'bg-orange-500/30 text-orange-200',
 };
 
 export default function AdminSchedulePage() {
@@ -554,6 +555,30 @@ export default function AdminSchedulePage() {
                 </div>
               )}
 
+              {/* 휴진 사유 */}
+              {selectedRecord.holidayReason && (
+                <div className="bg-red-500/5 rounded-xl p-4 border border-red-500/20">
+                  <p className="text-xs text-red-300 font-semibold mb-2">휴진 사유</p>
+                  <p className="text-sm text-gray-200 whitespace-pre-line">{selectedRecord.holidayReason}</p>
+                </div>
+              )}
+
+              {/* 달력에 꼭 표기할 내용 */}
+              {selectedRecord.calendarText && (
+                <div className="bg-blue-500/5 rounded-xl p-4 border border-blue-500/20">
+                  <p className="text-xs text-blue-300 font-semibold mb-2">달력에 꼭 표기할 내용</p>
+                  <p className="text-sm text-gray-200 whitespace-pre-line">{selectedRecord.calendarText}</p>
+                </div>
+              )}
+
+              {/* 특이사항 / 병원 요청 */}
+              {selectedRecord.specialNote && (
+                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                  <p className="text-xs text-gray-400 font-semibold mb-2">특이사항 / 병원 요청</p>
+                  <p className="text-sm text-gray-200 whitespace-pre-line">{selectedRecord.specialNote}</p>
+                </div>
+              )}
+
               {/* 기타 요청 */}
               {selectedRecord.extraRequest && (
                 <div className="bg-white/5 rounded-xl p-4 border border-white/10">
@@ -583,52 +608,24 @@ export default function AdminSchedulePage() {
                 </div>
               )}
 
-              {/* 관리자 설정 */}
-              <div className="bg-white/5 rounded-xl p-4 border border-white/10 space-y-4">
-                <p className="text-xs text-gray-400 font-semibold">관리자 설정</p>
-
-                {/* 처리 상태 */}
-                <div>
-                  <p className="text-xs text-gray-500 mb-2">처리 상태</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {STATUS_OPTIONS.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => updateRecord(selectedRecord.id, { status: s })}
-                        disabled={updatingId === selectedRecord.id}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                          selectedRecord.status === s
-                            ? STATUS_COLORS[s]
-                            : 'border-white/10 text-gray-400 hover:border-white/30'
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 담당자 */}
-                <div>
-                  <p className="text-xs text-gray-500 mb-2">담당자</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {ASSIGNEES.map((a) => (
-                      <button
-                        key={a}
-                        onClick={() =>
-                          updateRecord(selectedRecord.id, { assignee: a === '미배정' ? '' : a })
-                        }
-                        disabled={updatingId === selectedRecord.id}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                          (selectedRecord.assignee || '미배정') === a
-                            ? 'bg-blue-600/30 border-blue-500/50 text-blue-300'
-                            : 'border-white/10 text-gray-400 hover:border-white/30'
-                        }`}
-                      >
-                        {a}
-                      </button>
-                    ))}
-                  </div>
+              {/* 관리자 설정 — 처리 상태 (변경DB '처리상태_폼') */}
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <p className="text-xs text-gray-400 font-semibold mb-2">처리 상태</p>
+                <div className="flex gap-2 flex-wrap">
+                  {STATUS_OPTIONS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => updateRecord(selectedRecord.id, { status: s })}
+                      disabled={updatingId === selectedRecord.id}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                        selectedRecord.status === s
+                          ? STATUS_COLORS[s]
+                          : 'border-white/10 text-gray-400 hover:border-white/30'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
