@@ -83,6 +83,12 @@ function getFirstDay(year: number, month: number) { return new Date(year, month 
 function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
   const { year, month } = parseTargetMonth(record.targetMonth);
   const dateTagMap = buildDateTagMap(record.tagData);
+  // 태그별 시간(예: 야간진료 -> ~21:00) — 달력 칸에 태그명 밑줄로 표기
+  const tagTimeMap: Record<string, string> = {};
+  for (const [tag, ds] of Object.entries(record.tagData)) {
+    const tm = extractTagTime(ds);
+    if (tm) tagTimeMap[tag] = tm;
+  }
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDay(year, month);
   const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -140,7 +146,7 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
         </div>
         <div className="grid grid-cols-7">
           {Array.from({ length: firstDay }).map((_, i) => (
-            <div key={`e${i}`} className="h-12 border-b border-r border-white/5" />
+            <div key={`e${i}`} className="h-16 border-b border-r border-white/5" />
           ))}
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
@@ -156,7 +162,7 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
             return (
               <div
                 key={day}
-                className="h-12 border-b border-r border-white/5 flex flex-col items-center justify-center relative"
+                className="h-16 border-b border-r border-white/5 flex flex-col items-center justify-center relative px-0.5"
                 style={t ? { backgroundColor: t.bg } : {}}
               >
                 <span
@@ -168,8 +174,13 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
                   {day}
                 </span>
                 {primaryTag && (
-                  <span className="text-[9px] leading-none mt-0.5 font-medium" style={{ color: t?.color }}>
+                  <span className="text-[9px] leading-tight mt-0.5 font-medium text-center" style={{ color: t?.color }}>
                     {primaryTag}
+                  </span>
+                )}
+                {primaryTag && tagTimeMap[primaryTag] && (
+                  <span className="text-[9px] leading-tight font-semibold text-center" style={{ color: t?.color }}>
+                    {tagTimeMap[primaryTag]}
                   </span>
                 )}
                 {tags.length > 1 && (
