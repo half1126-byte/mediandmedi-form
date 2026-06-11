@@ -223,6 +223,39 @@ const PRINT_SIZE_COLORS: Record<string, string> = {
   '세로 DID': 'bg-orange-500/30 text-orange-200',
 };
 
+// 중복 통합 대상 필드 (성함 + 7개 태그 + 본문 필드 + 출력사이즈)
+const MERGE_TAG_KEYS = ['휴진', '토요일진료', '일요일진료', '오전진료', '오후진료', '야간진료', '공휴일진료'] as const;
+const MERGE_FIELDS: { key: string; label: string }[] = [
+  { key: '성함', label: '성함' },
+  { key: '휴진', label: '휴진' },
+  { key: '토요일진료', label: '토요일진료' },
+  { key: '일요일진료', label: '일요일진료' },
+  { key: '오전진료', label: '오전진료' },
+  { key: '오후진료', label: '오후진료' },
+  { key: '야간진료', label: '야간진료' },
+  { key: '공휴일진료', label: '공휴일진료' },
+  { key: '진료시간', label: '진료시간' },
+  { key: '이벤트', label: '이벤트' },
+  { key: '휴진사유', label: '휴진사유' },
+  { key: '달력표기', label: '달력 표기 필수내용' },
+  { key: '특이사항', label: '특이사항/병원요청' },
+  { key: '기타요청', label: '기타요청' },
+  { key: '출력사이즈', label: '출력사이즈' },
+];
+function mergeFieldVal(r: ScheduleRecord, key: string): string {
+  switch (key) {
+    case '성함': return r.doctorName;
+    case '진료시간': return r.doctorTime;
+    case '이벤트': return r.events;
+    case '휴진사유': return r.holidayReason;
+    case '달력표기': return r.calendarText;
+    case '특이사항': return r.specialNote;
+    case '기타요청': return r.extraRequest;
+    case '출력사이즈': return r.printSizes.join(', ');
+    default: return r.tagData[key] || '';
+  }
+}
+
 export default function AdminSchedulePage() {
   // 인증 상태
   const [authed, setAuthed] = useState(false);
@@ -283,6 +316,9 @@ export default function AdminSchedulePage() {
   );
   const [search, setSearch] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [mergeGroup, setMergeGroup] = useState<ScheduleRecord[] | null>(null);
+  const [mergeChoices, setMergeChoices] = useState<Record<string, string>>({});
+  const [merging, setMerging] = useState(false);
 
   const targetMonth = `${selectedYear}년 ${selectedMonth}월`;
 
@@ -335,6 +371,64 @@ export default function AdminSchedulePage() {
     } catch {
       alert('삭제 실패: 서버에 연결할 수 없습니다');
     }
+  };
+
+  // 중복 통합 모달 열기 — 충돌 필드(둘 다 다르게 입력) 기본 선택값 초기화
+  const openMerge = (group: ScheduleRecord[]) => {
+    const choices: Record<string, string> = {};
+    for (const f of MERGE_FIELDS) {
+      if (f.key === '출력사이즈') continue; // 출력사이즈는 항상 합집합(자동)
+      const distinct = [...new Set(group.map((r) => mergeFieldVal(r, f.key)).filter((v) => v.trim()))];
+      if (distinct.length > 1) choices[f.key] = distinct[0];
+    }
+    setMergeChoices(choices);
+    setMergeGroup(group);
+  };
+
+  // 통합 확정 — 대표(가장 내용 많은) 레코드에 합치고 나머지는 보관처리
+  const confirmMerge = async () => {
+    if (!mergeGroup || mergeGroup.length < 2) return;
+    setMerging(true);
+    const completeness = (r: ScheduleRecord) =>
+      MERGE_FIELDS.filter((f) => mergeFieldVal(r, f.key).trim()).length;
+    const primary = [...mergeGroup].sort(
+      (a, b) => completeness(b) - completeness(a) || (b.submittedAt || '').localeCompare(a.submittedAt || '')
+    )[0];
+    const archiveIds = mergeGroup.filter((r) => r.id !== primary.id).map((r) => r.id);
+    const resolve = (key: string) => {
+      const distinct = [...new Set(mergeGroup.map((r) => mergeFieldVal(r, key)).filter((v) => v.trim()))];
+      if (distinct.length <= 1) return distinct[0] || '';
+      return mergeChoices[key] ?? distinct[0];
+    };
+    const merged = {
+      doctorName: resolve('성함'),
+      tagData: Object.fromEntries(MERGE_TAG_KEYS.map((k) => [k, resolve(k)])),
+      events: resolve('이벤트'),
+      doctorTime: resolve('진료시간'),
+      holidayReason: resolve('휴진사유'),
+      calendarText: resolve('달력표기'),
+      specialNote: resolve('특이사항'),
+      extraRequest: resolve('기타요청'),
+      printSizes: [...new Set(mergeGroup.flatMap((r) => r.printSizes))],
+    };
+    try {
+      const res = await fetch('/api/admin/schedule/merge', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ primaryId: primary.id, archiveIds, merged }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert('통합 실패: ' + (data.error || '오류'));
+      } else {
+        setMergeGroup(null);
+        setSelectedId(primary.id);
+        await fetchRecords();
+      }
+    } catch {
+      alert('통합 실패: 서버에 연결할 수 없습니다');
+    }
+    setMerging(false);
   };
 
   // 중복 감지: 현재 달 목록에서 같은 거래처가 2건 이상 (실장·직원·원장 각자 제출 등)
@@ -629,6 +723,27 @@ export default function AdminSchedulePage() {
                 </span>
               </div>
 
+              {/* 중복 통합 안내 바 */}
+              {isDup(selectedRecord) && (
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3">
+                  <p className="text-sm text-red-200">
+                    ⚠️ 이 거래처는{' '}
+                    <b className="text-red-300">중복 {dupCounts[normName(selectedRecord.clinicName)]}건</b>
+                    입니다. 빈 칸은 자동, 충돌만 골라 하나로 합칠 수 있어요.
+                  </p>
+                  <button
+                    onClick={() =>
+                      openMerge(
+                        records.filter((r) => normName(r.clinicName) === normName(selectedRecord.clinicName))
+                      )
+                    }
+                    className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-red-500/80 hover:bg-red-500 text-white text-sm font-semibold"
+                  >
+                    중복 통합
+                  </button>
+                </div>
+              )}
+
               {/* 달력 */}
               <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
                 <ScheduleCalendar record={selectedRecord} />
@@ -757,6 +872,119 @@ export default function AdminSchedulePage() {
           )}
         </main>
       </div>
+
+      {/* 중복 통합 미리보기 모달 */}
+      {mergeGroup && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => { if (!merging) setMergeGroup(null); }}
+        >
+          <div
+            className="w-full max-w-2xl max-h-[88vh] overflow-y-auto rounded-2xl bg-[#0f172a] border border-white/15 p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-1">
+              <h3 className="text-lg font-bold text-white">중복 통합 미리보기</h3>
+              <button
+                onClick={() => { if (!merging) setMergeGroup(null); }}
+                className="text-2xl leading-none text-gray-400 hover:text-white"
+              >
+                ×
+              </button>
+            </div>
+            <p className="text-sm text-gray-300">
+              {mergeGroup[0].clinicName} · {mergeGroup.length}건 · {mergeGroup[0].targetMonth}
+            </p>
+            <p className="text-xs text-gray-500 mt-1 mb-4 leading-relaxed">
+              빈 칸은 자동으로 합쳐집니다. <span className="text-amber-300 font-semibold">충돌(둘 다 다르게 입력)</span>만
+              골라주세요. 확정하면 1건으로 합치고 나머지는 보관(노션 휴지통에서 복구 가능)됩니다.
+            </p>
+
+            <div className="space-y-2.5">
+              {MERGE_FIELDS.map((f) => {
+                const distinct = [
+                  ...new Set(mergeGroup.map((r) => mergeFieldVal(r, f.key)).filter((v) => v.trim())),
+                ];
+                if (distinct.length === 0) return null;
+
+                if (f.key === '출력사이즈') {
+                  const union = [...new Set(mergeGroup.flatMap((r) => r.printSizes))];
+                  return (
+                    <div key={f.key} className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+                      <p className="text-xs text-gray-400">
+                        {f.label} <span className="text-green-400">· 자동 합침</span>
+                      </p>
+                      <p className="text-sm text-gray-100 mt-0.5">{union.join(', ')}</p>
+                    </div>
+                  );
+                }
+
+                if (distinct.length === 1) {
+                  return (
+                    <div key={f.key} className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+                      <p className="text-xs text-gray-400">
+                        {f.label} <span className="text-green-400">· 자동</span>
+                      </p>
+                      <p className="text-sm text-gray-100 mt-0.5 whitespace-pre-line">{distinct[0]}</p>
+                    </div>
+                  );
+                }
+
+                const joinVal = distinct.join(' / ');
+                const options = [...distinct, joinVal];
+                const current = mergeChoices[f.key] ?? distinct[0];
+                return (
+                  <div key={f.key} className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2">
+                    <p className="text-xs text-amber-300 font-semibold mb-1.5">⚠️ {f.label} · 충돌 — 선택</p>
+                    <div className="space-y-1">
+                      {options.map((opt, oi) => {
+                        const isJoin = opt === joinVal;
+                        return (
+                          <label
+                            key={oi}
+                            className={`flex items-start gap-2 rounded-md px-2 py-1.5 cursor-pointer border ${
+                              current === opt ? 'bg-blue-600/20 border-blue-500/50' : 'border-white/10 hover:bg-white/5'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`merge-${f.key}`}
+                              checked={current === opt}
+                              onChange={() => setMergeChoices((c) => ({ ...c, [f.key]: opt }))}
+                              className="mt-1 flex-shrink-0"
+                            />
+                            <span className="text-sm text-gray-100 whitespace-pre-line">
+                              {isJoin && <span className="text-cyan-300 font-semibold">둘 다 합치기: </span>}
+                              {opt}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => setMergeGroup(null)}
+                disabled={merging}
+                className="flex-1 h-11 rounded-xl border border-white/15 text-gray-300 hover:bg-white/5 disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={confirmMerge}
+                disabled={merging}
+                className="flex-1 h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-50"
+              >
+                {merging ? '통합 중...' : '통합 확정'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
