@@ -337,9 +337,32 @@ export default function AdminSchedulePage() {
     }
   };
 
-  const filtered = records.filter(
+  // 중복 감지: 현재 달 목록에서 같은 거래처가 2건 이상 (실장·직원·원장 각자 제출 등)
+  // 거래처명 정규화 — 공백 제거 + 끝의 '의원' 제거로 "○○치과" vs "○○치과의원" 표기차를 흡수
+  const normName = (n: string) => n.replace(/\s+/g, '').replace(/의원$/, '');
+  const dupCounts: Record<string, number> = {};
+  for (const r of records) {
+    const k = normName(r.clinicName);
+    if (k) dupCounts[k] = (dupCounts[k] || 0) + 1;
+  }
+  const dupSet = new Set(Object.keys(dupCounts).filter((k) => dupCounts[k] > 1));
+  const isDup = (r: ScheduleRecord) => dupSet.has(normName(r.clinicName));
+  // 배너 표시용 원본 거래처명 (중복 그룹에 속한 것, 중복 제거)
+  const dupNames = [...new Set(records.filter(isDup).map((r) => r.clinicName))];
+
+  const filteredBase = records.filter(
     (r) => !search || r.clinicName.includes(search) || r.doctorName.includes(search)
   );
+  // 중복 거래처를 목록 위로 모으고(같은 거래처끼리 인접·최신 제출 먼저), 나머지는 기존 순서 유지
+  const dupPart = filteredBase
+    .filter(isDup)
+    .sort((a, b) =>
+      normName(a.clinicName) !== normName(b.clinicName)
+        ? normName(a.clinicName).localeCompare(normName(b.clinicName), 'ko')
+        : (b.submittedAt || '').localeCompare(a.submittedAt || '')
+    );
+  const normalPart = filteredBase.filter((r) => !isDup(r));
+  const filtered = [...dupPart, ...normalPart];
 
   const getPreviewChips = (r: ScheduleRecord) => {
     const chips: { label: string; tag: string }[] = [];
@@ -475,6 +498,19 @@ export default function AdminSchedulePage() {
             />
           </div>
 
+          {/* 중복 경고 배너 — 같은 거래처가 같은 달에 여러 번 제출 */}
+          {!loading && dupNames.length > 0 && (
+            <div className="mx-4 mb-2 rounded-lg bg-red-500/10 border border-red-500/30 px-3 py-2">
+              <p className="text-xs text-red-300 font-semibold">
+                ⚠️ 중복 {dupSet.size}곳 — 같은 거래처가 이 달에 여러 번 제출했어요
+              </p>
+              <p className="text-[11px] text-red-200/80 mt-0.5 leading-relaxed">
+                {dupNames.join(', ')}
+                <br />위쪽에 모아뒀어요. 비교 후 한 건만 남기고 나머지는 삭제하세요.
+              </p>
+            </div>
+          )}
+
           {/* 리스트 */}
           <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
             {loading ? (
@@ -512,9 +548,16 @@ export default function AdminSchedulePage() {
                         <span className="font-semibold text-sm truncate">{r.clinicName}</span>
                         <span className="text-xs text-gray-400 flex-shrink-0">{r.doctorName}</span>
                       </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded border flex-shrink-0 ${statusColor}`}>
-                        {r.status}
-                      </span>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {isDup(r) && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded border bg-red-500/20 text-red-300 border-red-500/40 font-semibold">
+                            중복 {dupCounts[normName(r.clinicName)]}
+                          </span>
+                        )}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusColor}`}>
+                          {r.status}
+                        </span>
+                      </div>
                     </div>
                     <div className="text-[10px] text-gray-500 mb-2">
                       {r.targetMonth} · 제출 {r.submittedAt}
