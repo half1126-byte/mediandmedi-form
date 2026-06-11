@@ -26,6 +26,10 @@ interface ScheduleRecord {
   events: string;
   printSizes: string[];
   extraRequest: string;
+  doctorTime: string;
+  calendarText: string;
+  specialNote: string;
+  holidayReason: string;
   status: string;
   assignee: string;
   submittedAt: string;
@@ -50,6 +54,14 @@ function buildDateTagMap(tagData: Record<string, string>): Record<number, string
   return map;
 }
 
+// 태그 데이터 끝의 (시간) 꼬리표 추출: "7일, 14일 (~21:00)" -> "~21:00"
+// (폼 '달력 칸 시간 표기' 토글이 태그별 시간을 괄호로 덧붙여 저장함)
+function extractTagTime(dateStr: string): string {
+  const m = dateStr.match(/\(([^()]+)\)\s*$/);
+  if (m && /[:~]/.test(m[1])) return m[1].trim();
+  return '';
+}
+
 function parseTargetMonth(targetMonth: string): { year: number; month: number } {
   const m = targetMonth.match(/(\d+)년\s*(\d+)월/);
   if (m) return { year: parseInt(m[1]), month: parseInt(m[2]) };
@@ -71,6 +83,12 @@ function getFirstDay(year: number, month: number) { return new Date(year, month 
 function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
   const { year, month } = parseTargetMonth(record.targetMonth);
   const dateTagMap = buildDateTagMap(record.tagData);
+  // 태그별 시간(예: 야간진료 -> ~21:00) — 달력 칸에 태그명 밑줄로 표기
+  const tagTimeMap: Record<string, string> = {};
+  for (const [tag, ds] of Object.entries(record.tagData)) {
+    const tm = extractTagTime(ds);
+    if (tm) tagTimeMap[tag] = tm;
+  }
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDay(year, month);
   const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -98,11 +116,11 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
               return (
                 <span
                   key={i}
-                  className="px-2 py-1 rounded text-xs font-medium"
+                  className="px-2.5 py-1 rounded-md text-[13px] font-semibold"
                   style={{
                     backgroundColor: t?.bg || '#333',
-                    color: t?.color || '#fff',
-                    border: `1px solid ${t?.color ?? '#fff'}40`,
+                    color: t?.light || '#fff',
+                    border: `1px solid ${t?.color ?? '#fff'}55`,
                   }}
                 >
                   {chip.day}일{chip.holiday ? `(${chip.holiday})` : ''} {chip.tag}
@@ -118,8 +136,8 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
           {WEEKDAYS.map((d, i) => (
             <div
               key={d}
-              className={`text-center py-2 text-xs font-semibold ${
-                i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-400'
+              className={`text-center py-2.5 text-sm font-bold ${
+                i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-300'
               }`}
             >
               {d}
@@ -128,7 +146,7 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
         </div>
         <div className="grid grid-cols-7">
           {Array.from({ length: firstDay }).map((_, i) => (
-            <div key={`e${i}`} className="h-12 border-b border-r border-white/5" />
+            <div key={`e${i}`} className="h-[78px] border-b border-r border-white/5" />
           ))}
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
@@ -144,27 +162,40 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
             return (
               <div
                 key={day}
-                className="h-12 border-b border-r border-white/5 flex flex-col items-center justify-center relative"
+                className="h-[78px] border-b border-r border-white/5 flex flex-col items-center justify-center gap-0.5 relative px-1"
                 style={t ? { backgroundColor: t.bg } : {}}
               >
                 <span
-                  className={`text-xs font-medium ${
-                    t ? '' : holiday || isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-gray-200'
+                  className={`text-sm font-bold ${
+                    t ? '' : holiday || isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-gray-100'
                   }`}
-                  style={t ? { color: t.color } : {}}
+                  style={t ? { color: t.light } : {}}
                 >
                   {day}
                 </span>
                 {primaryTag && (
-                  <span className="text-[9px] leading-none mt-0.5 font-medium" style={{ color: t?.color }}>
+                  <span
+                    className="text-[11px] leading-tight font-semibold text-center"
+                    style={{ color: t?.light }}
+                  >
                     {primaryTag}
                   </span>
                 )}
+                {primaryTag && tagTimeMap[primaryTag] && (
+                  <span
+                    className="text-[11px] leading-tight font-bold text-center tabular-nums"
+                    style={{ color: t?.light }}
+                  >
+                    {tagTimeMap[primaryTag]}
+                  </span>
+                )}
                 {tags.length > 1 && (
-                  <span className="text-[8px] text-gray-400">+{tags.length - 1}</span>
+                  <span className="text-[9px] font-medium" style={{ color: t?.light, opacity: 0.85 }}>
+                    +{tags.length - 1}
+                  </span>
                 )}
                 {holiday && !primaryTag && (
-                  <span className="text-[8px] text-red-400 leading-none">
+                  <span className="text-[9px] text-red-300 leading-tight text-center">
                     {holiday.length > 4 ? holiday.slice(0, 4) : holiday}
                   </span>
                 )}
@@ -177,21 +208,19 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
   );
 }
 
-const STATUS_OPTIONS = ['접수', '제작중', '검토요청', '완료'];
+// 변경DB '처리상태_폼' select 옵션과 1:1 일치 (신규 옵션 생성 방지)
+const STATUS_OPTIONS = ['접수', '검토', '처리완료'];
 const STATUS_COLORS: Record<string, string> = {
   '접수': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
-  '제작중': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  '검토요청': 'bg-orange-500/20 text-orange-300 border-orange-500/30',
-  '완료': 'bg-green-500/20 text-green-300 border-green-500/30',
+  '검토': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  '처리완료': 'bg-green-500/20 text-green-300 border-green-500/30',
 };
-const ASSIGNEES = ['미배정', '이하은', '김민지', '박서연'];
+// 변경DB '출력사이즈' multi_select 옵션과 일치
 const PRINT_SIZE_COLORS: Record<string, string> = {
-  '팝업(가로)': 'bg-purple-500/30 text-purple-200',
-  '팝업(세로)': 'bg-blue-500/30 text-blue-200',
-  'A4(가로)': 'bg-green-500/30 text-green-200',
-  'A4(세로)': 'bg-teal-500/30 text-teal-200',
-  '세로형 DID': 'bg-orange-500/30 text-orange-200',
-  '가로형 DID': 'bg-red-500/30 text-red-200',
+  'A4': 'bg-green-500/30 text-green-200',
+  '팝업': 'bg-purple-500/30 text-purple-200',
+  '가로 DID': 'bg-red-500/30 text-red-200',
+  '세로 DID': 'bg-orange-500/30 text-orange-200',
 };
 
 export default function AdminSchedulePage() {
@@ -484,8 +513,8 @@ export default function AdminSchedulePage() {
                               className="text-[10px] px-1.5 py-0.5 rounded font-medium"
                               style={{
                                 backgroundColor: t?.bg,
-                                color: t?.color,
-                                border: `1px solid ${t?.color ?? '#fff'}30`,
+                                color: t?.light,
+                                border: `1px solid ${t?.color ?? '#fff'}40`,
                               }}
                             >
                               {chip.label}
@@ -546,11 +575,73 @@ export default function AdminSchedulePage() {
                 <ScheduleCalendar record={selectedRecord} />
               </div>
 
+              {/* 진료시간 — 태그별 시간 꼬리표 + 진료시간 속성 */}
+              {(() => {
+                const tagTimes = (Object.entries(selectedRecord.tagData) as [string, string][])
+                  .map(([tag, ds]) => ({ tag, time: extractTagTime(ds) }))
+                  .filter((t) => t.time);
+                if (tagTimes.length === 0 && !selectedRecord.doctorTime) return null;
+                return (
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <p className="text-xs text-cyan-300 font-semibold mb-3">진료시간</p>
+                    {selectedRecord.doctorTime && (
+                      <p className="text-sm text-gray-200 whitespace-pre-line mb-3">
+                        {selectedRecord.doctorTime}
+                      </p>
+                    )}
+                    {tagTimes.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {tagTimes.map(({ tag, time }) => {
+                          const t = SCHEDULE_TAGS[tag as TagKey];
+                          return (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium"
+                              style={{
+                                backgroundColor: t?.bg || '#333',
+                                border: `1px solid ${t?.color ?? '#fff'}40`,
+                              }}
+                            >
+                              <span style={{ color: t?.light || '#fff' }}>{tag}</span>
+                              <span className="text-gray-100 font-semibold">{time}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* 이벤트 */}
               {selectedRecord.events && (
                 <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                   <p className="text-xs text-yellow-400 font-semibold mb-2">다음달 이벤트</p>
                   <p className="text-sm text-gray-200 whitespace-pre-line">{selectedRecord.events}</p>
+                </div>
+              )}
+
+              {/* 휴진 사유 */}
+              {selectedRecord.holidayReason && (
+                <div className="bg-red-500/5 rounded-xl p-4 border border-red-500/20">
+                  <p className="text-xs text-red-300 font-semibold mb-2">휴진 사유</p>
+                  <p className="text-sm text-gray-200 whitespace-pre-line">{selectedRecord.holidayReason}</p>
+                </div>
+              )}
+
+              {/* 달력에 꼭 표기할 내용 */}
+              {selectedRecord.calendarText && (
+                <div className="bg-blue-500/5 rounded-xl p-4 border border-blue-500/20">
+                  <p className="text-xs text-blue-300 font-semibold mb-2">달력에 꼭 표기할 내용</p>
+                  <p className="text-sm text-gray-200 whitespace-pre-line">{selectedRecord.calendarText}</p>
+                </div>
+              )}
+
+              {/* 특이사항 / 병원 요청 */}
+              {selectedRecord.specialNote && (
+                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                  <p className="text-xs text-gray-400 font-semibold mb-2">특이사항 / 병원 요청</p>
+                  <p className="text-sm text-gray-200 whitespace-pre-line">{selectedRecord.specialNote}</p>
                 </div>
               )}
 
@@ -583,52 +674,24 @@ export default function AdminSchedulePage() {
                 </div>
               )}
 
-              {/* 관리자 설정 */}
-              <div className="bg-white/5 rounded-xl p-4 border border-white/10 space-y-4">
-                <p className="text-xs text-gray-400 font-semibold">관리자 설정</p>
-
-                {/* 처리 상태 */}
-                <div>
-                  <p className="text-xs text-gray-500 mb-2">처리 상태</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {STATUS_OPTIONS.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => updateRecord(selectedRecord.id, { status: s })}
-                        disabled={updatingId === selectedRecord.id}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                          selectedRecord.status === s
-                            ? STATUS_COLORS[s]
-                            : 'border-white/10 text-gray-400 hover:border-white/30'
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 담당자 */}
-                <div>
-                  <p className="text-xs text-gray-500 mb-2">담당자</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {ASSIGNEES.map((a) => (
-                      <button
-                        key={a}
-                        onClick={() =>
-                          updateRecord(selectedRecord.id, { assignee: a === '미배정' ? '' : a })
-                        }
-                        disabled={updatingId === selectedRecord.id}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                          (selectedRecord.assignee || '미배정') === a
-                            ? 'bg-blue-600/30 border-blue-500/50 text-blue-300'
-                            : 'border-white/10 text-gray-400 hover:border-white/30'
-                        }`}
-                      >
-                        {a}
-                      </button>
-                    ))}
-                  </div>
+              {/* 관리자 설정 — 처리 상태 (변경DB '처리상태_폼') */}
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <p className="text-xs text-gray-400 font-semibold mb-2">처리 상태</p>
+                <div className="flex gap-2 flex-wrap">
+                  {STATUS_OPTIONS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => updateRecord(selectedRecord.id, { status: s })}
+                      disabled={updatingId === selectedRecord.id}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                        selectedRecord.status === s
+                          ? STATUS_COLORS[s]
+                          : 'border-white/10 text-gray-400 hover:border-white/30'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
