@@ -26,6 +26,7 @@ interface ScheduleRecord {
   events: string;
   printSizes: string[];
   extraRequest: string;
+  doctorTime: string;
   calendarText: string;
   specialNote: string;
   holidayReason: string;
@@ -51,6 +52,14 @@ function buildDateTagMap(tagData: Record<string, string>): Record<number, string
     }
   }
   return map;
+}
+
+// 태그 데이터 끝의 (시간) 꼬리표 추출: "7일, 14일 (~21:00)" -> "~21:00"
+// (폼 '달력 칸 시간 표기' 토글이 태그별 시간을 괄호로 덧붙여 저장함)
+function extractTagTime(dateStr: string): string {
+  const m = dateStr.match(/\(([^()]+)\)\s*$/);
+  if (m && /[:~]/.test(m[1])) return m[1].trim();
+  return '';
 }
 
 function parseTargetMonth(targetMonth: string): { year: number; month: number } {
@@ -546,6 +555,44 @@ export default function AdminSchedulePage() {
               <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
                 <ScheduleCalendar record={selectedRecord} />
               </div>
+
+              {/* 진료시간 — 태그별 시간 꼬리표 + 진료시간 속성 */}
+              {(() => {
+                const tagTimes = (Object.entries(selectedRecord.tagData) as [string, string][])
+                  .map(([tag, ds]) => ({ tag, time: extractTagTime(ds) }))
+                  .filter((t) => t.time);
+                if (tagTimes.length === 0 && !selectedRecord.doctorTime) return null;
+                return (
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <p className="text-xs text-cyan-300 font-semibold mb-3">진료시간</p>
+                    {selectedRecord.doctorTime && (
+                      <p className="text-sm text-gray-200 whitespace-pre-line mb-3">
+                        {selectedRecord.doctorTime}
+                      </p>
+                    )}
+                    {tagTimes.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {tagTimes.map(({ tag, time }) => {
+                          const t = SCHEDULE_TAGS[tag as TagKey];
+                          return (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium"
+                              style={{
+                                backgroundColor: t?.bg || '#333',
+                                border: `1px solid ${t?.color ?? '#fff'}40`,
+                              }}
+                            >
+                              <span style={{ color: t?.color || '#fff' }}>{tag}</span>
+                              <span className="text-gray-100 font-semibold">{time}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* 이벤트 */}
               {selectedRecord.events && (

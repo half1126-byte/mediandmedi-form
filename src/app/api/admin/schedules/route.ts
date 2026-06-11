@@ -88,6 +88,7 @@ export async function GET(request: NextRequest) {
         events: getText(p['이벤트']),
         printSizes: getMultiSelect(p['출력사이즈']),
         extraRequest: getText(p['기타요청']),
+        doctorTime: getText(p['진료시간']),
         calendarText: getText(p['달력 표기 필수내용 원문']),
         specialNote: getText(p['특이사항/병원요청']),
         holidayReason: getText(p['휴진사유']),
