@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
   }
 
   const token = process.env.ADMIN_TOKEN;
+  const expectedUser = process.env.ADMIN_USER || 'admin';
   if (!token) {
     if (process.env.NODE_ENV === 'production') {
       return NextResponse.json({ success: false, error: 'ADMIN_TOKEN 미설정' }, { status: 500 });
@@ -75,22 +76,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   }
 
-  let body: { token?: string };
+  let body: { username?: string; token?: string };
   try {
-    body = (await request.json()) as { token?: string };
+    body = (await request.json()) as { username?: string; token?: string };
   } catch {
     recordFailure(ip);
     return NextResponse.json({ success: false, error: '잘못된 요청' }, { status: 400 });
   }
 
-  if (body.token && safeCompare(body.token, token)) {
+  // 아이디 + 비밀번호 둘 다 일치해야 통과 (상수시간 비교)
+  if (
+    body.username &&
+    body.token &&
+    safeCompare(body.username, expectedUser) &&
+    safeCompare(body.token, token)
+  ) {
     recordSuccess(ip);
     return NextResponse.json({ success: true });
   }
 
   recordFailure(ip);
   return NextResponse.json(
-    { success: false, error: '비밀번호가 맞지 않습니다' },
+    { success: false, error: '아이디 또는 비밀번호가 맞지 않습니다' },
     { status: 401 }
   );
 }

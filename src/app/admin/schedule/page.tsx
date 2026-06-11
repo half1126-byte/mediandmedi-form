@@ -227,23 +227,26 @@ export default function AdminSchedulePage() {
   // 인증 상태
   const [authed, setAuthed] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
+  const [authId, setAuthId] = useState('');
   const [authInput, setAuthInput] = useState('');
   const [authError, setAuthError] = useState('');
 
-  const verifyToken = useCallback(async (token: string) => {
+  const verifyToken = useCallback(async (username: string, token: string) => {
     try {
       const res = await fetch('/api/admin/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ username, token }),
       });
       const data = await res.json();
       if (data.success) {
+        sessionStorage.setItem('admin_user', username);
         sessionStorage.setItem('admin_token', token);
         setAuthed(true);
       } else {
+        sessionStorage.removeItem('admin_user');
         sessionStorage.removeItem('admin_token');
-        setAuthError('비밀번호가 맞지 않습니다');
+        setAuthError('아이디 또는 비밀번호가 맞지 않습니다');
       }
     } catch {
       setAuthError('서버 연결 실패');
@@ -251,14 +254,14 @@ export default function AdminSchedulePage() {
     setAuthChecking(false);
   }, []);
 
-  // 세션에서 토큰 복원 (async 검증 필수 — setState 불가피)
+  // 세션에서 복원 (아이디+토큰 둘 다 있을 때만 — async 검증 필수)
   useEffect(() => {
-    const saved = sessionStorage.getItem('admin_token');
-    if (saved) {
+    const savedUser = sessionStorage.getItem('admin_user');
+    const savedToken = sessionStorage.getItem('admin_token');
+    if (savedUser && savedToken) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      verifyToken(saved);
+      verifyToken(savedUser, savedToken);
     } else {
-       
       setAuthChecking(false);
     }
   }, [verifyToken]);
@@ -367,22 +370,35 @@ export default function AdminSchedulePage() {
           <div className="text-center">
             <span className="text-4xl">🔒</span>
             <h1 className="text-xl font-bold text-white mt-3">관리자 로그인</h1>
-            <p className="text-sm text-gray-400 mt-1">관리자 비밀번호를 입력해 주세요</p>
+            <p className="text-sm text-gray-400 mt-1">아이디와 비밀번호를 입력해 주세요</p>
           </div>
-          <form onSubmit={(e) => { e.preventDefault(); setAuthError(''); setAuthChecking(true); verifyToken(authInput); }}>
+          <form
+            onSubmit={(e) => { e.preventDefault(); setAuthError(''); setAuthChecking(true); verifyToken(authId, authInput); }}
+            className="space-y-3"
+          >
+            <input
+              type="text"
+              value={authId}
+              onChange={(e) => setAuthId(e.target.value)}
+              placeholder="아이디"
+              autoFocus
+              autoComplete="username"
+              className="w-full h-12 px-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-500
+                         focus:outline-none focus:border-blue-500 text-center text-lg"
+            />
             <input
               type="password"
               value={authInput}
               onChange={(e) => setAuthInput(e.target.value)}
               placeholder="비밀번호"
-              autoFocus
+              autoComplete="current-password"
               className="w-full h-12 px-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-500
                          focus:outline-none focus:border-blue-500 text-center text-lg tracking-widest"
             />
-            {authError && <p className="text-red-400 text-sm text-center mt-2">{authError}</p>}
+            {authError && <p className="text-red-400 text-sm text-center">{authError}</p>}
             <button
               type="submit"
-              className="w-full h-12 mt-4 bg-blue-600 text-white rounded-xl font-semibold
+              className="w-full h-12 bg-blue-600 text-white rounded-xl font-semibold
                          hover:bg-blue-700 active:scale-[0.98] transition-all"
             >
               로그인
