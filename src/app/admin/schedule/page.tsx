@@ -116,11 +116,11 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
               return (
                 <span
                   key={i}
-                  className="px-2 py-1 rounded text-xs font-medium"
+                  className="px-2.5 py-1 rounded-md text-[13px] font-semibold"
                   style={{
                     backgroundColor: t?.bg || '#333',
-                    color: t?.color || '#fff',
-                    border: `1px solid ${t?.color ?? '#fff'}40`,
+                    color: t?.light || '#fff',
+                    border: `1px solid ${t?.color ?? '#fff'}55`,
                   }}
                 >
                   {chip.day}일{chip.holiday ? `(${chip.holiday})` : ''} {chip.tag}
@@ -136,8 +136,8 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
           {WEEKDAYS.map((d, i) => (
             <div
               key={d}
-              className={`text-center py-2 text-xs font-semibold ${
-                i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-400'
+              className={`text-center py-2.5 text-sm font-bold ${
+                i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-300'
               }`}
             >
               {d}
@@ -146,7 +146,7 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
         </div>
         <div className="grid grid-cols-7">
           {Array.from({ length: firstDay }).map((_, i) => (
-            <div key={`e${i}`} className="h-16 border-b border-r border-white/5" />
+            <div key={`e${i}`} className="h-[78px] border-b border-r border-white/5" />
           ))}
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
@@ -162,32 +162,40 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
             return (
               <div
                 key={day}
-                className="h-16 border-b border-r border-white/5 flex flex-col items-center justify-center relative px-0.5"
+                className="h-[78px] border-b border-r border-white/5 flex flex-col items-center justify-center gap-0.5 relative px-1"
                 style={t ? { backgroundColor: t.bg } : {}}
               >
                 <span
-                  className={`text-xs font-medium ${
-                    t ? '' : holiday || isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-gray-200'
+                  className={`text-sm font-bold ${
+                    t ? '' : holiday || isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-gray-100'
                   }`}
-                  style={t ? { color: t.color } : {}}
+                  style={t ? { color: t.light } : {}}
                 >
                   {day}
                 </span>
                 {primaryTag && (
-                  <span className="text-[9px] leading-tight mt-0.5 font-medium text-center" style={{ color: t?.color }}>
+                  <span
+                    className="text-[11px] leading-tight font-semibold text-center"
+                    style={{ color: t?.light }}
+                  >
                     {primaryTag}
                   </span>
                 )}
                 {primaryTag && tagTimeMap[primaryTag] && (
-                  <span className="text-[9px] leading-tight font-semibold text-center" style={{ color: t?.color }}>
+                  <span
+                    className="text-[11px] leading-tight font-bold text-center tabular-nums"
+                    style={{ color: t?.light }}
+                  >
                     {tagTimeMap[primaryTag]}
                   </span>
                 )}
                 {tags.length > 1 && (
-                  <span className="text-[8px] text-gray-400">+{tags.length - 1}</span>
+                  <span className="text-[9px] font-medium" style={{ color: t?.light, opacity: 0.85 }}>
+                    +{tags.length - 1}
+                  </span>
                 )}
                 {holiday && !primaryTag && (
-                  <span className="text-[8px] text-red-400 leading-none">
+                  <span className="text-[9px] text-red-300 leading-tight text-center">
                     {holiday.length > 4 ? holiday.slice(0, 4) : holiday}
                   </span>
                 )}
@@ -505,8 +513,8 @@ export default function AdminSchedulePage() {
                               className="text-[10px] px-1.5 py-0.5 rounded font-medium"
                               style={{
                                 backgroundColor: t?.bg,
-                                color: t?.color,
-                                border: `1px solid ${t?.color ?? '#fff'}30`,
+                                color: t?.light,
+                                border: `1px solid ${t?.color ?? '#fff'}40`,
                               }}
                             >
                               {chip.label}
@@ -594,7 +602,7 @@ export default function AdminSchedulePage() {
                                 border: `1px solid ${t?.color ?? '#fff'}40`,
                               }}
                             >
-                              <span style={{ color: t?.color || '#fff' }}>{tag}</span>
+                              <span style={{ color: t?.light || '#fff' }}>{tag}</span>
                               <span className="text-gray-100 font-semibold">{time}</span>
                             </span>
                           );
