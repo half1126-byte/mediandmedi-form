@@ -185,12 +185,18 @@ function ScheduleCalendar({ record }: { record: ScheduleRecord }) {
                   const tg = SCHEDULE_TAGS[tag as TagKey];
                   const time = tagTimeMap[tag];
                   return (
-                    <span
-                      key={tag}
-                      className="text-[10px] leading-tight font-semibold text-center"
-                      style={{ color: tg?.light }}
-                    >
-                      {tag}{time ? ` ${time}` : ''}
+                    <span key={tag} className="flex flex-col items-center leading-tight">
+                      <span className="text-[10px] font-semibold text-center" style={{ color: tg?.light }}>
+                        {tag}
+                      </span>
+                      {time && (
+                        <span
+                          className="text-[9px] font-medium text-center tabular-nums"
+                          style={{ color: tg?.light, opacity: 0.9 }}
+                        >
+                          {time}
+                        </span>
+                      )}
                     </span>
                   );
                 })}
