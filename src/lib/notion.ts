@@ -68,17 +68,25 @@ export async function createMainRecord(
   const dbId = envTrim('NOTION_MAIN_DB_ID');
   if (!dbId) throw new Error('NOTION_MAIN_DB_ID not configured');
 
-  // 멱등성: 제출 재시도(노션 생성 성공 후 응답 유실 등) 시 같은 거래처명이 이미 있으면
-  // 새 페이지를 또 만들지 않고 기존 페이지 ID를 돌려준다. (중복 거래처 페이지 방지)
   const s1 = (data.step1 || {}) as Record<string, unknown>;
   const clinicName = (s1.clinicName as string) || '';
-  if (clinicName) {
-    const existing = await findClinicByName(clinicName, dbId);
-    if (existing) return existing;
-  }
 
   const coreProps = buildMainProperties(data);
   const children = buildMainPageChildren(data);
+
+  // 최신 우선 업서트: 같은 거래처(의원/공백 표기차 포함)가 이미 있으면 새로 만들지 않고
+  // 비어있지 않은 새 값으로 기존 페이지를 갱신한다(상태는 보존, 새 제출이 비운 칸은 기존 유지).
+  // 본문은 새 제출 내용이 충분하면 최신으로 교체. → 재제출 = 데이터 손실 없이 자동 갱신.
+  if (clinicName) {
+    const existing = await findClinicByName(clinicName, dbId, true);
+    if (existing) {
+      const filled = filterFilledProps(coreProps, ['상태']);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await withRetry(() => notion.pages.update({ page_id: existing, properties: filled as any }));
+      if (children.length > 2) await replacePageBody(existing, children);
+      return existing;
+    }
+  }
 
   const response = await withRetry(() =>
     notion.pages.create({
@@ -91,6 +99,66 @@ export async function createMainRecord(
   );
 
   return response.id;
+}
+
+// 업서트용: 비어있지 않은 속성만 추림 (새 제출이 비운 칸은 기존 값 유지 → 손실 0).
+// preserveKeys(예: 상태)는 폼이 항상 기본값을 넣으므로 덮어쓰지 않고 보존.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isPropFilled(v: any): boolean {
+  if (!v || typeof v !== 'object') return false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (v.title) return v.title.some((t: any) => (t.text?.content || '').trim());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (v.rich_text) return v.rich_text.some((t: any) => (t.text?.content || '').trim());
+  if ('select' in v) return !!v.select;
+  if ('status' in v) return !!v.status;
+  if (v.multi_select) return v.multi_select.length > 0;
+  if ('date' in v) return !!v.date;
+  if ('number' in v) return v.number !== null && v.number !== undefined;
+  if ('checkbox' in v) return v.checkbox === true;
+  if (v.relation) return v.relation.length > 0;
+  return false;
+}
+
+function filterFilledProps(
+  props: Record<string, unknown>,
+  preserveKeys: string[] = []
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(props)) {
+    if (preserveKeys.includes(k)) continue;
+    if (isPropFilled(v)) out[k] = v;
+  }
+  return out;
+}
+
+// 업서트 시 본문 최신화: 기존 블록을 모두 보관(삭제)한 뒤 새 본문을 추가한다.
+async function replacePageBody(
+  pageId: string,
+  children: Array<Record<string, unknown>>
+): Promise<void> {
+  if (!children || children.length === 0) return;
+  const ids: string[] = [];
+  let cursor: string | undefined;
+  do {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const list: any = await withRetry(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (notion.blocks.children as any).list({ block_id: pageId, start_cursor: cursor, page_size: 100 })
+    );
+     
+    for (const b of list.results) ids.push(b.id as string);
+    cursor = list.has_more ? list.next_cursor : undefined;
+  } while (cursor);
+  for (const id of ids) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    try { await withRetry(() => (notion.blocks as any).delete({ block_id: id })); } catch { /* 이미 삭제됨 등 무시 */ }
+  }
+  for (let i = 0; i < children.length; i += 100) {
+    const chunk = children.slice(i, i + 100);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await withRetry(() => (notion.blocks.children as any).append({ block_id: pageId, children: chunk as any }));
+  }
 }
 
 /**
@@ -368,7 +436,7 @@ function today(): string {
  * 거래처명으로 거래처DB에서 페이지 검색 → page ID 반환.
  * dbIdOverride가 주어지면 해당 DB에서, 아니면 NOTION_MAIN_DB_ID에서 검색.
  */
-async function findClinicByName(clinicName: string, dbIdOverride?: string): Promise<string | null> {
+async function findClinicByName(clinicName: string, dbIdOverride?: string, loose = false): Promise<string | null> {
   const dbId = dbIdOverride || envTrim('NOTION_MAIN_DB_ID');
   if (!dbId || !clinicName) return null;
   try {
@@ -398,7 +466,21 @@ async function findClinicByName(clinicName: string, dbIdOverride?: string): Prom
       const titleArr = p.properties?.['거래처명']?.title || p.properties?.['title']?.title || [];
       return clinicNamesMatch(titleArr[0]?.plain_text || '', clinicName);
     });
-    return normalized ? normalized.id : null;
+    if (normalized) return normalized.id;
+
+    // 3차(loose, 업서트 전용): 공백 제거 + 끝 '의원' 제거 후 비교
+    // → 재제출 시 "○○치과" vs "○○치과의원" 표기차를 같은 거래처로 인식
+    if (loose) {
+      const looseKey = (s: string) => s.replace(/\s/g, '').replace(/의원$/, '');
+      const target = looseKey(clinicName);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const lm = candidates.find((p: any) => {
+        const titleArr = p.properties?.['거래처명']?.title || p.properties?.['title']?.title || [];
+        return looseKey(titleArr[0]?.plain_text || '') === target;
+      });
+      if (lm) return lm.id;
+    }
+    return null;
   } catch {
     return null;
   }

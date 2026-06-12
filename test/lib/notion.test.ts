@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockCreate, mockRetrieve, mockSearch } = vi.hoisted(() => {
+const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBlocksAppend, mockBlocksDelete } = vi.hoisted(() => {
   return {
     mockCreate: vi.fn(),
     mockRetrieve: vi.fn(),
     mockSearch: vi.fn(),
+    mockUpdate: vi.fn(),
+    mockBlocksList: vi.fn(),
+    mockBlocksAppend: vi.fn(),
+    mockBlocksDelete: vi.fn(),
   };
 });
 
@@ -14,6 +18,11 @@ vi.mock('@notionhq/client', () => {
       pages = {
         create: mockCreate,
         retrieve: mockRetrieve,
+        update: mockUpdate,
+      };
+      blocks = {
+        children: { list: mockBlocksList, append: mockBlocksAppend },
+        delete: mockBlocksDelete,
       };
       search = mockSearch;
     },
@@ -49,16 +58,24 @@ describe('createMainRecord', () => {
     expect(mockCreate).toHaveBeenCalledTimes(1);
   });
 
-  it('멱등성: 같은 거래처명이 이미 있으면 새로 만들지 않고 기존 페이지 ID 반환', async () => {
+  it('업서트: 같은 거래처가 이미 있으면 새로 만들지 않고 기존 페이지를 갱신', async () => {
     mockSearch.mockResolvedValue({
       results: [
         { id: 'existing-page', parent: { database_id: 'main-db-id' }, properties: { '거래처명': { title: [{ plain_text: '해피치과' }] } } },
       ],
     });
+    mockUpdate.mockResolvedValue({ id: 'existing-page' });
+    mockBlocksList.mockResolvedValue({ results: [], has_more: false });
+    mockBlocksAppend.mockResolvedValue({});
     mockCreate.mockResolvedValue({ id: 'should-not-be-used' });
     const id = await createMainRecord(sampleFormData); // step1.clinicName = '해피치과'
     expect(id).toBe('existing-page');
     expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+
+    const updateArg = mockUpdate.mock.calls[0][0] as { properties: Record<string, unknown> };
+    expect(updateArg.properties['상태']).toBeUndefined(); // 상태는 보존(덮어쓰지 않음)
+    expect(updateArg.properties['거래처명']).toBeDefined(); // 채워진 값은 갱신
   });
 
   it('429 에러 시 재시도', async () => {
