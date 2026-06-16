@@ -168,6 +168,22 @@ interface FormData {
     brandColorTones: string[];
     /** 브랜드 컬러 (자유 텍스트) */
     brandColor: string;
+    /** 원장 약력 — 학력 (옛 stepWeb에서 브랜딩으로 이동, 항상 노출) */
+    education: string;
+    /** 원장 약력 — 전직 경력 (옛 stepWeb에서 브랜딩으로 이동, 항상 노출) */
+    career: string;
+    /** 원장 약력 — 학회/협회 (옛 stepWeb에서 브랜딩으로 이동, 항상 노출) */
+    associations: string;
+    /** 원장 약력 — 수상/논문/방송 (옛 stepWeb에서 브랜딩으로 이동, 항상 노출) */
+    awards: string;
+    /** 메인 키워드 (옛 stepWeb에서 브랜딩으로 이동, 항상 노출) */
+    mainKeywords: string;
+    /** 디자인 중점 (옛 stepWeb에서 브랜딩으로 이동, 항상 노출) */
+    designFocus: string;
+    /** 메인 강조 (옛 stepWeb에서 브랜딩으로 이동, 항상 노출) */
+    mainEmphasis: string;
+    /** 사진 방향 (옛 stepWeb에서 브랜딩으로 이동, 항상 노출) */
+    photoDirection: string;
     /** 벤치마킹·참고 사이트 (옛 step5에서 브랜딩으로 이동) — 마케팅·디자인·웹 공통 */
     benchmarkClinics: string;
     /** 자료 첨부 — 구글 드라이브/클라우드 공유 링크 (파일 직접 업로드 대체) */
@@ -206,17 +222,8 @@ interface FormData {
     subway: string;
     bus: string;
     locationNote: string;
-    // 원장 약력 (홈페이지용 상세)
-    education: string;
-    career: string;
-    associations: string;
-    awards: string;
-    // 디자인 방향
-    mainKeywords: string;
+    // 참고 사이트 (디자인 방향)
     referenceSites: string;
-    designFocus: string;
-    mainEmphasis: string;
-    photoDirection: string;
     // 온라인 채널 & 도메인
     instagramUrl: string;
     blogUrl: string;
@@ -307,6 +314,8 @@ const INITIAL_DATA: FormData = {
     philosophy: '',
     doctorPromo: '', clinicPromo: '', treatmentPromo: '',
     locationTarget: '', interiorStyle: '', brandColorTones: [], brandColor: '',
+    education: '', career: '', associations: '', awards: '',
+    mainKeywords: '', designFocus: '', mainEmphasis: '', photoDirection: '',
     benchmarkClinics: '', driveLink: '',
     hasProfilePhoto: false, hasLogo: false,
     logoFiles: [], licenseFiles: [], certificateFiles: [], businessFiles: [],
@@ -321,8 +330,7 @@ const INITIAL_DATA: FormData = {
   },
   stepWeb: {
     subway: '', bus: '', locationNote: '',
-    education: '', career: '', associations: '', awards: '',
-    mainKeywords: '', referenceSites: '', designFocus: '', mainEmphasis: '', photoDirection: '',
+    referenceSites: '',
     instagramUrl: '', blogUrl: '', youtubeUrl: '', kakaoChannel: '', naverBooking: '',
     desiredDomain: '', ssl: '',
     features: [], cmsNeed: '', renewalType: '', oldSiteUrl: '',
@@ -1272,6 +1280,31 @@ function Step4({
           rows={3}
         />
       </div>
+
+      {/* 원장 약력 (상세) — 옛 홈페이지/웹 스텝에서 브랜딩으로 이동 (항상 노출) */}
+      <div className="bg-[#F8FAFC] rounded-xl p-5 space-y-4 border border-[#E5E7EB]">
+        <div className="pb-3 border-b border-[#E5E7EB]">
+          <h3 className="text-base font-bold text-[#374151]">👩‍⚕️ 원장 약력 (상세)</h3>
+          <p className="text-xs text-[#6B7280] mt-1">홈페이지·블로그 의료진 소개에 사용됩니다</p>
+        </div>
+        <div>
+          <FieldLabel>학력</FieldLabel>
+          <TextArea value={data.education} onChange={(v) => onChange({ education: v })} placeholder="예: 서울대학교 치과대학 졸업" rows={2} />
+        </div>
+        <div>
+          <FieldLabel>전직 경력 (병원명·직위 전부)</FieldLabel>
+          <TextArea value={data.career} onChange={(v) => onChange({ career: v })} placeholder="예: 전) OO치과의원 원장 / 전) OO치과 총괄원장" rows={3} />
+        </div>
+        <div>
+          <FieldLabel>학회 / 협회 활동</FieldLabel>
+          <TextArea value={data.associations} onChange={(v) => onChange({ associations: v })} placeholder="예: 대한치과보철학회 정회원 / 대한구강악안면임플란트학회 회원" rows={2} />
+        </div>
+        <div>
+          <FieldLabel>수상 / 논문 / 방송 출연 이력</FieldLabel>
+          <TextArea value={data.awards} onChange={(v) => onChange({ awards: v })} placeholder="있으시면 작성해 주세요" rows={2} />
+        </div>
+      </div>
+
       <div>
         <FieldLabel>병원 홍보 포인트</FieldLabel>
         <TextArea
@@ -1357,6 +1390,30 @@ function Step4({
           onChange={(v) => onChange({ benchmarkClinics: v })}
           placeholder="예: 트리움치과 / https://example-clinic.com - 홈페이지 디자인·콘텐츠 참고"
         />
+      </div>
+
+      {/* 키워드 및 디자인 방향 — 옛 홈페이지/웹 스텝에서 브랜딩으로 이동 (항상 노출) */}
+      <div className="bg-[#F8FAFC] rounded-xl p-5 space-y-4 border border-[#E5E7EB]">
+        <div className="pb-3 border-b border-[#E5E7EB]">
+          <h3 className="text-base font-bold text-[#374151]">🎨 키워드 및 디자인 방향</h3>
+          <p className="text-xs text-[#6B7280] mt-1">디자인·홈페이지·콘텐츠 작업에 공통으로 활용됩니다</p>
+        </div>
+        <div>
+          <FieldLabel>병원 상징 메인 키워드 (우선순위 순)</FieldLabel>
+          <TextInput value={data.mainKeywords} onChange={(v) => onChange({ mainKeywords: v })} placeholder="예: 프리미엄, 신뢰, 자연스러움, 전문성" />
+        </div>
+        <div>
+          <FieldLabel>디자인 작업 시 중점 사항</FieldLabel>
+          <TextInput value={data.designFocus} onChange={(v) => onChange({ designFocus: v })} placeholder="예: 인물 위주 / 사진 위주 / 깔끔한 텍스트 중심" />
+        </div>
+        <div>
+          <FieldLabel>메인 페이지에서 가장 강조할 내용</FieldLabel>
+          <TextArea value={data.mainEmphasis} onChange={(v) => onChange({ mainEmphasis: v })} placeholder="메인 화면에 가장 부각되었으면 하는 내용" rows={2} />
+        </div>
+        <div>
+          <FieldLabel>병원 대표 사진 / 이미지 방향</FieldLabel>
+          <TextArea value={data.photoDirection} onChange={(v) => onChange({ photoDirection: v })} placeholder="예: 밝고 깔끔한 원장 프로필 + 인테리어 사진 보유 (사진 파일은 별도 전달)" rows={2} />
+        </div>
       </div>
 
       {/* 보유 여부 토글 */}
@@ -1718,46 +1775,6 @@ function StepWeb({
         <div>
           <FieldLabel>위치 특이사항 / 어필 사항</FieldLabel>
           <TextInput value={data.locationNote} onChange={(v) => onChange({ locationNote: v })} placeholder="예: 건물 내 엘리베이터 바로 앞, 랜드마크 인근" />
-        </div>
-      </WebSection>
-
-      {/* 원장 약력 */}
-      <WebSection title="👩‍⚕️ 원장 약력 (상세)" hint="홈페이지 의료진 소개에 사용됩니다">
-        <div>
-          <FieldLabel>학력</FieldLabel>
-          <TextArea value={data.education} onChange={(v) => onChange({ education: v })} placeholder="예: 서울대학교 치과대학 졸업" rows={2} />
-        </div>
-        <div>
-          <FieldLabel>전직 경력 (병원명·직위 전부)</FieldLabel>
-          <TextArea value={data.career} onChange={(v) => onChange({ career: v })} placeholder="예: 전) OO치과의원 원장 / 전) OO치과 총괄원장" rows={3} />
-        </div>
-        <div>
-          <FieldLabel>학회 / 협회 활동</FieldLabel>
-          <TextArea value={data.associations} onChange={(v) => onChange({ associations: v })} placeholder="예: 대한치과보철학회 정회원 / 대한구강악안면임플란트학회 회원" rows={2} />
-        </div>
-        <div>
-          <FieldLabel>수상 / 논문 / 방송 출연 이력</FieldLabel>
-          <TextArea value={data.awards} onChange={(v) => onChange({ awards: v })} placeholder="있으시면 작성해 주세요" rows={2} />
-        </div>
-      </WebSection>
-
-      {/* 디자인 방향 */}
-      <WebSection title="🎨 키워드 및 디자인 방향">
-        <div>
-          <FieldLabel>병원 상징 메인 키워드 (우선순위 순)</FieldLabel>
-          <TextInput value={data.mainKeywords} onChange={(v) => onChange({ mainKeywords: v })} placeholder="예: 프리미엄, 신뢰, 자연스러움, 전문성" />
-        </div>
-        <div>
-          <FieldLabel>디자인 작업 시 중점 사항</FieldLabel>
-          <TextInput value={data.designFocus} onChange={(v) => onChange({ designFocus: v })} placeholder="예: 인물 위주 / 사진 위주 / 깔끔한 텍스트 중심" />
-        </div>
-        <div>
-          <FieldLabel>메인 페이지에서 가장 강조할 내용</FieldLabel>
-          <TextArea value={data.mainEmphasis} onChange={(v) => onChange({ mainEmphasis: v })} placeholder="메인 화면에 가장 부각되었으면 하는 내용" rows={2} />
-        </div>
-        <div>
-          <FieldLabel>병원 대표 사진 / 이미지 방향</FieldLabel>
-          <TextArea value={data.photoDirection} onChange={(v) => onChange({ photoDirection: v })} placeholder="예: 밝고 깔끔한 원장 프로필 + 인테리어 사진 보유 (사진 파일은 별도 전달)" rows={2} />
         </div>
       </WebSection>
 
@@ -2139,6 +2156,11 @@ function Step7({
         <SummaryItem label="인테리어 컨셉" value={step4.interiorStyle} />
         <SummaryItem label="컬러 계열" value={(step4.brandColorTones || []).join(', ')} />
         <SummaryItem label="브랜드 컬러" value={step4.brandColor} />
+        <SummaryItem label="원장 약력" value={[step4.education, step4.career, step4.associations, step4.awards].filter(Boolean).join(' / ')} />
+        <SummaryItem label="메인 키워드" value={step4.mainKeywords} />
+        <SummaryItem label="디자인 중점" value={step4.designFocus} />
+        <SummaryItem label="메인 강조" value={step4.mainEmphasis} />
+        <SummaryItem label="사진 방향" value={step4.photoDirection} />
         <SummaryItem label="벤치마킹·참고 사이트" value={step4.benchmarkClinics} />
         <SummaryItem label="자료 첨부(드라이브)" value={step4.driveLink} />
       </SummarySection>
@@ -2158,8 +2180,6 @@ function Step7({
       {data.scope.web && (
         <SummarySection title="홈페이지/웹" stepId="web" onGoToStep={onGoToStep}>
           <SummaryItem label="오시는 길" value={[stepWeb.subway, stepWeb.bus, stepWeb.locationNote].filter(Boolean).join(' / ')} />
-          <SummaryItem label="원장 약력" value={[stepWeb.education, stepWeb.career].filter(Boolean).join(' / ')} />
-          <SummaryItem label="메인 키워드" value={stepWeb.mainKeywords} />
           <SummaryItem label="참고 사이트" value={stepWeb.referenceSites} />
           <SummaryItem label="도메인" value={stepWeb.desiredDomain} />
           <SummaryItem label="SSL" value={stepWeb.ssl} />
