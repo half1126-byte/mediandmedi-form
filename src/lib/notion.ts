@@ -781,12 +781,34 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
     : ((sd.colorPreference as string[]) || []); // 구버전 저장본 폴백
   if (colorTones.length) blocks.push(bullet(`브랜드 컬러 계열: ${colorTones.join(', ')}`));
   if (s4.brandColor) blocks.push(bullet(`브랜드 컬러: ${s4.brandColor}`));
+  // 키워드·디자인 방향: stepWeb → step4(브랜딩)로 이동 (구버전 저장본은 sw에서 폴백)
+  const mainKeywords = (s4.mainKeywords ?? sw.mainKeywords) as string | undefined;
+  if (mainKeywords) blocks.push(bullet(`메인 키워드: ${mainKeywords}`));
+  const designFocus = (s4.designFocus ?? sw.designFocus) as string | undefined;
+  if (designFocus) blocks.push(bullet(`디자인 중점: ${designFocus}`));
+  const mainEmphasis = (s4.mainEmphasis ?? sw.mainEmphasis) as string | undefined;
+  if (mainEmphasis) blocks.push(bullet(`메인 강조: ${mainEmphasis}`));
+  const photoDirection = (s4.photoDirection ?? sw.photoDirection) as string | undefined;
+  if (photoDirection) blocks.push(bullet(`사진 방향: ${photoDirection}`));
   // 벤치마킹·참고 사이트: 브랜딩으로 이동(구버전 저장본은 s5에서 폴백)
   const benchmark = (s4.benchmarkClinics as string) || (s5.benchmarkClinics as string);
   if (benchmark) blocks.push(bullet(`벤치마킹·참고 사이트: ${benchmark}`));
   if (s4.driveLink) blocks.push(bullet(`자료 첨부(드라이브): ${s4.driveLink}`));
   if (s4.hasProfilePhoto) blocks.push(bullet('프로필 사진 보유'));
   if (s4.hasLogo) blocks.push(bullet('로고 파일 보유'));
+
+  // 의료진 약력 (상세) — stepWeb → step4(브랜딩)로 이동 (구버전 저장본은 sw에서 폴백)
+  const education = (s4.education ?? sw.education) as string | undefined;
+  const career = (s4.career ?? sw.career) as string | undefined;
+  const associations = (s4.associations ?? sw.associations) as string | undefined;
+  const awards = (s4.awards ?? sw.awards) as string | undefined;
+  if (education || career || associations || awards) {
+    blocks.push(heading('의료진 약력'));
+    if (education) blocks.push(bullet(`학력: ${education}`));
+    if (career) blocks.push(bullet(`경력: ${career}`));
+    if (associations) blocks.push(bullet(`학회·협회: ${associations}`));
+    if (awards) blocks.push(bullet(`수상·논문·방송: ${awards}`));
+  }
 
   // 마케팅
   blocks.push(heading('마케팅'));
@@ -816,15 +838,7 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   webOnemore('지하철', sw.subway);
   webOnemore('버스', sw.bus);
   webOnemore('위치 어필', sw.locationNote);
-  webOnemore('학력', sw.education);
-  webOnemore('경력', sw.career);
-  webOnemore('학회·협회', sw.associations);
-  webOnemore('수상·논문·방송', sw.awards);
-  webOnemore('메인 키워드', sw.mainKeywords);
   webOnemore('참고 사이트', sw.referenceSites);
-  webOnemore('디자인 중점', sw.designFocus);
-  webOnemore('메인 강조', sw.mainEmphasis);
-  webOnemore('사진 방향', sw.photoDirection);
   webOnemore('인스타그램', sw.instagramUrl);
   webOnemore('블로그', sw.blogUrl);
   webOnemore('유튜브', sw.youtubeUrl);

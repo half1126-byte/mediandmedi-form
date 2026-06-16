@@ -218,6 +218,17 @@ function SummaryContent() {
               <InfoRow label="브랜드 톤" value={step4.brandTone as string} />
               <InfoRow label="진료 철학" value={step4.philosophy as string} />
               <InfoRow label="입지·타겟" value={step4.locationTarget as string} />
+              {/* 원장 약력·키워드/디자인 방향: stepWeb → step4(브랜딩)로 이동. 구버전 저장본은 stepWeb 폴백 */}
+              <InfoRow label="원장 약력" value={[
+                (step4.education ?? stepWeb.education),
+                (step4.career ?? stepWeb.career),
+                (step4.associations ?? stepWeb.associations),
+                (step4.awards ?? stepWeb.awards),
+              ].filter(Boolean).join(' / ')} />
+              <InfoRow label="메인 키워드" value={(step4.mainKeywords ?? stepWeb.mainKeywords) as string} />
+              <InfoRow label="디자인 중점" value={(step4.designFocus ?? stepWeb.designFocus) as string} />
+              <InfoRow label="메인 강조" value={(step4.mainEmphasis ?? stepWeb.mainEmphasis) as string} />
+              <InfoRow label="사진 방향" value={(step4.photoDirection ?? stepWeb.photoDirection) as string} />
             </SummarySection>
 
             <SummarySection title="마케팅 방향">
@@ -226,10 +237,9 @@ function SummaryContent() {
               <InfoRow label="채널" value={((step5.desiredChannels as string[]) || []).join(', ')} />
             </SummarySection>
 
-            {(scope.web || stepWeb.desiredDomain || (stepWeb.features as string[])?.length || stepWeb.mainKeywords) ? (
+            {(scope.web || stepWeb.desiredDomain || (stepWeb.features as string[])?.length) ? (
               <SummarySection title="홈페이지/웹">
                 <InfoRow label="도메인" value={stepWeb.desiredDomain as string} />
-                <InfoRow label="메인 키워드" value={stepWeb.mainKeywords as string} />
                 <InfoRow label="필요 기능" value={((stepWeb.features as string[]) || []).join(', ')} />
                 <InfoRow label="리뉴얼" value={stepWeb.renewalType as string} />
                 <InfoRow label="오픈 일정" value={stepWeb.homepageDeadline as string} />
