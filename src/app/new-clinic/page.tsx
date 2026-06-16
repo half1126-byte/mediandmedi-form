@@ -261,6 +261,21 @@ interface FormData {
     monthlyFee: string;
     specialNotes: string;
   };
+  /** 플랫폼 계정정보 (마케팅·웹 세팅용) — 노션에 평문 저장(내부 공유) */
+  accounts: {
+    naver: { id: string; pw: string };
+    google: { id: string; pw: string };
+    kakao: { id: string; pw: string };
+    instagram: { id: string; pw: string };
+    youtube: { id: string; pw: string };
+    danggeun: { id: string; pw: string };
+    blog: { id: string; pw: string };
+    dentalAd: { id: string; pw: string };
+    domain: { id: string; pw: string };
+    hosting: { id: string; pw: string };
+    ftp: { id: string; pw: string };
+    admin: { id: string; pw: string; url: string };
+  };
 }
 
 const INITIAL_DATA: FormData = {
@@ -322,6 +337,20 @@ const INITIAL_DATA: FormData = {
   step6: {
     services: [], isStarterPackage: false,
     contractStartDate: '', monthlyFee: '', specialNotes: '',
+  },
+  accounts: {
+    naver: { id: '', pw: '' },
+    google: { id: '', pw: '' },
+    kakao: { id: '', pw: '' },
+    instagram: { id: '', pw: '' },
+    youtube: { id: '', pw: '' },
+    danggeun: { id: '', pw: '' },
+    blog: { id: '', pw: '' },
+    dentalAd: { id: '', pw: '' },
+    domain: { id: '', pw: '' },
+    hosting: { id: '', pw: '' },
+    ftp: { id: '', pw: '' },
+    admin: { id: '', pw: '', url: '' },
   },
 };
 
@@ -602,8 +631,8 @@ export default function NewClinicPage() {
           {current.id === 'medical' && <Step2 data={data.step2} onChange={(u) => updateStep('step2', u)} />}
           {current.id === 'facility' && <Step3 data={data.step3} onChange={(u) => updateStep('step3', u)} />}
           {current.id === 'branding' && <Step4 data={data.step4} onChange={(u) => updateStep('step4', u)} />}
-          {current.id === 'marketing' && <Step5 data={data.step5} onChange={(u) => updateStep('step5', u)} />}
-          {current.id === 'web' && <StepWeb data={data.stepWeb} onChange={(u) => updateStep('stepWeb', u)} />}
+          {current.id === 'marketing' && <Step5 data={data.step5} accounts={data.accounts} scope={data.scope} onChange={(u) => updateStep('step5', u)} onAccountsChange={(u) => updateStep('accounts', u)} />}
+          {current.id === 'web' && <StepWeb data={data.stepWeb} accounts={data.accounts} scope={data.scope} onChange={(u) => updateStep('stepWeb', u)} onAccountsChange={(u) => updateStep('accounts', u)} />}
           {current.id === 'design' && <StepDesign data={data.stepDesign} onChange={(u) => updateStep('stepDesign', u)} />}
           {current.id === 'contract' && <Step6 data={data.step6} scope={data.scope} onChange={(u) => updateStep('step6', u)} />}
           {current.id === 'review' && <Step7 data={data} onGoToStep={goToStepById} confirmed={confirmed} setConfirmed={setConfirmed} directorMode={directorMode} />}
@@ -716,6 +745,27 @@ function TextArea({
       className="w-full px-4 py-3 rounded-lg border border-[#D1D5DB] text-base text-[#374151]
                  placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] resize-none"
     />
+  );
+}
+
+// 계정정보 한 줄 입력 (아이디/비밀번호) — 내부 공유용이라 비밀번호도 type="text"로 노출
+function AccountField({
+  label, id, pw, onIdChange, onPwChange,
+}: {
+  label: string;
+  id: string;
+  pw: string;
+  onIdChange: (v: string) => void;
+  onPwChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      <div className="flex gap-2">
+        <TextInput value={id} onChange={onIdChange} placeholder="아이디" />
+        <TextInput value={pw} onChange={onPwChange} placeholder="비밀번호" />
+      </div>
+    </div>
   );
 }
 
@@ -1368,10 +1418,13 @@ function Step4({
 
 // Step 5: 마케팅 방향
 function Step5({
-  data, onChange,
+  data, accounts, scope, onChange, onAccountsChange,
 }: {
   data: FormData['step5'];
+  accounts: FormData['accounts'];
+  scope: FormData['scope'];
   onChange: (u: Partial<FormData['step5']>) => void;
+  onAccountsChange: (u: Partial<FormData['accounts']>) => void;
 }) {
   return (
     <div className="space-y-6">
@@ -1473,6 +1526,58 @@ function Step5({
           placeholder="기타 요청사항이 있으시면 자유롭게 적어 주세요"
         />
       </div>
+
+      {/* 마케팅 계정정보 (세팅용) — 작업 범위에 마케팅이 포함될 때만 노출 */}
+      {scope.marketing && (
+        <div className="bg-[#F8FAFC] rounded-xl p-5 space-y-4 border border-[#E5E7EB]">
+          <div className="pb-3 border-b border-[#E5E7EB]">
+            <h3 className="text-base font-bold text-[#374151]">🔐 계정정보 (세팅용)</h3>
+            <p className="text-xs text-[#6B7280] mt-1 leading-relaxed">
+              마케팅 세팅(네이버 플레이스·검색광고 등)을 위해 필요합니다. 내부 공유용으로 저장됩니다.
+            </p>
+          </div>
+          <AccountField
+            label="네이버" id={accounts.naver.id} pw={accounts.naver.pw}
+            onIdChange={(v) => onAccountsChange({ naver: { ...accounts.naver, id: v } })}
+            onPwChange={(v) => onAccountsChange({ naver: { ...accounts.naver, pw: v } })}
+          />
+          <AccountField
+            label="구글" id={accounts.google.id} pw={accounts.google.pw}
+            onIdChange={(v) => onAccountsChange({ google: { ...accounts.google, id: v } })}
+            onPwChange={(v) => onAccountsChange({ google: { ...accounts.google, pw: v } })}
+          />
+          <AccountField
+            label="카카오" id={accounts.kakao.id} pw={accounts.kakao.pw}
+            onIdChange={(v) => onAccountsChange({ kakao: { ...accounts.kakao, id: v } })}
+            onPwChange={(v) => onAccountsChange({ kakao: { ...accounts.kakao, pw: v } })}
+          />
+          <AccountField
+            label="인스타그램" id={accounts.instagram.id} pw={accounts.instagram.pw}
+            onIdChange={(v) => onAccountsChange({ instagram: { ...accounts.instagram, id: v } })}
+            onPwChange={(v) => onAccountsChange({ instagram: { ...accounts.instagram, pw: v } })}
+          />
+          <AccountField
+            label="유튜브" id={accounts.youtube.id} pw={accounts.youtube.pw}
+            onIdChange={(v) => onAccountsChange({ youtube: { ...accounts.youtube, id: v } })}
+            onPwChange={(v) => onAccountsChange({ youtube: { ...accounts.youtube, pw: v } })}
+          />
+          <AccountField
+            label="당근" id={accounts.danggeun.id} pw={accounts.danggeun.pw}
+            onIdChange={(v) => onAccountsChange({ danggeun: { ...accounts.danggeun, id: v } })}
+            onPwChange={(v) => onAccountsChange({ danggeun: { ...accounts.danggeun, pw: v } })}
+          />
+          <AccountField
+            label="운영 블로그" id={accounts.blog.id} pw={accounts.blog.pw}
+            onIdChange={(v) => onAccountsChange({ blog: { ...accounts.blog, id: v } })}
+            onPwChange={(v) => onAccountsChange({ blog: { ...accounts.blog, pw: v } })}
+          />
+          <AccountField
+            label="대한치과협회 의료광고심의" id={accounts.dentalAd.id} pw={accounts.dentalAd.pw}
+            onIdChange={(v) => onAccountsChange({ dentalAd: { ...accounts.dentalAd, id: v } })}
+            onPwChange={(v) => onAccountsChange({ dentalAd: { ...accounts.dentalAd, pw: v } })}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -1581,10 +1686,13 @@ function WebSection({
 }
 
 function StepWeb({
-  data, onChange,
+  data, accounts, scope, onChange, onAccountsChange,
 }: {
   data: FormData['stepWeb'];
+  accounts: FormData['accounts'];
+  scope: FormData['scope'];
   onChange: (u: Partial<FormData['stepWeb']>) => void;
+  onAccountsChange: (u: Partial<FormData['accounts']>) => void;
 }) {
   return (
     <div className="space-y-6">
@@ -1741,6 +1849,40 @@ function StepWeb({
           <ChipSelector options={FEEDBACK_CHANNELS} selected={data.feedbackChannel ? [data.feedbackChannel] : []} onChange={(v) => onChange({ feedbackChannel: v[0] || '' })} multiple={false} />
         </div>
       </WebSection>
+
+      {/* 웹 계정정보 (세팅용) — 작업 범위에 홈페이지 제작이 포함될 때만 노출 */}
+      {scope.web && (
+        <WebSection title="🔐 계정정보 (세팅용)" hint="웹 세팅(도메인·호스팅·관리자 등)을 위해 필요합니다. 내부 공유용으로 저장됩니다.">
+          <AccountField
+            label="도메인" id={accounts.domain.id} pw={accounts.domain.pw}
+            onIdChange={(v) => onAccountsChange({ domain: { ...accounts.domain, id: v } })}
+            onPwChange={(v) => onAccountsChange({ domain: { ...accounts.domain, pw: v } })}
+          />
+          <AccountField
+            label="호스팅" id={accounts.hosting.id} pw={accounts.hosting.pw}
+            onIdChange={(v) => onAccountsChange({ hosting: { ...accounts.hosting, id: v } })}
+            onPwChange={(v) => onAccountsChange({ hosting: { ...accounts.hosting, pw: v } })}
+          />
+          <AccountField
+            label="FTP" id={accounts.ftp.id} pw={accounts.ftp.pw}
+            onIdChange={(v) => onAccountsChange({ ftp: { ...accounts.ftp, id: v } })}
+            onPwChange={(v) => onAccountsChange({ ftp: { ...accounts.ftp, pw: v } })}
+          />
+          <AccountField
+            label="관리자" id={accounts.admin.id} pw={accounts.admin.pw}
+            onIdChange={(v) => onAccountsChange({ admin: { ...accounts.admin, id: v } })}
+            onPwChange={(v) => onAccountsChange({ admin: { ...accounts.admin, pw: v } })}
+          />
+          <div>
+            <FieldLabel>관리자 페이지 URL</FieldLabel>
+            <TextInput
+              value={accounts.admin.url}
+              onChange={(v) => onAccountsChange({ admin: { ...accounts.admin, url: v } })}
+              placeholder="예: https://example.com/admin"
+            />
+          </div>
+        </WebSection>
+      )}
     </div>
   );
 }
