@@ -790,8 +790,8 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   if (mainEmphasis) blocks.push(bullet(`메인 강조: ${mainEmphasis}`));
   const photoDirection = (s4.photoDirection ?? sw.photoDirection) as string | undefined;
   if (photoDirection) blocks.push(bullet(`사진 방향: ${photoDirection}`));
-  // 벤치마킹·참고 사이트: 브랜딩으로 이동(구버전 저장본은 s5에서 폴백)
-  const benchmark = (s4.benchmarkClinics as string) || (s5.benchmarkClinics as string);
+  // 벤치마킹·참고 사이트: 브랜딩 1곳으로 통합. 옛 웹 '참고 사이트'(referenceSites)도 여기로 폴백, 구버전은 s5.
+  const benchmark = (s4.benchmarkClinics as string) || (s5.benchmarkClinics as string) || (sw.referenceSites as string);
   if (benchmark) blocks.push(bullet(`벤치마킹·참고 사이트: ${benchmark}`));
   if (s4.driveLink) blocks.push(bullet(`자료 첨부(드라이브): ${s4.driveLink}`));
   if (s4.hasProfilePhoto) blocks.push(bullet('프로필 사진 보유'));
@@ -838,7 +838,6 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   webOnemore('지하철', sw.subway);
   webOnemore('버스', sw.bus);
   webOnemore('위치 어필', sw.locationNote);
-  webOnemore('참고 사이트', sw.referenceSites);
   webOnemore('인스타그램', sw.instagramUrl);
   webOnemore('블로그', sw.blogUrl);
   webOnemore('유튜브', sw.youtubeUrl);

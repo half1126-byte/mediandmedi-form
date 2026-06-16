@@ -222,7 +222,7 @@ interface FormData {
     subway: string;
     bus: string;
     locationNote: string;
-    // 참고 사이트 (디자인 방향)
+    // 참고 사이트 — @deprecated 브랜딩 benchmarkClinics로 통합(입력칸 없음, 구버전 데이터 폴백용)
     referenceSites: string;
     // 온라인 채널 & 도메인
     instagramUrl: string;
@@ -2180,7 +2180,6 @@ function Step7({
       {data.scope.web && (
         <SummarySection title="홈페이지/웹" stepId="web" onGoToStep={onGoToStep}>
           <SummaryItem label="오시는 길" value={[stepWeb.subway, stepWeb.bus, stepWeb.locationNote].filter(Boolean).join(' / ')} />
-          <SummaryItem label="참고 사이트" value={stepWeb.referenceSites} />
           <SummaryItem label="도메인" value={stepWeb.desiredDomain} />
           <SummaryItem label="SSL" value={stepWeb.ssl} />
           <SummaryItem label="필요 기능" value={(stepWeb.features || []).join(', ')} />
