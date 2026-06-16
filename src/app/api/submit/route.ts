@@ -12,6 +12,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { pin, step1, step6 } = body;
 
+    // 서버측 검증: 치과명 없으면 거부 (빈 거래처 페이지 생성 방지 — 폼 UI 우회/직접 호출 방어)
+    if (!step1?.clinicName || !String(step1.clinicName).trim()) {
+      return NextResponse.json(
+        { success: false, error: '치과명(clinicName)은 필수입니다.' },
+        { status: 400 }
+      );
+    }
+
     // 데모 모드: 환경변수 없으면 자동 전환
     if (isDemoMode) {
       const demoPageId = 'demo-' + Date.now().toString(36);
