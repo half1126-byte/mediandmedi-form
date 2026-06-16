@@ -132,6 +132,25 @@ function SummaryContent() {
   const stepDesign = (formData?.stepDesign || {}) as Record<string, unknown>;
   const scope = (formData?.scope || {}) as Record<string, boolean>;
   const step6 = (formData?.step6 || {}) as Record<string, unknown>;
+  const accounts = (formData?.accounts || {}) as Record<string, { id?: string; pw?: string; url?: string }>;
+  const ACCOUNT_LABELS: [string, string][] = [
+    ['naver', '네이버'], ['google', '구글'], ['kakao', '카카오'],
+    ['instagram', '인스타그램'], ['youtube', '유튜브'], ['danggeun', '당근'],
+    ['blog', '운영 블로그'], ['dentalAd', '의료광고심의'],
+    ['domain', '도메인'], ['hosting', '호스팅'], ['ftp', 'FTP'], ['admin', '관리자'],
+  ];
+  const filledAccounts = ACCOUNT_LABELS
+    .map(([key, label]) => {
+      const a = accounts[key] || {};
+      const id = (a.id || '').trim();
+      const pw = (a.pw || '').trim();
+      const url = (a.url || '').trim();
+      if (!id && !pw && !url) return null;
+      const parts = [`아이디: ${id || '-'}`, `비번: ${pw || '-'}`];
+      if (key === 'admin' && url) parts.push(`URL: ${url}`);
+      return { label, value: parts.join(' / ') };
+    })
+    .filter((x): x is { label: string; value: string } => x !== null);
   const region = (step1.region || {}) as Record<string, string>;
   const parking = (step3.parking || {}) as Record<string, string>;
   const clinicName = (step1.clinicName as string) || '거래처';
@@ -233,6 +252,14 @@ function SummaryContent() {
                 }).join(', ')} />
                 <InfoRow label="패키지" value={(step6.isStarterPackage as boolean) ? '초기개원 패키지' : '일반'} />
                 <InfoRow label="월계약금" value={step6.monthlyFee as string} />
+              </SummarySection>
+            )}
+
+            {filledAccounts.length > 0 && (
+              <SummarySection title="🔐 계정정보 (세팅용)">
+                {filledAccounts.map((a) => (
+                  <InfoRow key={a.label} label={a.label} value={a.value} />
+                ))}
               </SummarySection>
             )}
           </div>

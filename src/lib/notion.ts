@@ -883,6 +883,38 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   if (s6.monthlyFee) blocks.push(bullet(`월 계약금: ${s6.monthlyFee}`));
   if (s6.specialNotes) blocks.push(bullet(`특이사항: ${s6.specialNotes}`));
 
+  // 계정정보 (세팅용) — 평문 저장(내부 공유). 채워진 계정만 출력.
+  const acc = (data.accounts || {}) as Record<string, { id?: string; pw?: string; url?: string }>;
+  const accountLabels: [string, string][] = [
+    ['naver', '네이버'],
+    ['google', '구글'],
+    ['kakao', '카카오'],
+    ['instagram', '인스타그램'],
+    ['youtube', '유튜브'],
+    ['danggeun', '당근'],
+    ['blog', '운영 블로그'],
+    ['dentalAd', '의료광고심의'],
+    ['domain', '도메인'],
+    ['hosting', '호스팅'],
+    ['ftp', 'FTP'],
+    ['admin', '관리자'],
+  ];
+  const accountLines: string[] = [];
+  for (const [key, label] of accountLabels) {
+    const a = acc[key] || {};
+    const id = (a.id || '').trim();
+    const pw = (a.pw || '').trim();
+    const url = (a.url || '').trim();
+    if (!id && !pw && !url) continue;
+    const parts = [`아이디: ${id || '-'}`, `비번: ${pw || '-'}`];
+    if (key === 'admin') parts.push(`URL: ${url || '-'}`);
+    accountLines.push(`${label} — ${parts.join(' / ')}`);
+  }
+  if (accountLines.length > 0) {
+    blocks.push(heading('🔐 계정정보 (세팅용)'));
+    accountLines.forEach((t) => blocks.push(bullet(t)));
+  }
+
   // 첨부 자료
   const files = collectFiles(data);
   if (files.length > 0) {
