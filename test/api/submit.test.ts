@@ -12,7 +12,7 @@ function makeRequest(body: Record<string, unknown>): NextRequest {
 
 describe('POST /api/submit', () => {
   it('데모 모드에서 성공 응답', async () => {
-    const req = makeRequest({ pin: '1234', formData: {} });
+    const req = makeRequest({ pin: '1234', formData: {}, step1: { clinicName: '데모치과' } });
     const res = await POST(req);
     const json = await res.json();
 
@@ -24,19 +24,19 @@ describe('POST /api/submit', () => {
   });
 
   it('PIN이 응답에 포함됨', async () => {
-    const req = makeRequest({ pin: '5678' });
+    const req = makeRequest({ pin: '5678', step1: { clinicName: '데모치과' } });
     const res = await POST(req);
     const json = await res.json();
     expect(json.pin).toBe('5678');
   });
 
   it('매번 다른 pageId 생성', async () => {
-    const req1 = makeRequest({ pin: '1111' });
+    const req1 = makeRequest({ pin: '1111', step1: { clinicName: '데모치과' } });
     const res1 = await POST(req1);
     const json1 = await res1.json();
     // Date.now() 기반이라 약간의 딜레이 필요
     await new Promise((r) => setTimeout(r, 10));
-    const req2 = makeRequest({ pin: '2222' });
+    const req2 = makeRequest({ pin: '2222', step1: { clinicName: '데모치과' } });
     const res2 = await POST(req2);
     const json2 = await res2.json();
     expect(json1.pageId).not.toBe(json2.pageId);

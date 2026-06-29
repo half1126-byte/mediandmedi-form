@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBlocksAppend, mockBlocksDelete } = vi.hoisted(() => {
+const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBlocksAppend, mockBlocksDelete, mockQuery } = vi.hoisted(() => {
   return {
     mockCreate: vi.fn(),
     mockRetrieve: vi.fn(),
@@ -9,6 +9,7 @@ const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBl
     mockBlocksList: vi.fn(),
     mockBlocksAppend: vi.fn(),
     mockBlocksDelete: vi.fn(),
+    mockQuery: vi.fn(),
   };
 });
 
@@ -25,6 +26,7 @@ vi.mock('@notionhq/client', () => {
         delete: mockBlocksDelete,
       };
       search = mockSearch;
+      databases = { query: mockQuery };
     },
   };
 });
@@ -33,8 +35,17 @@ vi.stubEnv('NOTION_API_KEY', 'test-key');
 vi.stubEnv('NOTION_MAIN_DB_ID', 'main-db-id');
 vi.stubEnv('NOTION_TASK_DB_ID', 'task-db-id');
 vi.stubEnv('NOTION_CHANGE_DB_ID', 'change-db-id');
+vi.stubEnv('NOTION_OPENING_DB_ID', 'opening-db-id');
 
-import { createMainRecord, createTaskRecord, createChangeRecord, getPageData } from '@/lib/notion';
+import { createMainRecord, createTaskRecord, createChangeRecord, getPageData, createOpeningSetupTask, hasOpeningSetupTasks } from '@/lib/notion';
+
+type NotionProps = Record<string, {
+  title?: Array<{ text: { content: string } }>;
+  select?: { name: string };
+  number?: number;
+  relation?: Array<{ id: string }>;
+  rich_text?: Array<{ text: { content: string } }>;
+}>;
 
 const sampleFormData = {
   step1: { clinicName: '해피치과', doctorName: '김행복', openDate: '2026-05-01', region: { city: '서울특별시', district: '강남구' } },
@@ -245,4 +256,63 @@ describe('getPageData', () => {
     const data = await getPageData('nonexistent');
     expect(data).toBeNull();
   });
+});
+
+describe('createOpeningSetupTask', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('개원세팅DB에 올바른 페이로드로 생성', async () => {
+    mockCreate.mockResolvedValue({ id: 'os-1' });
+    const r = await createOpeningSetupTask({
+      업무명: '단톡방 개설·킥오프 미팅', 국면: '① 킥오프·준비', 담당팀: 'PM', dOffset: -44, clinicPageId: 'clinic-1',
+    });
+    expect(r.success).toBe(true);
+
+    const arg = mockCreate.mock.calls[0][0] as { parent: { database_id: string }; properties: NotionProps };
+    expect(arg.parent.database_id).toBe('opening-db-id');
+    expect(arg.properties['업무명'].title?.[0].text.content).toBe('단톡방 개설·킥오프 미팅');
+    expect(arg.properties['국면'].select?.name).toBe('① 킥오프·준비');
+    expect(arg.properties['담당팀'].select?.name).toBe('PM');
+    expect(arg.properties['D오프셋'].number).toBe(-44);
+    expect(arg.properties['업무상태'].select?.name).toBe('대기');
+    expect(arg.properties['거래처'].relation?.[0].id).toBe('clinic-1');
+    expect(arg.properties['Dday']).toBeUndefined(); // 수식 속성이라 미설정
+  });
+
+  it('메모 있으면 포함', async () => {
+    mockCreate.mockResolvedValue({ id: 'os-2' });
+    await createOpeningSetupTask({ 업무명: 'x', 국면: '② 기반 제작', 담당팀: '디자인팀', dOffset: -35, clinicPageId: 'c', 메모: '핸드오프' });
+    const arg = mockCreate.mock.calls[0][0] as { properties: NotionProps };
+    expect(arg.properties['메모'].rich_text?.[0].text.content).toBe('핸드오프');
+  });
+
+  it('실패 시 { success:false, error }', async () => {
+    mockCreate.mockRejectedValue(new Error('boom'));
+    const r = await createOpeningSetupTask({ 업무명: 'x', 국면: '② 기반 제작', 담당팀: '웹팀', dOffset: -10, clinicPageId: 'c' });
+    expect(r.success).toBe(false);
+    expect(r.error).toContain('boom');
+  }, 15000);
+});
+
+describe('hasOpeningSetupTasks', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('기존 업무 있으면 true', async () => {
+    mockQuery.mockResolvedValue({ results: [{ id: 'os-x' }] });
+    expect(await hasOpeningSetupTasks('clinic-1')).toBe(true);
+  });
+
+  it('기존 업무 없으면 false', async () => {
+    mockQuery.mockResolvedValue({ results: [] });
+    expect(await hasOpeningSetupTasks('clinic-1')).toBe(false);
+  });
+
+  it('조회 실패 시 안전하게 true (중복 방지)', async () => {
+    mockQuery.mockRejectedValue(new Error('query fail'));
+    expect(await hasOpeningSetupTasks('clinic-1')).toBe(true);
+  }, 15000);
 });

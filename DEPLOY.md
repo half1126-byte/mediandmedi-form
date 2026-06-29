@@ -21,6 +21,7 @@ git push -u origin master
    - `NOTION_MAIN_DB_ID`
    - `NOTION_TASK_DB_ID`
    - `NOTION_CHANGE_DB_ID`
+   - `NOTION_OPENING_DB_ID` (🏥개원세팅DB = `dce384ad82b74679a7c13e567d76f0e7`. 통합을 이 DB에 연결해야 함)
 
 ## Notion 연동 (나중에)
 1. `.env.local`에 실제 Notion API 키 입력

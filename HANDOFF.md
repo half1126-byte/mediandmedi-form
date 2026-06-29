@@ -61,6 +61,7 @@ NOTION_API_KEY              (Notion 통합 토큰 - 구, 폴백)
 NOTION_MAIN_DB_ID           (거래처 메인 DB)
 NOTION_TASK_DB_ID           (팀별 업무 DB)
 NOTION_CHANGE_DB_ID         (계약변경/미팅 기록 DB)
+NOTION_OPENING_DB_ID        (🏥개원세팅DB - 초기개원 패키지 체크 시 42건 자동 생성. 통합을 이 DB에 연결 필수)
 NOTION_SCHEDULE_DB_ID       (진료일정 DB)
 CLAUDE_API_KEY              (/api/ai-planner 마케팅 플랜 자동생성)
 ADMIN_TOKEN                 (관리자 페이지 비밀번호) — 미설정 시 개발 모드, 프로덕션 필수
@@ -143,6 +144,7 @@ vercel.json                            # framework/build/install 지정
 |------|----------|-----------|
 | 거래처DB (신규개원) | `NOTION_MAIN_DB_ID` | `createMainRecord` |
 | 대시보드 업무 (팀별) | `NOTION_TASK_DB_ID` | `createTaskRecord` |
+| 🏥개원세팅DB (신규개원 42건) | `NOTION_OPENING_DB_ID` | `generateOpeningSetup` (초기개원 패키지 체크 시) |
 | 미팅 기록 (계약변경) | `NOTION_CHANGE_DB_ID` | `createChangeRecord` |
 | 진료일정 | `NOTION_SCHEDULE_DB_ID` | `createScheduleChangeRecord` |
 | (구) 거래처 DB | 하드코딩 `LEGACY_CLINICS_DB_ID` | relation 검색용 (`findClinicByName`) |

@@ -204,6 +204,89 @@ export async function createTaskRecord(
 }
 
 /**
+ * 거래처의 계약 서비스(팀) 도출: 작업범위(scope) + 선택 계약 서비스의 팀 합집합(중복 제거).
+ * 거래처DB '계약 서비스' 속성과 개원세팅 팀 범위 게이팅의 단일 출처.
+ */
+export function deriveContractTeams(data: Record<string, unknown>): string[] {
+  const scope = (data.scope || {}) as Record<string, boolean>;
+  const s6 = (data.step6 || {}) as Record<string, unknown>;
+  const teamSet = new Set<string>();
+  if (scope.marketing) teamSet.add('마케팅팀');
+  if (scope.viral) teamSet.add('바이럴팀');
+  if (scope.web) teamSet.add('웹팀');
+  if (scope.logo || scope.video) teamSet.add('디자인팀');
+  const services = (s6.services as { serviceId: string }[]) || [];
+  services.forEach((svc) => {
+    const team = SERVICES.find((s) => s.id === svc.serviceId)?.team;
+    if (team) teamSet.add(team);
+  });
+  return Array.from(teamSet);
+}
+
+/**
+ * 🏥개원세팅DB에 개원세팅 업무 1건 생성. 거래처(clinicPageId) relation 연결.
+ * D오프셋만 설정(실제 날짜는 노션 Dday 수식이 처리). 업무상태=대기.
+ */
+export async function createOpeningSetupTask(task: {
+  업무명: string;
+  국면: string;
+  담당팀: string;
+  dOffset: number;
+  clinicPageId: string;
+  메모?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const dbId = envTrim('NOTION_OPENING_DB_ID');
+  if (!dbId) return { success: false, error: 'NOTION_OPENING_DB_ID not configured' };
+
+  try {
+    await withRetry(() =>
+      notion.pages.create({
+        parent: { database_id: dbId },
+        properties: {
+          '업무명': { title: [{ text: { content: task.업무명 } }] },
+          '국면': { select: { name: task.국면 } },
+          '담당팀': { select: { name: task.담당팀 } },
+          'D오프셋': { number: task.dOffset },
+          '업무상태': { select: { name: '대기' } },
+          '거래처': { relation: [{ id: task.clinicPageId }] },
+          ...(task.메모 ? { '메모': { rich_text: [{ text: { content: task.메모.substring(0, 1900) } }] } } : {}),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
+      })
+    );
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * 멱등성: 개원세팅DB에 이 거래처(clinicPageId)의 업무가 이미 있으면 true → 재제출 시 중복 생성 차단.
+ * 조회 실패 시에도 true(안전하게 skip — 중복 생성 위험 회피).
+ */
+export async function hasOpeningSetupTasks(clinicPageId: string): Promise<boolean> {
+  const dbId = envTrim('NOTION_OPENING_DB_ID');
+  if (!dbId) return false;
+  try {
+    const res = await withRetry(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (notion.databases as any).query({
+        database_id: dbId,
+        filter: { property: '거래처', relation: { contains: clinicPageId } },
+        page_size: 1,
+      })
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (((res as any)?.results?.length) ?? 0) > 0;
+  } catch {
+    return true;
+  }
+}
+
+/**
  * 계약변경 폼 → 미팅 DB("미팅 기록")에 미팅 유형=계약변경 페이지 생성.
  */
 export async function createChangeRecord(
@@ -508,7 +591,6 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
   const s4 = (data.step4 || {}) as Record<string, unknown>;
   const s5 = (data.step5 || {}) as Record<string, unknown>;
   const s6 = (data.step6 || {}) as Record<string, unknown>;
-  const scope = (data.scope || {}) as Record<string, boolean>;
   const region = (s1.region || {}) as Record<string, string>;
 
   const addressParts = [region.district, region.dong, s1.address as string]
@@ -644,20 +726,11 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     props['특이사항'] = { rich_text: [{ text: { content: (s6.specialNotes as string).substring(0, 1900) } }] };
   }
 
-  // 계약 서비스(팀): 작업 범위(scope) + 선택한 계약 서비스의 팀 합집합 (중복 제거)
-  // → 계약 유형(마케팅/홈페이지/패키지)이 이 속성으로 노션 표에서 필터·그룹된다.
-  const teamSet = new Set<string>();
-  if (scope.marketing) teamSet.add('마케팅팀');
-  if (scope.viral) teamSet.add('바이럴팀');
-  if (scope.web) teamSet.add('웹팀');
-  if (scope.logo || scope.video) teamSet.add('디자인팀');
-  const services = (s6.services as { serviceId: string }[]) || [];
-  services.forEach((svc) => {
-    const team = SERVICES.find((s) => s.id === svc.serviceId)?.team;
-    if (team) teamSet.add(team);
-  });
-  if (teamSet.size > 0) {
-    props['계약 서비스'] = { multi_select: Array.from(teamSet).map((t) => ({ name: t })) };
+  // 계약 서비스(팀): 작업 범위(scope) + 선택한 계약 서비스의 팀 합집합.
+  // deriveContractTeams를 단일 출처로 사용(개원세팅 범위 게이팅과 동일 로직 — 드리프트 방지).
+  const contractTeams = deriveContractTeams(data);
+  if (contractTeams.length > 0) {
+    props['계약 서비스'] = { multi_select: contractTeams.map((t) => ({ name: t })) };
   }
 
   const doctors = (s1.doctors as { name: string; title: string; specialty: string }[]) || [];
