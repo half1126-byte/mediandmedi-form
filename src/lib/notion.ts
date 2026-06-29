@@ -264,25 +264,19 @@ export async function createOpeningSetupTask(task: {
 }
 
 /**
- * 멱등성: 개원세팅DB에 이 거래처(clinicPageId)의 업무가 이미 있으면 true → 재제출 시 중복 생성 차단.
- * 조회 실패 시에도 true(안전하게 skip — 중복 생성 위험 회피).
+ * 멱등성: 거래처(clinicPageId)에 개원세팅 업무가 이미 연결돼 있으면 true → 재제출 시 중복 생성 차단.
+ * 거래처 페이지의 '개원세팅' 양방향 관계를 읽어 판단(데이터소스 id 불필요).
+ * ⚠️ @notionhq/client v5는 databases.query 미지원 → 관계 읽기(pages.retrieve)로 구현.
+ * 조회 실패 시 false(신규 거래처는 관계가 비어 있으므로 생성 진행 — withRetry로 일시오류는 이미 재시도됨).
  */
 export async function hasOpeningSetupTasks(clinicPageId: string): Promise<boolean> {
-  const dbId = envTrim('NOTION_OPENING_DB_ID');
-  if (!dbId) return false;
   try {
-    const res = await withRetry(() =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (notion.databases as any).query({
-        database_id: dbId,
-        filter: { property: '거래처', relation: { contains: clinicPageId } },
-        page_size: 1,
-      })
-    );
+    const page = await withRetry(() => notion.pages.retrieve({ page_id: clinicPageId }));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (((res as any)?.results?.length) ?? 0) > 0;
+    const rel = ((page as any)?.properties?.['개원세팅']?.relation) ?? [];
+    return Array.isArray(rel) && rel.length > 0;
   } catch {
-    return true;
+    return false;
   }
 }
 

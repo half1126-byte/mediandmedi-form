@@ -3,6 +3,10 @@ import { createMainRecord, deriveContractTeams } from '@/lib/notion';
 import { generateTeamTasks } from '@/lib/team-tasks';
 import { generateOpeningSetup } from '@/lib/opening-setup';
 
+// 개원세팅 42건을 순차 생성(노션 rate-limit 회피 350ms 간격, 최대 ~30s)하므로
+// 기본 함수 타임아웃을 넘지 않도록 상향 (upload 라우트와 동일 기조).
+export const maxDuration = 60;
+
 // lib/notion.ts와 동일 우선순위: NOTION_MEETING_API_KEY가 신 워크스페이스 키
 const isDemoMode =
   (!process.env.NOTION_MEETING_API_KEY && !process.env.NOTION_API_KEY) ||

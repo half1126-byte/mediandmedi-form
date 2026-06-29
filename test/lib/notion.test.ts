@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBlocksAppend, mockBlocksDelete, mockQuery } = vi.hoisted(() => {
+const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBlocksAppend, mockBlocksDelete } = vi.hoisted(() => {
   return {
     mockCreate: vi.fn(),
     mockRetrieve: vi.fn(),
@@ -9,7 +9,6 @@ const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBl
     mockBlocksList: vi.fn(),
     mockBlocksAppend: vi.fn(),
     mockBlocksDelete: vi.fn(),
-    mockQuery: vi.fn(),
   };
 });
 
@@ -26,7 +25,6 @@ vi.mock('@notionhq/client', () => {
         delete: mockBlocksDelete,
       };
       search = mockSearch;
-      databases = { query: mockQuery };
     },
   };
 });
@@ -301,18 +299,18 @@ describe('hasOpeningSetupTasks', () => {
     vi.clearAllMocks();
   });
 
-  it('기존 업무 있으면 true', async () => {
-    mockQuery.mockResolvedValue({ results: [{ id: 'os-x' }] });
+  it('거래처에 개원세팅 관계가 있으면 true', async () => {
+    mockRetrieve.mockResolvedValue({ properties: { '개원세팅': { relation: [{ id: 'os-x' }] } } });
     expect(await hasOpeningSetupTasks('clinic-1')).toBe(true);
   });
 
-  it('기존 업무 없으면 false', async () => {
-    mockQuery.mockResolvedValue({ results: [] });
+  it('개원세팅 관계가 비어 있으면 false', async () => {
+    mockRetrieve.mockResolvedValue({ properties: { '개원세팅': { relation: [] } } });
     expect(await hasOpeningSetupTasks('clinic-1')).toBe(false);
   });
 
-  it('조회 실패 시 안전하게 true (중복 방지)', async () => {
-    mockQuery.mockRejectedValue(new Error('query fail'));
-    expect(await hasOpeningSetupTasks('clinic-1')).toBe(true);
+  it('조회 실패 시 false (신규 거래처 → 생성 진행)', async () => {
+    mockRetrieve.mockRejectedValue(new Error('retrieve fail'));
+    expect(await hasOpeningSetupTasks('clinic-1')).toBe(false);
   }, 15000);
 });
