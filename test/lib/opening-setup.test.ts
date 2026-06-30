@@ -25,17 +25,17 @@ describe('generateOpeningSetup', () => {
     expect(vi.mocked(createOpeningSetupTask)).toHaveBeenCalledTimes(42);
 
     const first = vi.mocked(createOpeningSetupTask).mock.calls[0][0];
-    expect(first.국면).toBe('① 킥오프·준비');
-    expect(first.담당팀).toBe('PM');
+    expect(first.단계).toBe('① 시작');
+    expect(first.담당팀).toBe('마케팅팀');
     expect(first.dOffset).toBe(-44);
     expect(first.clinicPageId).toBe('clinic-1');
   });
 
-  it('마케팅만 계약 → PM·마케팅팀 19건만 (웹/디자인/바이럴/영상 0)', async () => {
+  it('마케팅만 계약 → 마케팅팀 19건만 (웹/디자인/바이럴/영상 0)', async () => {
     const results = await generateOpeningSetup('clinic-1', ['마케팅팀']);
 
     expect(results).toHaveLength(19);
-    expect(new Set(results.map((r) => r.담당팀))).toEqual(new Set(['PM', '마케팅팀']));
+    expect(new Set(results.map((r) => r.담당팀))).toEqual(new Set(['마케팅팀']));
     expect(
       results.some((r) => ['웹팀', '디자인팀', '바이럴팀', '영상팀'].includes(r.담당팀))
     ).toBe(false);
@@ -85,15 +85,15 @@ describe('selectOpeningTasks 범위 게이팅', () => {
 
 describe('OPENING_SETUP_TASKS 데이터 무결성', () => {
   const PHASES = new Set([
-    '① 킥오프·준비', '② 기반 제작', '③ 인증·심의', '③-B 콘텐츠·바이럴',
-    '④ 예약·연결·인쇄', '⑤ 개원 점검', '⑥ 운영 전환',
+    '① 시작', '② 제작', '③ 심의', '③-B 콘텐츠',
+    '④ 연결', '⑤ 점검', '⑥ 운영',
   ]);
-  const TEAMS = new Set(['마케팅팀', '디자인팀', '웹팀', 'PM', '바이럴팀', '영상팀']);
+  const TEAMS = new Set(['마케팅팀', '디자인팀', '웹팀', '바이럴팀', '영상팀']);
 
   it('42건, 국면·담당팀 유효, dOffset 숫자', () => {
     expect(OPENING_SETUP_TASKS).toHaveLength(42);
     for (const t of OPENING_SETUP_TASKS) {
-      expect(PHASES.has(t.국면)).toBe(true);
+      expect(PHASES.has(t.단계)).toBe(true);
       expect(TEAMS.has(t.담당팀)).toBe(true);
       expect(typeof t.dOffset).toBe('number');
       expect(t.업무명.length).toBeGreaterThan(0);

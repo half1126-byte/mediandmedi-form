@@ -1,4 +1,4 @@
-import { Client } from '@notionhq/client';
+import { Client, isNotionClientError } from '@notionhq/client';
 import { SERVICES } from '@/data/services';
 import { clinicNamesMatch, normalizeClinicName } from './normalize';
 
@@ -31,10 +31,9 @@ async function withRetry<T>(
 ): Promise<T> {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      await delay(DELAY_MS);
       return await fn();
     } catch (error: unknown) {
-      const isRateLimit = error instanceof Error && 'status' in error && (error as { status: number }).status === 429;
+      const isRateLimit = isNotionClientError(error) && 'status' in error && (error as { status: number }).status === 429;
       const isLastAttempt = attempt === maxRetries - 1;
 
       if (isLastAttempt) throw error;
@@ -223,20 +222,32 @@ export function deriveContractTeams(data: Record<string, unknown>): string[] {
   return Array.from(teamSet);
 }
 
+/** YYYY-MM-DD 문자열에 days를 더해 YYYY-MM-DD 반환. UTC 기준으로 계산해 시간대 오차 방지. */
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 /**
  * 🏥개원세팅DB에 개원세팅 업무 1건 생성. 거래처(clinicPageId) relation 연결.
- * D오프셋만 설정(실제 날짜는 노션 Dday 수식이 처리). 업무상태=대기.
+ * openDate 제공 시 마감일(= openDate + dOffset)을 date 속성으로 직접 저장. 업무상태=대기.
  */
 export async function createOpeningSetupTask(task: {
   업무명: string;
-  국면: string;
+  단계: string;
   담당팀: string;
   dOffset: number;
   clinicPageId: string;
+  openDate?: string;
   메모?: string;
 }): Promise<{ success: boolean; error?: string }> {
   const dbId = envTrim('NOTION_OPENING_DB_ID');
   if (!dbId) return { success: false, error: 'NOTION_OPENING_DB_ID not configured' };
+
+  await delay(DELAY_MS); // 순차 42건 생성 시 rate-limit 간격 (테스트는 이 함수 전체를 mock하므로 영향 없음)
+
+  const 마감일 = task.openDate ? addDays(task.openDate, task.dOffset) : undefined;
 
   try {
     await withRetry(() =>
@@ -244,11 +255,12 @@ export async function createOpeningSetupTask(task: {
         parent: { database_id: dbId },
         properties: {
           '업무명': { title: [{ text: { content: task.업무명 } }] },
-          '국면': { select: { name: task.국면 } },
+          '단계': { select: { name: task.단계 } },
           '담당팀': { select: { name: task.담당팀 } },
           'D오프셋': { number: task.dOffset },
-          '업무상태': { select: { name: '대기' } },
+          '상태': { select: { name: '대기' } },
           '거래처': { relation: [{ id: task.clinicPageId }] },
+          ...(마감일 ? { '마감일': { date: { start: 마감일 } } } : {}),
           ...(task.메모 ? { '메모': { rich_text: [{ text: { content: task.메모.substring(0, 1900) } }] } } : {}),
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any,

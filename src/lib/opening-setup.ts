@@ -11,10 +11,9 @@ export interface OpeningSetupResult {
 }
 
 // 담당팀 → 거래처DB '계약 서비스' 옵션 매핑.
-// null = 항상 생성(PM·마케팅팀 = 관제). 영상팀은 디자인 계약 버킷에 포함
+// null = 항상 생성(마케팅팀 = 관제). 영상팀은 디자인 계약 버킷에 포함
 // (폼이 scope.video를 디자인팀으로 접고, design-video/youtube 서비스도 팀=디자인팀이므로).
 const TEAM_TO_CONTRACT: Record<string, string | null> = {
-  PM: null,
   마케팅팀: null,
   디자인팀: '디자인팀',
   영상팀: '디자인팀',
@@ -24,7 +23,7 @@ const TEAM_TO_CONTRACT: Record<string, string | null> = {
 
 /**
  * 계약 서비스(팀)에 따라 생성할 개원세팅 업무 선별.
- * PM·마케팅팀은 항상, 디자인·웹·바이럴·영상은 해당 팀이 계약에 있을 때만.
+ * 마케팅팀은 항상, 디자인·웹·바이럴·영상은 해당 팀이 계약에 있을 때만.
  * 옵션 업무(현재 No.28 영상)는 디자인팀 계약 시에만.
  */
 export function selectOpeningTasks(contractTeams: string[]): OpeningSetupTask[] {
@@ -44,7 +43,8 @@ export function selectOpeningTasks(contractTeams: string[]): OpeningSetupTask[] 
  */
 export async function generateOpeningSetup(
   clinicPageId: string,
-  contractTeams: string[]
+  contractTeams: string[],
+  openDate?: string
 ): Promise<OpeningSetupResult[]> {
   if (await hasOpeningSetupTasks(clinicPageId)) {
     return [{ no: 0, 업무명: '(이미 생성됨 — 건너뜀)', 담당팀: '-', success: true, skipped: true }];
@@ -54,10 +54,11 @@ export async function generateOpeningSetup(
   for (const t of selectOpeningTasks(contractTeams)) {
     const r = await createOpeningSetupTask({
       업무명: t.업무명,
-      국면: t.국면,
+      단계: t.단계,
       담당팀: t.담당팀,
       dOffset: t.dOffset,
       clinicPageId,
+      openDate,
       메모: t.handoff ? '핸드오프: (신)업무DB에 제작 의뢰 후 실행업무 연결' : undefined,
     });
     results.push({ no: t.no, 업무명: t.업무명, 담당팀: t.담당팀, success: r.success, error: r.error });

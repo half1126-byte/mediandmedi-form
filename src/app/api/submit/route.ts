@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     let openingResults: Awaited<ReturnType<typeof generateOpeningSetup>> = [];
     if (step6?.isStarterPackage) {
       try {
-        openingResults = await generateOpeningSetup(pageId, deriveContractTeams(body));
+        openingResults = await generateOpeningSetup(pageId, deriveContractTeams(body), step1?.openDate);
       } catch (e) {
         // 거래처·팀업무는 이미 생성됨 → 개원세팅 실패해도 200 유지
         console.error('Opening setup generation error:', e);
