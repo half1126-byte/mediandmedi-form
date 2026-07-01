@@ -65,6 +65,7 @@ interface StepDef {
 const STEP_REGISTRY: StepDef[] = [
   { id: 'basic', label: '기본 정보', timeMin: 2, visible: () => true,
     validate: (d) => !!d.step1.clinicName && !!d.step1.doctorName && !!d.step1.openDate && !!d.step1.region.city && !!d.step1.region.district },
+  { id: 'contract', label: '계약 상품', timeMin: 2, visible: () => true },
   { id: 'scope', label: '작업 범위', timeMin: 1, visible: () => true },
   { id: 'medical', label: '진료 정보', timeMin: 3, visible: () => true,
     validate: (d) => d.step2.dentalSubjects.length > 0 || !!d.step2.customSubjects.trim() },
@@ -73,7 +74,6 @@ const STEP_REGISTRY: StepDef[] = [
   { id: 'marketing', label: '마케팅 방향', timeMin: 2, visible: () => true },
   { id: 'web', label: '홈페이지/웹', timeMin: 3, visible: (d) => !!d.scope?.web },
   { id: 'design', label: '디자인/브랜딩', timeMin: 2, visible: (d) => !!d.scope?.logo || !!d.scope?.video },
-  { id: 'contract', label: '계약 상품', timeMin: 2, visible: () => true },
   { id: 'review', label: '최종 확인', timeMin: 1, visible: () => true },
 ];
 
