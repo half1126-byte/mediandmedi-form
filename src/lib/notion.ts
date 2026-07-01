@@ -1,4 +1,4 @@
-import { Client } from '@notionhq/client';
+import { Client, isNotionClientError } from '@notionhq/client';
 import { SERVICES } from '@/data/services';
 import { clinicNamesMatch, normalizeClinicName } from './normalize';
 
@@ -31,10 +31,9 @@ async function withRetry<T>(
 ): Promise<T> {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      await delay(DELAY_MS);
       return await fn();
     } catch (error: unknown) {
-      const isRateLimit = error instanceof Error && 'status' in error && (error as { status: number }).status === 429;
+      const isRateLimit = isNotionClientError(error) && 'status' in error && (error as { status: number }).status === 429;
       const isLastAttempt = attempt === maxRetries - 1;
 
       if (isLastAttempt) throw error;
@@ -200,6 +199,96 @@ export async function createTaskRecord(
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
     };
+  }
+}
+
+/**
+ * 거래처의 계약 서비스(팀) 도출: 작업범위(scope) + 선택 계약 서비스의 팀 합집합(중복 제거).
+ * 거래처DB '계약 서비스' 속성과 개원세팅 팀 범위 게이팅의 단일 출처.
+ */
+export function deriveContractTeams(data: Record<string, unknown>): string[] {
+  const scope = (data.scope || {}) as Record<string, boolean>;
+  const s6 = (data.step6 || {}) as Record<string, unknown>;
+  const teamSet = new Set<string>();
+  if (scope.marketing) teamSet.add('마케팅팀');
+  if (scope.viral) teamSet.add('바이럴팀');
+  if (scope.web) teamSet.add('웹팀');
+  if (scope.logo || scope.video) teamSet.add('디자인팀');
+  const services = (s6.services as { serviceId: string }[]) || [];
+  services.forEach((svc) => {
+    const team = SERVICES.find((s) => s.id === svc.serviceId)?.team;
+    if (team) teamSet.add(team);
+  });
+  return Array.from(teamSet);
+}
+
+/** YYYY-MM-DD 문자열에 days를 더해 YYYY-MM-DD 반환. UTC 기준으로 계산해 시간대 오차 방지. */
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * 🏥개원세팅DB에 개원세팅 업무 1건 생성. 거래처(clinicPageId) relation 연결.
+ * openDate 제공 시 마감일(= openDate + dOffset)을 date 속성으로 직접 저장. 업무상태=대기.
+ */
+export async function createOpeningSetupTask(task: {
+  업무명: string;
+  단계: string;
+  담당팀: string;
+  dOffset: number;
+  clinicPageId: string;
+  openDate?: string;
+  메모?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const dbId = envTrim('NOTION_OPENING_DB_ID');
+  if (!dbId) return { success: false, error: 'NOTION_OPENING_DB_ID not configured' };
+
+  await delay(DELAY_MS); // 순차 42건 생성 시 rate-limit 간격 (테스트는 이 함수 전체를 mock하므로 영향 없음)
+
+  const 마감일 = task.openDate ? addDays(task.openDate, task.dOffset) : undefined;
+
+  try {
+    await withRetry(() =>
+      notion.pages.create({
+        parent: { database_id: dbId },
+        properties: {
+          '업무명': { title: [{ text: { content: task.업무명 } }] },
+          '단계': { select: { name: task.단계 } },
+          '담당팀': { select: { name: task.담당팀 } },
+          'D오프셋': { number: task.dOffset },
+          '상태': { select: { name: '대기' } },
+          '거래처': { relation: [{ id: task.clinicPageId }] },
+          ...(마감일 ? { '마감일': { date: { start: 마감일 } } } : {}),
+          ...(task.메모 ? { '메모': { rich_text: [{ text: { content: task.메모.substring(0, 1900) } }] } } : {}),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
+      })
+    );
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * 멱등성: 거래처(clinicPageId)에 개원세팅 업무가 이미 연결돼 있으면 true → 재제출 시 중복 생성 차단.
+ * 거래처 페이지의 '개원세팅' 양방향 관계를 읽어 판단(데이터소스 id 불필요).
+ * ⚠️ @notionhq/client v5는 databases.query 미지원 → 관계 읽기(pages.retrieve)로 구현.
+ * 조회 실패 시 false(신규 거래처는 관계가 비어 있으므로 생성 진행 — withRetry로 일시오류는 이미 재시도됨).
+ */
+export async function hasOpeningSetupTasks(clinicPageId: string): Promise<boolean> {
+  try {
+    const page = await withRetry(() => notion.pages.retrieve({ page_id: clinicPageId }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rel = ((page as any)?.properties?.['개원세팅']?.relation) ?? [];
+    return Array.isArray(rel) && rel.length > 0;
+  } catch {
+    return false;
   }
 }
 
@@ -508,7 +597,6 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
   const s4 = (data.step4 || {}) as Record<string, unknown>;
   const s5 = (data.step5 || {}) as Record<string, unknown>;
   const s6 = (data.step6 || {}) as Record<string, unknown>;
-  const scope = (data.scope || {}) as Record<string, boolean>;
   const region = (s1.region || {}) as Record<string, string>;
 
   const addressParts = [region.district, region.dong, s1.address as string]
@@ -644,20 +732,11 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     props['특이사항'] = { rich_text: [{ text: { content: (s6.specialNotes as string).substring(0, 1900) } }] };
   }
 
-  // 계약 서비스(팀): 작업 범위(scope) + 선택한 계약 서비스의 팀 합집합 (중복 제거)
-  // → 계약 유형(마케팅/홈페이지/패키지)이 이 속성으로 노션 표에서 필터·그룹된다.
-  const teamSet = new Set<string>();
-  if (scope.marketing) teamSet.add('마케팅팀');
-  if (scope.viral) teamSet.add('바이럴팀');
-  if (scope.web) teamSet.add('웹팀');
-  if (scope.logo || scope.video) teamSet.add('디자인팀');
-  const services = (s6.services as { serviceId: string }[]) || [];
-  services.forEach((svc) => {
-    const team = SERVICES.find((s) => s.id === svc.serviceId)?.team;
-    if (team) teamSet.add(team);
-  });
-  if (teamSet.size > 0) {
-    props['계약 서비스'] = { multi_select: Array.from(teamSet).map((t) => ({ name: t })) };
+  // 계약 서비스(팀): 작업 범위(scope) + 선택한 계약 서비스의 팀 합집합.
+  // deriveContractTeams를 단일 출처로 사용(개원세팅 범위 게이팅과 동일 로직 — 드리프트 방지).
+  const contractTeams = deriveContractTeams(data);
+  if (contractTeams.length > 0) {
+    props['계약 서비스'] = { multi_select: contractTeams.map((t) => ({ name: t })) };
   }
 
   const doctors = (s1.doctors as { name: string; title: string; specialty: string }[]) || [];
