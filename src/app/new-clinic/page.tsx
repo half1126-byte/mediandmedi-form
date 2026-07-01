@@ -65,8 +65,8 @@ interface StepDef {
 const STEP_REGISTRY: StepDef[] = [
   { id: 'basic', label: '기본 정보', timeMin: 2, visible: () => true,
     validate: (d) => !!d.step1.clinicName && !!d.step1.doctorName && !!d.step1.openDate && !!d.step1.region.city && !!d.step1.region.district },
-  { id: 'contract', label: '계약 상품', timeMin: 2, visible: () => true },
   { id: 'scope', label: '작업 범위', timeMin: 1, visible: () => true },
+  { id: 'contract', label: '계약 상품', timeMin: 2, visible: () => true },
   { id: 'medical', label: '진료 정보', timeMin: 3, visible: () => true,
     validate: (d) => d.step2.dentalSubjects.length > 0 || !!d.step2.customSubjects.trim() },
   { id: 'facility', label: '시설/장비', timeMin: 2, visible: () => true },
