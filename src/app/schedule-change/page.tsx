@@ -43,6 +43,7 @@ export default function ScheduleChangePage() {
   const [activeMode, setActiveMode] = useState<ActiveMode>(null);
   const [showModeHint, setShowModeHint] = useState(false);
 
+  const [designChoice, setDesignChoice] = useState<'A' | 'B' | 'C' | 'D' | ''>('');
   const [weekdayHours, setWeekdayHours] = useState('');
   const [saturdayHours, setSaturdayHours] = useState('');
 
@@ -188,6 +189,7 @@ export default function ScheduleChangePage() {
           calendarText: calendarText.trim() || undefined,
           customLabels,
           tagTimes: showTimes ? tagTimes : {},
+          templateType: designChoice || undefined,
           clinicHours: [
             weekdayHours.trim() && `평일 ${weekdayHours.trim()}`,
             saturdayHours.trim() && `토요일 ${saturdayHours.trim()}`,
@@ -309,7 +311,7 @@ export default function ScheduleChangePage() {
           {/* STEP 1: 치과 정보 */}
           <section className="bg-white rounded-2xl border border-[#E5E7EB] p-5 space-y-4">
             <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
+              <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center shrink-0">1</span>
               <h3 className="font-semibold text-[#374151]">치과 정보를 입력해 주세요</h3>
             </div>
             <div className="space-y-3">
@@ -340,7 +342,71 @@ export default function ScheduleChangePage() {
             </div>
           </section>
 
-          {/* STEP 2: 기본 진료시간 */}
+          {/* STEP 2: 시안 선택 */}
+          <section className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
+            <div className="px-5 pt-5 pb-4 border-b border-[#F3F4F6]">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center shrink-0">2</span>
+                <h3 className="font-semibold text-[#374151]">원하시는 디자인 시안을 선택해 주세요</h3>
+              </div>
+              <p className="text-sm text-[#6B7280] ml-8">선택하신 시안으로 달력을 제작해 드립니다</p>
+            </div>
+
+            <div className="p-4 grid grid-cols-2 gap-3">
+              {(['A', 'B', 'C', 'D'] as const).map(letter => {
+                const meta: Record<string, { desc: string; accent: string }> = {
+                  A: { desc: '클래식 (레드·블루 포인트)', accent: '#DC2626' },
+                  B: { desc: '봄·축제 (하늘색·핑크)', accent: '#EC4899' },
+                  C: { desc: '붓터치 수채화', accent: '#1E3A5F' },
+                  D: { desc: '여름·바다', accent: '#0EA5E9' },
+                };
+                const { desc, accent } = meta[letter];
+                const isSelected = designChoice === letter;
+                return (
+                  <button
+                    key={letter}
+                    type="button"
+                    onClick={() => setDesignChoice(isSelected ? '' : letter)}
+                    className="relative rounded-xl overflow-hidden border-2 transition-all active:scale-95"
+                    style={{ borderColor: isSelected ? accent : '#E5E7EB' }}
+                  >
+                    {/* 썸네일 이미지 */}
+                    <div className="w-full aspect-square bg-[#F8FAFC] overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/designs/schedule_${letter}.png`}
+                        alt={`시안 ${letter}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    {/* 라벨 */}
+                    <div className="px-3 py-2 text-left" style={{ backgroundColor: isSelected ? accent + '12' : '#fff' }}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold" style={{ color: accent }}>시안 {letter}</span>
+                        {isSelected && (
+                          <span className="ml-auto w-4 h-4 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: accent }}>
+                            <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-[#9CA3AF] leading-tight mt-0.5">{desc}</p>
+                    </div>
+
+                  </button>
+                );
+              })}
+            </div>
+
+            {!designChoice && (
+              <p className="px-5 pb-4 text-xs text-[#9CA3AF]">※ 선택 안 하시면 디자이너가 적합한 시안으로 제작합니다</p>
+            )}
+          </section>
+
+          {/* STEP 3: 기본 진료시간 */}
           <section className="rounded-2xl border-2 border-[#F97316] overflow-hidden"
             style={{ background: 'linear-gradient(135deg, #FFF7ED 0%, #FFFBF5 100%)' }}>
             <div className="px-5 pt-5 pb-4">
@@ -396,7 +462,7 @@ export default function ScheduleChangePage() {
             {/* 스텝 헤더 */}
             <div className="px-5 pt-5 pb-4 border-b border-[#F3F4F6]">
               <div className="flex items-center gap-2 mb-1">
-                <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center shrink-0">3</span>
+                <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center shrink-0">4</span>
                 <h3 className="font-semibold text-[#374151]">달력에 일정을 표시해 주세요</h3>
               </div>
               <p className="text-sm text-[#6B7280] ml-8">① 아래에서 종류 선택 → ② 해당 날짜 탭</p>
@@ -619,7 +685,7 @@ export default function ScheduleChangePage() {
           {/* STEP 3: 추가 정보 */}
           <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 space-y-5">
             <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center shrink-0">4</span>
+              <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center shrink-0">5</span>
               <h3 className="font-semibold text-[#374151]">추가 정보</h3>
             </div>
 
@@ -781,6 +847,7 @@ export default function ScheduleChangePage() {
           { label: '치과명', value: clinicName },
           { label: '성함', value: doctorName },
           { label: '대상월', value: `${calYear}년 ${calMonth}월` },
+          { label: '디자인 시안', value: designChoice ? `시안 ${designChoice}` : '미선택' },
           {
             label: '기본 진료시간',
             value: [
