@@ -449,8 +449,14 @@ export async function createScheduleChangeRecord(
   if (data.calendarText) {
     properties['달력 표기 필수내용 원문'] = { rich_text: [{ text: { content: (data.calendarText as string).substring(0, 1900) } }] };
   }
-  if (data.clinicHours) {
-    properties['진료시간'] = { rich_text: [{ text: { content: (data.clinicHours as string).substring(0, 1900) } }] };
+  // 날짜별 진료시간 변경 (dateTimes: { "2025-08-15": "09:00~14:00", ... })
+  const dateTimes = (data.dateTimes as Record<string, string>) || {};
+  const dateTimesStr = Object.entries(dateTimes)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([d, t]) => `${parseInt(d.split('-')[2])}일 ${t}`)
+    .join(', ');
+  if (dateTimesStr) {
+    properties['진료시간'] = { rich_text: [{ text: { content: dateTimesStr.substring(0, 1900) } }] };
   }
   if (data.specialNote) {
     properties['특이사항/병원요청'] = { rich_text: [{ text: { content: (data.specialNote as string).substring(0, 1900) } }] };
@@ -462,19 +468,13 @@ export async function createScheduleChangeRecord(
   if (holidayReason) {
     properties['휴진사유'] = { rich_text: [{ text: { content: holidayReason } }] };
   }
-  // 태그별 시간(달력 시간 표기 ON일 때만 전달됨) → 해당 태그 칸 값 뒤에 "(시간)" 부기
-  const tagTimes = (data.tagTimes as Record<string, string>) || {};
-  const withTime = (tag: string, dates: string) => {
-    const t = tagTimes[tag]?.trim();
-    return t ? `${dates} (${t})` : dates;
-  };
-  if (tagToDates['휴진'].length > 0) properties['휴진일'] = textProp(withTime('휴진', sortDates(tagToDates['휴진'])));
-  if (tagToDates['토요일진료'].length > 0) properties['토요일진료'] = textProp(withTime('토요일진료', sortDates(tagToDates['토요일진료'])));
-  if (tagToDates['일요일진료'].length > 0) properties['일요일진료'] = textProp(withTime('일요일진료', sortDates(tagToDates['일요일진료'])));
-  if (tagToDates['오전진료'].length > 0) properties['오전진료'] = textProp(withTime('오전진료', sortDates(tagToDates['오전진료'])));
-  if (tagToDates['오후진료'].length > 0) properties['오후진료'] = textProp(withTime('오후진료', sortDates(tagToDates['오후진료'])));
-  if (tagToDates['야간진료'].length > 0) properties['야간진료_변경'] = textProp(withTime('야간진료', sortDates(tagToDates['야간진료'])));
-  if (tagToDates['공휴일진료'].length > 0) properties['공휴일진료'] = textProp(withTime('공휴일진료', sortDates(tagToDates['공휴일진료'])));
+  if (tagToDates['휴진'].length > 0) properties['휴진일'] = textProp(sortDates(tagToDates['휴진']));
+  if (tagToDates['토요일진료'].length > 0) properties['토요일진료'] = textProp(sortDates(tagToDates['토요일진료']));
+  if (tagToDates['일요일진료'].length > 0) properties['일요일진료'] = textProp(sortDates(tagToDates['일요일진료']));
+  if (tagToDates['오전진료'].length > 0) properties['오전진료'] = textProp(sortDates(tagToDates['오전진료']));
+  if (tagToDates['오후진료'].length > 0) properties['오후진료'] = textProp(sortDates(tagToDates['오후진료']));
+  if (tagToDates['야간진료'].length > 0) properties['야간진료_변경'] = textProp(sortDates(tagToDates['야간진료']));
+  if (tagToDates['공휴일진료'].length > 0) properties['공휴일진료'] = textProp(sortDates(tagToDates['공휴일진료']));
 
   const response = await withRetry(() =>
     notion.pages.create({
