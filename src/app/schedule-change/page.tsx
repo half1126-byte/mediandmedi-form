@@ -6,7 +6,47 @@ import { isHoliday } from '@/data/holidays';
 import ReviewModal from '@/components/ReviewModal';
 
 type ScheduleTag = '휴진' | '토요일진료' | '일요일진료' | '오전진료' | '오후진료' | '야간진료' | '공휴일진료';
-type ActiveMode = ScheduleTag | '직접입력' | null;
+
+const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 6~22
+
+function HourPicker({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const parts = value ? value.split(':') : ['', '00'];
+  const selH = parts[0] ? parseInt(parts[0]) : null;
+  const selM = parts[1] || '00';
+  return (
+    <div>
+      <p className="text-[10px] font-semibold text-[#9CA3AF] mb-2 tracking-wide uppercase">{label}</p>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <div className="flex gap-1.5 pb-0.5 w-max">
+            {HOURS.map(h => {
+              const isOn = selH === h;
+              return (
+                <button key={h}
+                  onClick={() => onChange(isOn ? '' : `${String(h).padStart(2, '0')}:${selM}`)}
+                  className={`shrink-0 w-10 h-10 rounded-xl text-sm font-bold transition-all active:scale-90
+                    ${isOn ? 'bg-[#2563EB] text-white shadow-md shadow-blue-200' : 'bg-[#F3F4F6] text-[#374151] hover:bg-[#E5E7EB]'}`}>
+                  {h}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="flex flex-col gap-1 shrink-0">
+          {['00', '30'].map(min => (
+            <button key={min}
+              onClick={() => { if (selH !== null) onChange(`${String(selH).padStart(2, '0')}:${min}`); }}
+              className={`w-11 h-4.5 rounded-lg text-[11px] font-bold transition-all
+                ${selH !== null && selM === min ? 'bg-[#2563EB] text-white' : 'bg-[#E5E7EB] text-[#9CA3AF]'}
+                ${selH === null ? 'opacity-30 cursor-not-allowed' : ''}`}>
+              :{min}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const SCHEDULE_TAGS: { label: ScheduleTag; color: string; bg: string; emoji: string }[] = [
   { label: '휴진',     color: '#DC2626', bg: '#FEE2E2', emoji: '🔴' },
@@ -40,12 +80,9 @@ export default function ScheduleChangePage() {
   const [calYear, setCalYear] = useState(nextMonth.year);
   const [calMonth, setCalMonth] = useState(nextMonth.month);
   const [dateSchedules, setDateSchedules] = useState<Record<string, ScheduleTag[]>>({});
-  const [activeMode, setActiveMode] = useState<ActiveMode>(null);
-  const [showModeHint, setShowModeHint] = useState(false);
+  const [dateTimes, setDateTimes] = useState<Record<string, string>>({});
 
   const [designChoice, setDesignChoice] = useState<'A' | 'B' | 'C' | 'D' | ''>('');
-  const [weekdayHours, setWeekdayHours] = useState('');
-  const [saturdayHours, setSaturdayHours] = useState('');
 
   const [holidayReason, setHolidayReason] = useState('');
   const [events, setEvents] = useState('');
@@ -54,13 +91,14 @@ export default function ScheduleChangePage() {
   const [specialNote, setSpecialNote] = useState('');
   const [extraRequest, setExtraRequest] = useState('');
 
-  // 커스텀 휴무(직접입력) — 날짜별 사유
   const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
-  const [editingDate, setEditingDate] = useState<string | null>(null);
-  const [editingText, setEditingText] = useState('');
-  // 달력 칸 시간 표기 (태그별 시간 + 마스터 토글)
-  const [tagTimes, setTagTimes] = useState<Record<string, string>>({});
-  const [showTimes, setShowTimes] = useState(false);
+
+  // 날짜 클릭 팝업
+  const [datePopup, setDatePopup] = useState<string | null>(null);
+  const [popupTags, setPopupTags] = useState<ScheduleTag[]>([]);
+  const [popupTimeStart, setPopupTimeStart] = useState('');
+  const [popupTimeEnd, setPopupTimeEnd] = useState('');
+  const [popupCustom, setPopupCustom] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -85,42 +123,48 @@ export default function ScheduleChangePage() {
   const prevMonth = () => { if (calMonth === 1) { setCalYear(calYear - 1); setCalMonth(12); } else setCalMonth(calMonth - 1); };
   const nextMo = () => { if (calMonth === 12) { setCalYear(calYear + 1); setCalMonth(1); } else setCalMonth(calMonth + 1); };
 
-  const applyModeToDate = (dateStr: string) => {
-    if (!activeMode) {
-      setShowModeHint(true);
-      setTimeout(() => setShowModeHint(false), 2500);
-      return;
-    }
-    if (activeMode === '직접입력') {
-      setEditingDate(dateStr);
-      setEditingText(customLabels[dateStr] || '');
-      return;
-    }
-    const current = dateSchedules[dateStr] || [];
-    const hasTag = current.includes(activeMode as ScheduleTag);
-    setDateSchedules({
-      ...dateSchedules,
-      [dateStr]: hasTag ? current.filter(t => t !== activeMode) : [...current, activeMode as ScheduleTag],
-    });
+  const handleDateClick = (dateStr: string) => {
+    setPopupTags(dateSchedules[dateStr] || []);
+    const existing = dateTimes[dateStr] || '';
+    const [s, e] = existing.includes('~') ? existing.split('~') : ['', existing];
+    setPopupTimeStart(s);
+    setPopupTimeEnd(e);
+    setPopupCustom(customLabels[dateStr] || '');
+    setDatePopup(dateStr);
   };
 
-  // 커스텀 휴무(직접입력) 저장/삭제
-  const saveCustomLabel = () => {
-    if (!editingDate) return;
-    const text = editingText.trim();
-    const next = { ...customLabels };
-    if (text) next[editingDate] = text; else delete next[editingDate];
-    setCustomLabels(next);
-    setEditingDate(null);
-    setEditingText('');
+  const savePopup = () => {
+    if (!datePopup) return;
+    const newSchedules = { ...dateSchedules };
+    if (popupTags.length > 0) newSchedules[datePopup] = popupTags;
+    else delete newSchedules[datePopup];
+    setDateSchedules(newSchedules);
+
+    const newTimes = { ...dateTimes };
+    const timeStr = popupTimeStart && popupTimeEnd
+      ? `${popupTimeStart}~${popupTimeEnd}`
+      : popupTimeEnd ? `~${popupTimeEnd}` : popupTimeStart ? `${popupTimeStart}~` : '';
+    if (timeStr) newTimes[datePopup] = timeStr;
+    else delete newTimes[datePopup];
+    setDateTimes(newTimes);
+
+    const newLabels = { ...customLabels };
+    if (popupCustom.trim()) newLabels[datePopup] = popupCustom.trim();
+    else delete newLabels[datePopup];
+    setCustomLabels(newLabels);
+
+    setDatePopup(null);
   };
-  const removeCustomLabel = () => {
-    if (!editingDate) return;
-    const next = { ...customLabels };
-    delete next[editingDate];
-    setCustomLabels(next);
-    setEditingDate(null);
-    setEditingText('');
+
+  const clearPopupDate = () => {
+    if (!datePopup) return;
+    const { [datePopup]: _1, ...s } = dateSchedules;
+    const { [datePopup]: _2, ...t } = dateTimes;
+    const { [datePopup]: _3, ...l } = customLabels;
+    setDateSchedules(s);
+    setDateTimes(t);
+    setCustomLabels(l);
+    setDatePopup(null);
   };
 
   const togglePrintSize = (size: string) =>
@@ -164,7 +208,8 @@ export default function ScheduleChangePage() {
       if (!tags.length) continue;
       const d = parseInt(date.split('-')[2]);
       const h = isHoliday(date);
-      const tagsLabel = tags.map(t => (showTimes && tagTimes[t]?.trim()) ? `${t}(${tagTimes[t].trim()})` : t).join(', ');
+      const timeNote = dateTimes[date]?.trim();
+      const tagsLabel = tags.map(t => t).join(', ') + (timeNote ? ` (${timeNote})` : '');
       summaryRows.push({ day: d, line: `${h ? `${d}일(${h.name})` : `${d}일`}: ${tagsLabel}` });
     }
     for (const [date, label] of Object.entries(customLabels)) {
@@ -188,12 +233,8 @@ export default function ScheduleChangePage() {
           events: events.trim(), printSizes,
           calendarText: calendarText.trim() || undefined,
           customLabels,
-          tagTimes: showTimes ? tagTimes : {},
+          dateTimes,
           templateType: designChoice || undefined,
-          clinicHours: [
-            weekdayHours.trim() && `평일 ${weekdayHours.trim()}`,
-            saturdayHours.trim() && `토요일 ${saturdayHours.trim()}`,
-          ].filter(Boolean).join(', ') || undefined,
           specialNote: specialNote.trim() || undefined,
           extraRequest: extraRequest.trim(), holidayReason: holidayReason.trim(),
           calendarFileUploadId: calendarFileUploadId || undefined,
@@ -275,19 +316,8 @@ export default function ScheduleChangePage() {
   }
 
   // ─── 메인 폼 ─────────────────────────────────────────────────────────────
-  const activeModeTag = activeMode
-    ? SCHEDULE_TAGS.find(t => t.label === activeMode) : null;
-
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      {/* 모드 미선택 토스트 */}
-      {showModeHint && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50
-                        bg-[#1E3A5F] text-white text-sm px-5 py-2.5 rounded-full shadow-lg
-                        flex items-center gap-2 whitespace-nowrap">
-          <span>👆</span> 위에서 종류를 먼저 선택해 주세요
-        </div>
-      )}
 
       {/* 헤더 */}
       <header className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10">
@@ -406,168 +436,33 @@ export default function ScheduleChangePage() {
             )}
           </section>
 
-          {/* STEP 3: 기본 진료시간 */}
-          <section className="rounded-2xl border-2 border-[#F97316] overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #FFF7ED 0%, #FFFBF5 100%)' }}>
-            <div className="px-5 pt-5 pb-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-[#EA580C] text-white text-xs font-bold flex items-center justify-center shrink-0">2</span>
-                  <div>
-                    <h3 className="font-semibold text-[#374151]">기본 진료시간을 알려주세요</h3>
-                    <p className="text-xs text-[#EA580C] font-medium mt-0.5">달력 디자인 제작에 꼭 필요해요</p>
-                  </div>
-                </div>
-                <span className="text-3xl select-none">🕐</span>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#6B7280] mb-1.5">
-                    평일 <span className="text-[#EA580C]">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={weekdayHours}
-                    onChange={e => setWeekdayHours(e.target.value)}
-                    placeholder="09:00~18:00"
-                    className="w-full h-12 px-3 rounded-xl border border-[#FED7AA] text-sm bg-white
-                               focus:outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-[#EA580C]/20 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#6B7280] mb-1.5">토요일</label>
-                  <input
-                    type="text"
-                    value={saturdayHours}
-                    onChange={e => setSaturdayHours(e.target.value)}
-                    placeholder="09:00~13:00"
-                    className="w-full h-12 px-3 rounded-xl border border-[#FED7AA] text-sm bg-white
-                               focus:outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-[#EA580C]/20 transition-all"
-                  />
-                </div>
-              </div>
-
-              <p className="mt-2.5 text-[11px] text-[#F97316] flex items-center gap-1">
-                <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-                점심시간이나 야간진료 시간도 있으면 특이사항 칸에 적어주세요
-              </p>
-            </div>
-          </section>
-
           {/* STEP 3: 진료일정 달력 */}
           <section ref={calendarRef} className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
             {/* 스텝 헤더 */}
             <div className="px-5 pt-5 pb-4 border-b border-[#F3F4F6]">
               <div className="flex items-center gap-2 mb-1">
-                <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center shrink-0">4</span>
+                <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center shrink-0">3</span>
                 <h3 className="font-semibold text-[#374151]">달력에 일정을 표시해 주세요</h3>
               </div>
-              <p className="text-sm text-[#6B7280] ml-8">① 아래에서 종류 선택 → ② 해당 날짜 탭</p>
+              <p className="text-sm text-[#6B7280] ml-8">날짜를 탭하면 일정 유형과 시간을 설정할 수 있어요</p>
             </div>
 
-            {/* 태그 선택 */}
-            <div className="px-5 py-4 bg-[#F8FAFC] border-b border-[#E5E7EB]">
-              <div className="flex flex-wrap gap-2 mb-3">
-                {SCHEDULE_TAGS.map(tag => {
-                  const isActive = activeMode === tag.label;
-                  return (
-                    <button
-                      key={tag.label}
-                      onClick={() => setActiveMode(isActive ? null : tag.label as ScheduleTag)}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold
-                                 transition-all active:scale-95"
-                      style={isActive ? {
-                        backgroundColor: tag.color,
-                        color: '#fff',
-                        boxShadow: `0 0 0 3px ${tag.color}40, 0 2px 8px ${tag.color}50`,
-                        transform: 'scale(1.05)',
-                      } : {
-                        backgroundColor: tag.bg,
-                        color: tag.color,
-                        border: `1.5px solid ${tag.color}30`,
-                      }}
-                    >
-                      {isActive && <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
-                      {tag.label}
-                    </button>
-                  );
-                })}
-                {/* 직접입력(커스텀 휴무) 모드 */}
-                <button
-                  onClick={() => setActiveMode(activeMode === '직접입력' ? null : '직접입력')}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95"
-                  style={activeMode === '직접입력' ? {
-                    backgroundColor: '#92400E', color: '#fff',
-                    boxShadow: '0 0 0 3px #92400E40, 0 2px 8px #92400E50', transform: 'scale(1.05)',
-                  } : {
-                    backgroundColor: '#FEF3C7', color: '#92400E', border: '1.5px solid #92400E30',
-                  }}
-                >
-                  ✏️ 직접입력
-                </button>
-                {/* 전체 지우기 */}
-                <button
-                  onClick={() => {
-                    if (Object.keys(dateSchedules).length === 0 && Object.keys(customLabels).length === 0) return;
-                    if (confirm('달력에 표시된 모든 일정을 초기화할까요?')) {
-                      setDateSchedules({});
-                      setCustomLabels({});
-                      setActiveMode(null);
-                    }
-                  }}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95
-                    bg-[#F3F4F6] text-[#6B7280] border border-[#E5E7EB] hover:bg-red-50 hover:text-red-500 hover:border-red-200"
-                >
-                  🧹 전체 지우기
-                </button>
-              </div>
-
-              {/* 활성 모드 표시줄 */}
-              {activeMode === '직접입력' ? (
-                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ backgroundColor: '#FEF3C7', color: '#92400E', border: '1.5px solid #92400E40' }}>
-                  <span className="text-base">✏️</span>
-                  직접입력 · 날짜를 탭해 사유(원장 휴가/세미나 등)를 적어 주세요
-                </div>
-              ) : activeMode && activeModeTag ? (
-                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{
-                    backgroundColor: activeModeTag.bg,
-                    color: activeModeTag.color,
-                    border: `1.5px solid ${activeModeTag.color}40`,
-                  }}>
-                  <span className="text-base">{activeModeTag.emoji}</span>
-                  {`${activeMode} · 이제 아래 달력에서 날짜를 탭해 주세요`}
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm text-[#9CA3AF] bg-white border border-[#E5E7EB]">
-                  <span>☝️</span> 위에서 일정 종류를 먼저 선택해 주세요
-                </div>
-              )}
-
-              {/* 달력 칸 시간 표기 토글 + 태그별 시간 입력 */}
-              <div className="mt-3 pt-3 border-t border-[#E5E7EB] space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input type="checkbox" checked={showTimes} onChange={e => setShowTimes(e.target.checked)} className="w-4 h-4 accent-[#2563EB]" />
-                  <span className="text-sm font-medium text-[#374151]">📅 달력 칸에 시간 표기</span>
-                  <span className="text-[11px] text-[#9CA3AF]">(태그별 시간)</span>
-                </label>
-                {showTimes && activeMode && activeMode !== '직접입력' && (
-                  <input
-                    value={tagTimes[activeMode] || ''}
-                    onChange={e => setTagTimes({ ...tagTimes, [activeMode]: e.target.value })}
-                    placeholder={`${activeMode} 시간 (선택) 예: ~13:00`}
-                    className="w-full h-10 px-3 rounded-xl border border-[#D1D5DB] text-sm
-                               focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
-                  />
-                )}
-                {showTimes && (!activeMode || activeMode === '직접입력') && (
-                  <p className="text-[11px] text-[#9CA3AF]">위에서 태그를 선택하면 그 태그의 시간을 입력할 수 있어요.</p>
-                )}
-              </div>
+            {/* 안내 + 전체 지우기 */}
+            <div className="px-5 py-3 bg-[#F8FAFC] border-b border-[#E5E7EB] flex items-center justify-between gap-3">
+              <p className="text-sm text-[#6B7280]">📅 날짜를 탭하면 일정과 시간을 설정할 수 있어요</p>
+              <button
+                onClick={() => {
+                  if (Object.keys(dateSchedules).length === 0 && Object.keys(customLabels).length === 0 && Object.keys(dateTimes).length === 0) return;
+                  if (confirm('달력에 표시된 모든 일정을 초기화할까요?')) {
+                    setDateSchedules({});
+                    setCustomLabels({});
+                    setDateTimes({});
+                  }
+                }}
+                className="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-white border border-[#E5E7EB] text-[#6B7280] hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all"
+              >
+                🧹 초기화
+              </button>
             </div>
 
             {/* 달력 */}
@@ -612,18 +507,13 @@ export default function ScheduleChangePage() {
                   const isSat = dayOfWeek === 6;
                   const primaryTag = tags[0] ? SCHEDULE_TAGS.find(s => s.label === tags[0]) : null;
                   const customLabel = customLabels[dateStr];
-                  const cellTime = showTimes ? (tags.map(tg => tagTimes[tg]?.trim()).find(Boolean) || '') : '';
+                  const cellTime = dateTimes[dateStr] || '';
 
                   return (
                     <button
                       key={day}
-                      onClick={() => applyModeToDate(dateStr)}
-                      className={`h-24 border-b border-r border-[#F3F4F6] flex flex-col items-center pt-1.5 pb-1
-                        relative transition-all
-                        ${activeMode
-                          ? 'hover:opacity-80 cursor-pointer'
-                          : 'cursor-pointer'}
-                      `}
+                      onClick={() => handleDateClick(dateStr)}
+                      className="h-24 border-b border-r border-[#F3F4F6] flex flex-col items-center pt-1.5 pb-1 relative transition-all hover:opacity-80 cursor-pointer"
                       style={primaryTag ? { backgroundColor: primaryTag.bg + '90' } : customLabel ? { backgroundColor: '#FEE2E290' } : {}}
                     >
                       <span className={`text-xs font-bold leading-none
@@ -805,39 +695,133 @@ export default function ScheduleChangePage() {
         </div>
       </main>
 
-      {/* 커스텀 휴무(직접입력) 편집 모달 */}
-      {editingDate && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-6"
-          onClick={() => { setEditingDate(null); setEditingText(''); }}>
-          <div className="bg-white rounded-2xl p-5 w-full max-w-xs space-y-4 shadow-xl"
-            onClick={e => e.stopPropagation()}>
-            <div>
-              <p className="text-sm font-bold text-[#374151]">{parseInt(editingDate.split('-')[2])}일 직접 입력</p>
-              <p className="text-xs text-[#6B7280] mt-0.5">예: 원장 휴가, 세미나, 강연 — 적은 그대로 달력에 표시됩니다</p>
-            </div>
-            <input
-              type="text"
-              value={editingText}
-              onChange={e => setEditingText(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') saveCustomLabel(); }}
-              placeholder="예: 원장 휴가"
-              autoFocus
-              className="w-full h-11 px-4 rounded-xl border border-[#D1D5DB] text-sm
-                         focus:outline-none focus:border-[#92400E] focus:ring-2 focus:ring-[#92400E]/20"
-            />
-            <div className="flex gap-2">
-              <button onClick={removeCustomLabel}
-                className="h-11 px-4 bg-white border border-[#D1D5DB] text-[#6B7280] rounded-lg text-sm font-medium">
-                삭제
-              </button>
-              <button onClick={saveCustomLabel}
-                className="flex-1 h-11 bg-[#92400E] text-white rounded-lg text-sm font-semibold hover:bg-[#7c360c]">
-                확인
-              </button>
+      {/* 날짜 일정 팝업 */}
+      {datePopup && (() => {
+        const hasTime = popupTimeStart || popupTimeEnd;
+        return (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center sm:items-center"
+            onClick={() => setDatePopup(null)}>
+            <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-sm shadow-2xl"
+              onClick={e => e.stopPropagation()}>
+
+              {/* 헤더 */}
+              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                <div>
+                  <p className="text-lg font-bold text-[#111827]">
+                    {calMonth}월 {parseInt(datePopup.split('-')[2])}일
+                  </p>
+                  <p className="text-xs text-[#9CA3AF] mt-0.5">일정을 설정해 주세요</p>
+                </div>
+                <button onClick={() => setDatePopup(null)}
+                  className="w-8 h-8 rounded-full bg-[#F3F4F6] flex items-center justify-center text-[#6B7280]">
+                  ✕
+                </button>
+              </div>
+
+              <div className="px-5 pb-5 space-y-5">
+                {/* 일정 유형 */}
+                <div>
+                  <p className="text-xs font-semibold text-[#6B7280] mb-2.5">일정 유형</p>
+                  <div className="flex flex-wrap gap-2">
+                    {SCHEDULE_TAGS.map(tag => {
+                      const isOn = popupTags.includes(tag.label);
+                      return (
+                        <button key={tag.label}
+                          onClick={() => setPopupTags(prev =>
+                            prev.includes(tag.label) ? prev.filter(t => t !== tag.label) : [...prev, tag.label]
+                          )}
+                          className="px-3.5 py-2 rounded-2xl text-sm font-semibold border-2 transition-all active:scale-95"
+                          style={isOn
+                            ? { backgroundColor: tag.color, color: '#fff', borderColor: tag.color }
+                            : { backgroundColor: tag.bg, color: tag.color, borderColor: 'transparent' }
+                          }
+                        >
+                          {tag.emoji} {tag.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 진료시간 변경 */}
+                <div>
+                  <p className="text-xs font-semibold text-[#6B7280] mb-2.5">
+                    이날 진료시간 변경
+                    <span className="font-normal text-[#9CA3AF] ml-1">(선택)</span>
+                  </p>
+
+                  {/* 빠른 선택 칩 */}
+                  <div className="grid grid-cols-4 gap-2 mb-3">
+                    {[
+                      { label: '오전만', emoji: '🌅', start: '09:00', end: '13:00' },
+                      { label: '단축', emoji: '⏰', start: '', end: '15:00' },
+                      { label: '야간', emoji: '🌙', start: '09:00', end: '21:00' },
+                      { label: '없음', emoji: '✕', start: '', end: '' },
+                    ].map(p => {
+                      const isOn = p.start === popupTimeStart && p.end === popupTimeEnd && (p.start || p.end);
+                      return (
+                        <button key={p.label}
+                          onClick={() => { setPopupTimeStart(p.start); setPopupTimeEnd(p.end); }}
+                          className={`flex flex-col items-center gap-0.5 py-2.5 rounded-2xl text-xs font-semibold transition-all active:scale-95
+                            ${isOn ? 'bg-[#2563EB] text-white shadow-md' : 'bg-[#F3F4F6] text-[#374151]'}`}
+                        >
+                          <span className="text-base leading-none">{p.emoji}</span>
+                          <span>{p.label}</span>
+                          {(p.start || p.end) && (
+                            <span className={`text-[10px] leading-none ${isOn ? 'text-blue-200' : 'text-[#9CA3AF]'}`}>
+                              {p.start && p.end ? `${p.start}~${p.end}` : p.end ? `~${p.end}` : ''}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* 시작/종료 시간 버튼 피커 */}
+                  <div className="bg-[#F9FAFB] rounded-2xl p-3 space-y-3">
+                    <HourPicker label="시작" value={popupTimeStart} onChange={setPopupTimeStart} />
+                    <div className="border-t border-[#E5E7EB]" />
+                    <HourPicker label="종료" value={popupTimeEnd} onChange={setPopupTimeEnd} />
+                  </div>
+                  {(popupTimeStart || popupTimeEnd) && (
+                    <p className="text-center text-sm font-bold text-[#2563EB] mt-2">
+                      {popupTimeStart || '--:--'} ~ {popupTimeEnd || '--:--'}
+                    </p>
+                  )}
+                </div>
+
+                {/* 달력 표기 사유 */}
+                <div>
+                  <label className="text-xs font-semibold text-[#6B7280] mb-2 block">
+                    달력 표기 사유
+                    <span className="font-normal text-[#9CA3AF] ml-1">(선택 · 예: 원장 세미나)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={popupCustom}
+                    onChange={e => setPopupCustom(e.target.value)}
+                    placeholder="예: 원장 학회, 건물 공사"
+                    className="w-full h-12 px-4 rounded-2xl border-2 border-[#E5E7EB] text-sm bg-[#F9FAFB]
+                               focus:outline-none focus:border-[#2563EB] focus:bg-white transition-all"
+                  />
+                </div>
+
+                {/* 버튼 */}
+                <div className="flex gap-2">
+                  <button onClick={clearPopupDate}
+                    className="flex-1 h-12 rounded-2xl text-sm font-semibold text-red-500 bg-red-50 active:scale-95 transition-all">
+                    초기화
+                  </button>
+                  <button onClick={savePopup}
+                    className="flex-[2] h-12 rounded-2xl text-sm font-semibold text-white bg-[#2563EB] shadow-md shadow-blue-200 active:scale-95 transition-all">
+                    저장하기
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <ReviewModal
         open={showReview}
@@ -848,13 +832,6 @@ export default function ScheduleChangePage() {
           { label: '성함', value: doctorName },
           { label: '대상월', value: `${calYear}년 ${calMonth}월` },
           { label: '디자인 시안', value: designChoice ? `시안 ${designChoice}` : '미선택' },
-          {
-            label: '기본 진료시간',
-            value: [
-              weekdayHours.trim() && `평일 ${weekdayHours.trim()}`,
-              saturdayHours.trim() && `토요일 ${saturdayHours.trim()}`,
-            ].filter(Boolean).join(', '),
-          },
           {
             label: '일정 표시 수',
             value: (() => {
@@ -868,10 +845,8 @@ export default function ScheduleChangePage() {
             value: Object.entries(customLabels).map(([d, l]) => `${parseInt(d.split('-')[2])}일 ${l}`).join(', '),
           },
           {
-            label: '달력 시간 표기',
-            value: showTimes
-              ? (Object.entries(tagTimes).filter(([, v]) => v.trim()).map(([k, v]) => `${k} ${v.trim()}`).join(', ') || 'ON (시간 미입력)')
-              : '',
+            label: '날짜별 시간 변경',
+            value: Object.entries(dateTimes).map(([d, t]) => `${parseInt(d.split('-')[2])}일 ${t}`).join(', '),
           },
           { label: '휴진 사유', value: holidayReason },
           { label: '이벤트', value: events },
