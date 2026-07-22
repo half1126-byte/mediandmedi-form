@@ -43,6 +43,9 @@ export default function ScheduleChangePage() {
   const [activeMode, setActiveMode] = useState<ActiveMode>(null);
   const [showModeHint, setShowModeHint] = useState(false);
 
+  const [weekdayHours, setWeekdayHours] = useState('');
+  const [saturdayHours, setSaturdayHours] = useState('');
+
   const [holidayReason, setHolidayReason] = useState('');
   const [events, setEvents] = useState('');
   const [printSizes, setPrintSizes] = useState<string[]>([]);
@@ -185,6 +188,10 @@ export default function ScheduleChangePage() {
           calendarText: calendarText.trim() || undefined,
           customLabels,
           tagTimes: showTimes ? tagTimes : {},
+          clinicHours: [
+            weekdayHours.trim() && `평일 ${weekdayHours.trim()}`,
+            saturdayHours.trim() && `토요일 ${saturdayHours.trim()}`,
+          ].filter(Boolean).join(', ') || undefined,
           specialNote: specialNote.trim() || undefined,
           extraRequest: extraRequest.trim(), holidayReason: holidayReason.trim(),
           calendarFileUploadId: calendarFileUploadId || undefined,
@@ -333,12 +340,63 @@ export default function ScheduleChangePage() {
             </div>
           </section>
 
-          {/* STEP 2: 진료일정 달력 */}
+          {/* STEP 2: 기본 진료시간 */}
+          <section className="rounded-2xl border-2 border-[#F97316] overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, #FFF7ED 0%, #FFFBF5 100%)' }}>
+            <div className="px-5 pt-5 pb-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-[#EA580C] text-white text-xs font-bold flex items-center justify-center shrink-0">2</span>
+                  <div>
+                    <h3 className="font-semibold text-[#374151]">기본 진료시간을 알려주세요</h3>
+                    <p className="text-xs text-[#EA580C] font-medium mt-0.5">달력 디자인 제작에 꼭 필요해요</p>
+                  </div>
+                </div>
+                <span className="text-3xl select-none">🕐</span>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#6B7280] mb-1.5">
+                    평일 <span className="text-[#EA580C]">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={weekdayHours}
+                    onChange={e => setWeekdayHours(e.target.value)}
+                    placeholder="09:00~18:00"
+                    className="w-full h-12 px-3 rounded-xl border border-[#FED7AA] text-sm bg-white
+                               focus:outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-[#EA580C]/20 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#6B7280] mb-1.5">토요일</label>
+                  <input
+                    type="text"
+                    value={saturdayHours}
+                    onChange={e => setSaturdayHours(e.target.value)}
+                    placeholder="09:00~13:00"
+                    className="w-full h-12 px-3 rounded-xl border border-[#FED7AA] text-sm bg-white
+                               focus:outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-[#EA580C]/20 transition-all"
+                  />
+                </div>
+              </div>
+
+              <p className="mt-2.5 text-[11px] text-[#F97316] flex items-center gap-1">
+                <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                점심시간이나 야간진료 시간도 있으면 특이사항 칸에 적어주세요
+              </p>
+            </div>
+          </section>
+
+          {/* STEP 3: 진료일정 달력 */}
           <section ref={calendarRef} className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
             {/* 스텝 헤더 */}
             <div className="px-5 pt-5 pb-4 border-b border-[#F3F4F6]">
               <div className="flex items-center gap-2 mb-1">
-                <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
+                <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center shrink-0">3</span>
                 <h3 className="font-semibold text-[#374151]">달력에 일정을 표시해 주세요</h3>
               </div>
               <p className="text-sm text-[#6B7280] ml-8">① 아래에서 종류 선택 → ② 해당 날짜 탭</p>
@@ -561,7 +619,7 @@ export default function ScheduleChangePage() {
           {/* STEP 3: 추가 정보 */}
           <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 space-y-5">
             <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
+              <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center shrink-0">4</span>
               <h3 className="font-semibold text-[#374151]">추가 정보</h3>
             </div>
 
@@ -723,6 +781,13 @@ export default function ScheduleChangePage() {
           { label: '치과명', value: clinicName },
           { label: '성함', value: doctorName },
           { label: '대상월', value: `${calYear}년 ${calMonth}월` },
+          {
+            label: '기본 진료시간',
+            value: [
+              weekdayHours.trim() && `평일 ${weekdayHours.trim()}`,
+              saturdayHours.trim() && `토요일 ${saturdayHours.trim()}`,
+            ].filter(Boolean).join(', '),
+          },
           {
             label: '일정 표시 수',
             value: (() => {
