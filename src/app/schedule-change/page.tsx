@@ -7,7 +7,7 @@ import ReviewModal from '@/components/ReviewModal';
 
 type ScheduleTag = '휴진' | '토요일진료' | '일요일진료' | '오전진료' | '오후진료' | '야간진료' | '공휴일진료';
 
-const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 6~22
+const HOURS = Array.from({ length: 19 }, (_, i) => i + 6); // 6~24
 
 function HourPicker({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   const parts = value ? value.split(':') : ['', '00'];
@@ -17,7 +17,7 @@ function HourPicker({ value, onChange, label }: { value: string; onChange: (v: s
     <div>
       <p className="text-[10px] font-semibold text-[#9CA3AF] mb-2 tracking-wide uppercase">{label}</p>
       <div className="flex items-center gap-2">
-        <div className="flex-1 min-w-0 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div className="flex-1 min-w-0 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x' }}>
           <div className="flex gap-1.5 pb-0.5 w-max">
             {HOURS.map(h => {
               const isOn = selH === h;
