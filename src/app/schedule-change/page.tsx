@@ -229,7 +229,17 @@ export default function ScheduleChangePage() {
     for (const [date, label] of Object.entries(customLabels)) {
       if (!label.trim()) continue;
       const d = parseInt(date.split('-')[2]);
-      summaryRows.push({ day: d, line: `${d}일: ${label.trim()}` });
+      const timeNote = dateTimes[date]?.trim();
+      const line = timeNote ? `${d}일: ${label.trim()} (${timeNote})` : `${d}일: ${label.trim()}`;
+      summaryRows.push({ day: d, line });
+    }
+    // 태그·사유 없이 시간만 설정된 날짜도 누락 없이 포함
+    const coveredDays = new Set(summaryRows.map(r => r.day));
+    for (const [date, time] of Object.entries(dateTimes)) {
+      const t = time.trim();
+      if (!t) continue;
+      const d = parseInt(date.split('-')[2]);
+      if (!coveredDays.has(d)) summaryRows.push({ day: d, line: `${d}일: 진료시간 ${t}` });
     }
     const scheduleSummary = summaryRows.sort((a, b) => a.day - b.day).map(r => r.line).join('\n');
 
