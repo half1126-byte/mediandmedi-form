@@ -449,15 +449,6 @@ export async function createScheduleChangeRecord(
   if (data.calendarText) {
     properties['달력 표기 필수내용 원문'] = { rich_text: [{ text: { content: (data.calendarText as string).substring(0, 1900) } }] };
   }
-  // 날짜별 진료시간 변경 (dateTimes: { "2025-08-15": "09:00~14:00", ... })
-  const dateTimes = (data.dateTimes as Record<string, string>) || {};
-  const dateTimesStr = Object.entries(dateTimes)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([d, t]) => `${parseInt(d.split('-')[2])}일 ${t}`)
-    .join(', ');
-  if (dateTimesStr) {
-    properties['진료시간'] = { rich_text: [{ text: { content: dateTimesStr.substring(0, 1900) } }] };
-  }
   if (data.specialNote) {
     properties['특이사항/병원요청'] = { rich_text: [{ text: { content: (data.specialNote as string).substring(0, 1900) } }] };
   }
