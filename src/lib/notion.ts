@@ -80,8 +80,7 @@ export async function createMainRecord(
     const existing = await findClinicByName(clinicName, dbId, true);
     if (existing) {
       const filled = filterFilledProps(coreProps, ['상태']);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await withRetry(() => notion.pages.update({ page_id: existing, properties: filled as any }));
+      await safePageUpdate(existing, filled);
       if (children.length > 2) await replacePageBody(existing, children);
       return existing;
     }
@@ -129,6 +128,30 @@ function filterFilledProps(
     if (isPropFilled(v)) out[k] = v;
   }
   return out;
+}
+
+// Notion pages.update는 DB 스키마에 없는 속성명이 포함되면 400 validation_error 반환.
+// 에러 메시지에서 속성명을 파싱해 제거하고 재시도 → DB 스키마 불일치에 자동 대응.
+async function safePageUpdate(pageId: string, props: Record<string, unknown>): Promise<void> {
+  const remaining = { ...props };
+  for (let attempt = 0; attempt < 15; attempt++) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await withRetry(() => notion.pages.update({ page_id: pageId, properties: remaining as any }));
+      return;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const match = msg.match(/Could not find property with name or id:\s*(.+?)(?:\s*\.|$)/i);
+      if (match) {
+        const bad = match[1].trim();
+        console.warn(`[safePageUpdate] removing unknown prop "${bad}" and retrying`);
+        delete remaining[bad];
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw new Error('[safePageUpdate] too many unknown properties, giving up');
 }
 
 // 업서트 시 본문 최신화: 기존 블록을 모두 보관(삭제)한 뒤 새 본문을 추가한다.
