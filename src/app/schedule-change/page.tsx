@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { isHoliday } from '@/data/holidays';
 import ReviewModal from '@/components/ReviewModal';
@@ -13,11 +13,20 @@ function HourPicker({ value, onChange, label }: { value: string; onChange: (v: s
   const parts = value ? value.split(':') : ['', '00'];
   const selH = parts[0] ? parseInt(parts[0]) : null;
   const selM = parts[1] || '00';
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scroll = useCallback((dir: 1 | -1) => {
+    scrollRef.current?.scrollBy({ left: dir * 120, behavior: 'smooth' });
+  }, []);
   return (
     <div>
       <p className="text-[10px] font-semibold text-[#9CA3AF] mb-2 tracking-wide uppercase">{label}</p>
-      <div className="flex items-center gap-2">
-        <div className="flex-1 min-w-0 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x' }}>
+      <div className="flex items-center gap-1.5">
+        {/* 왼쪽 화살표 */}
+        <button onClick={() => scroll(-1)}
+          className="shrink-0 w-8 h-10 rounded-xl bg-[#E5E7EB] text-[#6B7280] flex items-center justify-center hover:bg-[#D1D5DB] transition-all active:scale-90">
+          ‹
+        </button>
+        <div ref={scrollRef} className="flex-1 min-w-0 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x' }}>
           <div className="flex gap-1.5 pb-0.5 w-max">
             {HOURS.map(h => {
               const isOn = selH === h;
@@ -32,6 +41,11 @@ function HourPicker({ value, onChange, label }: { value: string; onChange: (v: s
             })}
           </div>
         </div>
+        {/* 오른쪽 화살표 */}
+        <button onClick={() => scroll(1)}
+          className="shrink-0 w-8 h-10 rounded-xl bg-[#E5E7EB] text-[#6B7280] flex items-center justify-center hover:bg-[#D1D5DB] transition-all active:scale-90">
+          ›
+        </button>
         <div className="flex flex-col gap-1 shrink-0">
           {['00', '30'].map(min => (
             <button key={min}
