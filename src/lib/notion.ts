@@ -54,8 +54,15 @@ export interface SubmitResult {
   taskResults?: { team: string; success: boolean; error?: string }[];
 }
 
-const NEW_TASK_DB_ID = '3a69a82d-b9c4-8214-8cfb-072eab74db61';
-const TASK_CHECKLIST_DB_ID = '2afe8c5c-c5e3-4d2c-b8aa-0dfc49c0792c';
+const NEW_TASK_DATABASE_ID = '97e9a82d-b9c4-8349-9bea-01e15d30e007';
+const TASK_CHECKLIST_DATABASE_ID = 'dd2371df-6b67-4572-8bc5-3d01765cde06';
+
+async function resolveDataSourceId(databaseId: string): Promise<string> {
+  const database = await withRetry(() => notion.databases.retrieve({ database_id: databaseId })) as any;
+  const dataSourceId = database.data_sources?.[0]?.id;
+  if (!dataSourceId) throw new Error(`데이터 소스를 찾을 수 없습니다: ${databaseId}`);
+  return dataSourceId;
+}
 const OPENING_ASSIGNEE_ID = '341d872b-594c-816e-9f46-000212797298';
 
 const OPENING_TASKS = [
@@ -96,9 +103,11 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
   if (!requested && generationState !== '생성완료') {
     throw new Error('신규 업무 생성이 체크되지 않은 거래처입니다.');
   }
-  const taskTitle = await titlePropertyName(NEW_TASK_DB_ID);
-  const checklistTitle = await titlePropertyName(TASK_CHECKLIST_DB_ID);
-  const query = await withRetry(() => notion.dataSources.query({ data_source_id: NEW_TASK_DB_ID, filter: { and: [
+  const taskSourceId = await resolveDataSourceId(NEW_TASK_DATABASE_ID);
+  const checklistSourceId = await resolveDataSourceId(TASK_CHECKLIST_DATABASE_ID);
+  const taskTitle = await titlePropertyName(taskSourceId);
+  const checklistTitle = await titlePropertyName(checklistSourceId);
+  const query = await withRetry(() => notion.dataSources.query({ data_source_id: taskSourceId, filter: { and: [
     { property: '관련거래처', relation: { contains: pageId } },
     { property: '대분류', select: { equals: '개원 세팅' } },
   ] }, page_size: 100 } as any));
@@ -121,7 +130,7 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
         existing += 1;
       } else {
         task = await withRetry(() => notion.pages.create({
-        parent: { database_id: NEW_TASK_DB_ID },
+        parent: { database_id: NEW_TASK_DATABASE_ID },
         properties: {
           [taskTitle]: { title: [{ text: { content: name } }] }, '관련거래처': { relation: [{ id: pageId }] },
           '거래처 단계': { select: { name: '신규개원' } }, '대분류': { select: { name: '개원 세팅' } },
@@ -134,7 +143,7 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
       }
 
       const checklistQuery = await withRetry(() => notion.dataSources.query({
-        data_source_id: TASK_CHECKLIST_DB_ID,
+        data_source_id: checklistSourceId,
         filter: { property: '관련 업무', relation: { contains: task.id } },
         page_size: 100,
       } as any));
@@ -142,7 +151,7 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
       let order = 1;
       for (const item of items) {
         if (existingChecklistNames.has(item)) { order += 1; continue; }
-        const checklistPage = await withRetry(() => notion.pages.create({ parent: { database_id: TASK_CHECKLIST_DB_ID }, properties: {
+        const checklistPage = await withRetry(() => notion.pages.create({ parent: { database_id: TASK_CHECKLIST_DATABASE_ID }, properties: {
           [checklistTitle]: { title: [{ text: { content: item } }] }, '완료': { checkbox: false },
           '관련 업무': { relation: [{ id: task.id }] }, '업무 키': { rich_text: [{ text: { content: task.id } }] },
           '순서': { number: order++ }, '필수': { checkbox: true },
@@ -150,7 +159,7 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
         createdChecklistPages.push(checklistPage.id);
       }
     }
-    const verify = await withRetry(() => notion.dataSources.query({ data_source_id: NEW_TASK_DB_ID, filter: { and: [
+    const verify = await withRetry(() => notion.dataSources.query({ data_source_id: taskSourceId, filter: { and: [
       { property: '관련거래처', relation: { contains: pageId } }, { property: '대분류', select: { equals: '개원 세팅' } },
     ] }, page_size: 100 } as any));
     const results = (verify as any).results || [];
@@ -189,11 +198,12 @@ export async function syncOpeningTaskCompletion(taskId: string): Promise<{
     throw new Error('개원 세팅 업무가 아닙니다.');
   }
 
+  const checklistSourceId = await resolveDataSourceId(TASK_CHECKLIST_DATABASE_ID);
   const checklistPages: any[] = [];
   let cursor: string | undefined;
   do {
     const response = await withRetry(() => notion.dataSources.query({
-      data_source_id: TASK_CHECKLIST_DB_ID,
+      data_source_id: checklistSourceId,
       filter: { property: '관련 업무', relation: { contains: taskId } },
       page_size: 100,
       ...(cursor ? { start_cursor: cursor } : {}),
