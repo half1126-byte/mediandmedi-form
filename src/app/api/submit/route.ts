@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createMainRecord, deriveContractTeams } from '@/lib/notion';
-import { generateTeamTasks } from '@/lib/team-tasks';
-import { generateOpeningSetup } from '@/lib/opening-setup';
+import { createMainRecord, ensureOpeningSetup } from '@/lib/notion';
 
-// 개원세팅 42건을 순차 생성(노션 rate-limit 회피 350ms 간격, 최대 ~30s)하므로
-// 기본 함수 타임아웃을 넘지 않도록 상향 (upload 라우트와 동일 기조).
-export const maxDuration = 60;
+// 거래처 본문 블록과 속성을 함께 저장하므로 기본 함수 타임아웃보다 여유 있게 둔다.
+export const maxDuration = 300;
 
 // lib/notion.ts와 동일 우선순위: NOTION_MEETING_API_KEY가 신 워크스페이스 키
 const isDemoMode =
@@ -15,7 +12,7 @@ const isDemoMode =
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { pin, step1, step6 } = body;
+    const { pin, step1 } = body;
 
     // 서버측 검증: 치과명 없으면 거부 (빈 거래처 페이지 생성 방지 — 폼 UI 우회/직접 호출 방어)
     if (!step1?.clinicName || !String(step1.clinicName).trim()) {
@@ -41,33 +38,16 @@ export async function POST(request: NextRequest) {
     // 실제 Notion 연동
     const pageId = await createMainRecord(body);
 
-    // 팀별 업무 자동 생성 (부분 실패 허용)
-    let taskResults: { team: string; taskName: string; success: boolean; error?: string }[] = [];
-    const clinicName = step1?.clinicName || '';
-    const services = step6?.services || [];
-
-    if (services.length > 0 && clinicName) {
-      taskResults = await generateTeamTasks(clinicName, services, pageId);
-    }
-
-    // 신규개원 세팅: 초기개원 패키지 체크 시에만 🏥개원세팅DB에 개원세팅 업무 자동 생성
-    // (멱등성으로 재제출 중복 방지, 계약 서비스별 범위 게이팅, 부분 실패 허용)
-    let openingResults: Awaited<ReturnType<typeof generateOpeningSetup>> = [];
-    if (step6?.isStarterPackage) {
-      try {
-        openingResults = await generateOpeningSetup(pageId, deriveContractTeams(body), step1?.openDate);
-      } catch (e) {
-        // 거래처·팀업무는 이미 생성됨 → 개원세팅 실패해도 200 유지
-        console.error('Opening setup generation error:', e);
-      }
-    }
+    // 업무 생성은 거래처DB의 `신규 업무 생성` 트리거를 단일 진입점으로 사용한다.
+    // 구형 팀업무DB/개원세팅DB에 직접 쓰면 현재 (신)업무DB 자동화와 중복되므로 생성하지 않는다.
+    const openingSetup = await ensureOpeningSetup(pageId);
 
     return NextResponse.json({
       success: true,
       pageId,
       pin,
-      taskResults,
-      openingResults,
+      taskResults: [],
+      openingResults: [openingSetup],
     });
   } catch (error) {
     console.error('Submit error:', error);
@@ -77,3 +57,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
