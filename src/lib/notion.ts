@@ -87,6 +87,15 @@ async function titlePropertyName(dataSourceId: string): Promise<string> {
 
 /** 웹앱 제출과 Notion 웹훅이 공유하는 신규개원 이벤트 처리기. */
 export async function ensureOpeningSetup(pageId: string): Promise<{ created: number; existing: number }> {
+  const clientPage = await withRetry(() => notion.pages.retrieve({ page_id: pageId })) as any;
+  const clientProperties = clientPage.properties || {};
+  const requested = clientProperties['신규 업무 생성']?.checkbox === true;
+  const generationState = clientProperties['업무 생성 상태']?.select?.name;
+
+  // 웹앱과 Notion 자동화 모두 동일한 트리거 조건을 사용한다.
+  if (!requested && generationState !== '생성완료') {
+    throw new Error('신규 업무 생성이 체크되지 않은 거래처입니다.');
+  }
   const taskTitle = await titlePropertyName(NEW_TASK_DB_ID);
   const checklistTitle = await titlePropertyName(TASK_CHECKLIST_DB_ID);
   const query = await withRetry(() => notion.dataSources.query({ data_source_id: NEW_TASK_DB_ID, filter: { and: [
@@ -149,8 +158,14 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
     const finalNames = new Set(results.map((page: any) => plainTitle(page, taskTitle)).filter((name: string) => standardNames.has(name as typeof OPENING_TASKS[number][0])));
     const missing = OPENING_TASKS.map(([name]) => name).filter((name) => !finalNames.has(name));
     if (missing.length) throw new Error(`표준 업무 생성 누락: ${missing.join(', ')}`);
+    const currentRelations = (clientProperties['(신)업무DB']?.relation || []).map((item: any) => item.id);
+    const standardTaskIds = results
+      .filter((page: any) => standardNames.has(plainTitle(page, taskTitle) as typeof OPENING_TASKS[number][0]))
+      .map((page: any) => page.id);
+    const relationIds = [...new Set([...currentRelations, ...standardTaskIds])];
     await safePageUpdate(pageId, {
-      '(신)업무DB': { relation: results.filter((page: any) => standardNames.has(plainTitle(page, taskTitle) as typeof OPENING_TASKS[number][0])).map((page: any) => ({ id: page.id })) },
+      // 기존 레거시 업무 Relation은 유지하고 표준 12개만 합친다.
+      '(신)업무DB': { relation: relationIds.map((id) => ({ id })) },
       '업무 생성 상태': { select: { name: '생성완료' } }, '업무 생성일': { date: { start: today() } }, '신규 업무 생성': { checkbox: false },
     });
     return { created: createdPages.length, existing };
@@ -159,6 +174,48 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
     for (const id of createdPages.reverse()) { try { await notion.pages.update({ page_id: id, archived: true }); } catch { /* 원래 오류 보존 */ } }
     throw error;
   }
+}
+
+/** 체크리스트 변경 웹훅에서 호출한다. 모든 항목 완료 시에만 업무를 완료 처리한다. */
+export async function syncOpeningTaskCompletion(taskId: string): Promise<{
+  taskId: string;
+  total: number;
+  completed: number;
+  updated: boolean;
+}> {
+  const task = await withRetry(() => notion.pages.retrieve({ page_id: taskId })) as any;
+  const properties = task.properties || {};
+  if (properties['대분류']?.select?.name !== '개원 세팅') {
+    throw new Error('개원 세팅 업무가 아닙니다.');
+  }
+
+  const checklistPages: any[] = [];
+  let cursor: string | undefined;
+  do {
+    const response = await withRetry(() => notion.dataSources.query({
+      data_source_id: TASK_CHECKLIST_DB_ID,
+      filter: { property: '관련 업무', relation: { contains: taskId } },
+      page_size: 100,
+      ...(cursor ? { start_cursor: cursor } : {}),
+    } as any)) as any;
+    checklistPages.push(...(response.results || []));
+    cursor = response.has_more ? response.next_cursor : undefined;
+  } while (cursor);
+
+  const completed = checklistPages.filter((page) => page.properties?.['완료']?.checkbox === true).length;
+  const allCompleted = checklistPages.length > 0 && completed === checklistPages.length;
+  const alreadyCompleted = properties['업무상태']?.status?.name === '완료';
+  if (allCompleted && !alreadyCompleted) {
+    await withRetry(() => notion.pages.update({
+      page_id: taskId,
+      properties: {
+        '업무상태': { status: { name: '완료' } },
+        '종료일': { date: { start: today() } },
+      } as any,
+    }));
+  }
+
+  return { taskId, total: checklistPages.length, completed, updated: allCompleted && !alreadyCompleted };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
