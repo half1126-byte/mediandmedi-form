@@ -364,7 +364,362 @@ export async function createOpeningSetupTask(task: {
           '상태': { select: { name: '대기' } },
           '거래처': { relation: [{ id: task.clinicPageId }] },
           ...(마감일 ? { '마감일': { date: { start: 마감일 } } } : {}),
-          ...(task.메모 ? …4016 tokens truncated…ent: region.city } }] };
+          ...(task.메모 ? { '메모': { rich_text: [{ text: { content: task.메모.substring(0, 1900) } }] } } : {}),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
+      })
+    );
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * 멱등성: 거래처(clinicPageId)에 개원세팅 업무가 이미 연결돼 있으면 true → 재제출 시 중복 생성 차단.
+ * 거래처 페이지의 '개원세팅' 양방향 관계를 읽어 판단(데이터소스 id 불필요).
+ * ⚠️ @notionhq/client v5는 databases.query 미지원 → 관계 읽기(pages.retrieve)로 구현.
+ * 조회 실패 시 false(신규 거래처는 관계가 비어 있으므로 생성 진행 — withRetry로 일시오류는 이미 재시도됨).
+ */
+export async function hasOpeningSetupTasks(clinicPageId: string): Promise<boolean> {
+  try {
+    const page = await withRetry(() => notion.pages.retrieve({ page_id: clinicPageId }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rel = ((page as any)?.properties?.['개원세팅']?.relation) ?? [];
+    return Array.isArray(rel) && rel.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 계약변경 폼 → 미팅 DB("미팅 기록")에 미팅 유형=계약변경 페이지 생성.
+ */
+export async function createChangeRecord(
+  data: Record<string, unknown>
+): Promise<string> {
+  const dbId = envTrim('NOTION_CHANGE_DB_ID');
+  if (!dbId) throw new Error('NOTION_CHANGE_DB_ID not configured');
+
+  const clinicName = (data.clinicName as string) || '';
+  const doctorName = (data.doctorName as string) || '';
+  const reason = (data.reason as string) || '';
+  const currentServices = (data.currentServices as string[]) || [];
+  const addServices = (data.addServices as string[]) || [];
+  const removeServices = (data.removeServices as string[]) || [];
+  const changeType =
+    addServices.length > 0 && removeServices.length > 0 ? '서비스 변경' :
+    removeServices.length > 0 ? '서비스 축소' :
+    '서비스 추가';
+
+  const agendaLines: string[] = [];
+  if (currentServices.length > 0) agendaLines.push(`현재 서비스: ${currentServices.join(', ')}`);
+  if (addServices.length > 0) agendaLines.push(`추가 요청: ${addServices.join(', ')}`);
+  if (removeServices.length > 0) agendaLines.push(`축소 요청: ${removeServices.join(', ')}`);
+  agendaLines.push(`변경 유형: ${changeType}`);
+  const agendaText = agendaLines.join('\n');
+
+  const dateStr = today();
+  const clinicPageId = clinicName ? await findClinicByName(clinicName, LEGACY_CLINICS_DB_ID) : null;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const properties: any = {
+    '미팅 제목': { title: [{ text: { content: `[계약변경] ${clinicName} · ${dateStr}` } }] },
+    '미팅 유형': { select: { name: '계약변경' } },
+    '일자': { date: { start: dateStr } },
+    '참석자(외부)': { rich_text: [{ text: { content: doctorName } }] },
+    '주요 안건': { rich_text: [{ text: { content: agendaText.substring(0, 1900) } }] },
+    '핵심 결정사항': { rich_text: [{ text: { content: reason.substring(0, 1900) } }] },
+    '액션 아이템': { rich_text: [{ text: { content: '마케팅팀 검토 → 계약상품 DB 반영' } }] },
+    '상태': { status: { name: '시작 전' } },
+  };
+  if (clinicPageId) {
+    properties['거래처'] = { relation: [{ id: clinicPageId }] };
+  }
+
+  const response = await withRetry(() =>
+    notion.pages.create({
+      parent: { database_id: dbId },
+      properties,
+    })
+  );
+
+  return response.id;
+}
+
+/**
+ * 진료일정 변경 폼 → DB개발(종광) "진료일정 DB"에 페이지 생성.
+ */
+export async function createScheduleChangeRecord(
+  data: Record<string, unknown>
+): Promise<string> {
+  const dbId = envTrim('NOTION_SCHEDULE_DB_ID');
+  if (!dbId) throw new Error('NOTION_SCHEDULE_DB_ID not configured');
+
+  const clinicName = (data.clinicName as string) || '';
+  const targetMonth = (data.targetMonth as string) || '';
+  const scheduleData = (data.scheduleData as string) || '';
+  const printSizes = (data.printSizes as string[]) || [];
+  const dateSchedulesRaw = (data.dateSchedulesRaw as Record<string, string[]>) || {};
+  const holidayReason = (data.holidayReason as string) || '';
+
+  const clinicPageId = clinicName ? await findClinicByName(clinicName, LEGACY_CLINICS_DB_ID) : null;
+
+  const TAG_TYPES = ['휴진', '토요일진료', '일요일진료', '오전진료', '오후진료', '야간진료', '공휴일진료'] as const;
+  const tagToDates: Record<string, string[]> = {};
+  for (const tag of TAG_TYPES) tagToDates[tag] = [];
+
+  for (const [dateStr, tags] of Object.entries(dateSchedulesRaw)) {
+    const day = parseInt(dateStr.split('-')[2]);
+    const label = `${day}일`;
+    for (const tag of tags as string[]) {
+      if (tagToDates[tag]) {
+        tagToDates[tag].push(label);
+      }
+    }
+  }
+
+  const sortDates = (arr: string[]) =>
+    arr.sort((a, b) => parseInt(a) - parseInt(b)).join(', ');
+
+  // 작업명(타이틀) = 거래처명만. 대상 연도/월은 별도 속성이라 제목에 월 중복 표기하지 않음.
+  const titleText = clinicName;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const properties: any = {
+    '작업명': { title: [{ text: { content: titleText } }] },
+    '성함': { rich_text: [{ text: { content: (data.doctorName as string) || '' } }] },
+    '제출일': { date: { start: today() } },
+    '처리상태_폼': { select: { name: '접수' } },
+  };
+
+  // 대상 연도/월: 폼이 보내는 calYear/calMonth 우선, 없으면 targetMonth 파싱.
+  // (폼은 targetMonth를 "2026년 7월" 형식으로 보내 기존 정규식 ^YYYY-MM$이 안 잡혔음 → 월별 필터 뷰 누락)
+  const calYear = data.calYear as number | string | undefined;
+  const calMonth = data.calMonth as number | string | undefined;
+  if (calYear && calMonth) {
+    properties['대상 연도'] = { select: { name: String(calYear) } };
+    properties['대상 월'] = { select: { name: String(parseInt(String(calMonth))) } };
+  } else if (targetMonth) {
+    const ym = targetMonth.match(/(\d{4})[년\s.\-]*(\d{1,2})/); // "2026-07" · "2026년 7월" 모두 허용
+    if (ym) {
+      properties['대상 연도'] = { select: { name: ym[1] } };
+      properties['대상 월'] = { select: { name: String(parseInt(ym[2])) } };
+    }
+  }
+
+  if (clinicPageId) {
+    properties['거래처'] = { relation: [{ id: clinicPageId }] };
+  }
+  if (scheduleData) {
+    properties['일정데이터'] = { rich_text: [{ text: { content: scheduleData.substring(0, 1900) } }] };
+  }
+  if (data.events) {
+    properties['이벤트'] = { rich_text: [{ text: { content: data.events as string } }] };
+  }
+
+  if (data.templateType) {
+    properties['템플릿 타입'] = { select: { name: data.templateType as string } };
+  }
+  if (printSizes.length > 0) {
+    properties['출력사이즈'] = { multi_select: printSizes.map((s) => ({ name: s })) };
+  }
+  if (data.calendarText) {
+    properties['달력 표기 필수내용 원문'] = { rich_text: [{ text: { content: (data.calendarText as string).substring(0, 1900) } }] };
+  }
+  if (data.specialNote) {
+    properties['특이사항/병원요청'] = { rich_text: [{ text: { content: (data.specialNote as string).substring(0, 1900) } }] };
+  }
+  if (data.extraRequest) {
+    properties['기타요청'] = { rich_text: [{ text: { content: (data.extraRequest as string).substring(0, 1900) } }] };
+  }
+
+  if (holidayReason) {
+    properties['휴진사유'] = { rich_text: [{ text: { content: holidayReason } }] };
+  }
+  if (tagToDates['휴진'].length > 0) properties['휴진일'] = textProp(sortDates(tagToDates['휴진']));
+  if (tagToDates['토요일진료'].length > 0) properties['토요일진료'] = textProp(sortDates(tagToDates['토요일진료']));
+  if (tagToDates['일요일진료'].length > 0) properties['일요일진료'] = textProp(sortDates(tagToDates['일요일진료']));
+  if (tagToDates['오전진료'].length > 0) properties['오전진료'] = textProp(sortDates(tagToDates['오전진료']));
+  if (tagToDates['오후진료'].length > 0) properties['오후진료'] = textProp(sortDates(tagToDates['오후진료']));
+  if (tagToDates['야간진료'].length > 0) properties['야간진료_변경'] = textProp(sortDates(tagToDates['야간진료']));
+  if (tagToDates['공휴일진료'].length > 0) properties['공휴일진료'] = textProp(sortDates(tagToDates['공휴일진료']));
+
+  const response = await withRetry(() =>
+    notion.pages.create({
+      parent: { database_id: dbId },
+      properties,
+    })
+  );
+
+  // 달력 이미지(노션에 직접 업로드한 file_upload)가 있으면 페이지 본문에 이미지 블록 추가.
+  // (FTP 폐기 → 노션 자체 파일 업로드. 클라이언트가 webp로 변환해 저용량으로 보냄)
+  const calendarFileUploadId = data.calendarFileUploadId as string | undefined;
+  if (calendarFileUploadId) {
+    try {
+      await withRetry(() =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (notion.blocks.children as any).append({
+          block_id: response.id,
+          children: [
+            {
+              object: 'block',
+              type: 'heading_3',
+              heading_3: { rich_text: [{ type: 'text', text: { content: '📅 진료일정 달력' } }] },
+            },
+            {
+              object: 'block',
+              type: 'image',
+              image: { type: 'file_upload', file_upload: { id: calendarFileUploadId } },
+            },
+          ],
+        })
+      );
+    } catch (e) {
+      console.warn('[calendar-image] 이미지 블록 추가 실패 (무시):', e);
+    }
+  }
+
+  return response.id;
+}
+
+/**
+ * 노션에 파일을 직접 업로드(file_upload)하고 그 id를 반환. (FTP 대체)
+ * 단일 파트 업로드 — 달력 webp처럼 작은 파일용.
+ */
+export async function uploadFileToNotion(buffer: Buffer, contentType: string): Promise<string> {
+  const ext = contentType.includes('png') ? 'png' : contentType.includes('jpeg') ? 'jpg' : 'webp';
+  const filename = `calendar.${ext}`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fu: any = await withRetry(() =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (notion as any).fileUploads.create({ filename, content_type: contentType })
+  );
+  await withRetry(() =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (notion as any).fileUploads.send({
+      file_upload_id: fu.id,
+      file: { filename, data: new Blob([new Uint8Array(buffer)], { type: contentType }) },
+    })
+  );
+  return fu.id as string;
+}
+
+function textProp(content: string) {
+  return { rich_text: [{ text: { content } }] };
+}
+
+function today(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+/**
+ * 거래처명으로 거래처DB에서 페이지 검색 → page ID 반환.
+ * dbIdOverride가 주어지면 해당 DB에서, 아니면 NOTION_MAIN_DB_ID에서 검색.
+ */
+async function findClinicByName(clinicName: string, dbIdOverride?: string, loose = false): Promise<string | null> {
+  const dbId = dbIdOverride || envTrim('NOTION_MAIN_DB_ID');
+  if (!dbId || !clinicName) return null;
+  try {
+    const res = await withRetry(() =>
+      notion.search({
+        query: normalizeClinicName(clinicName),
+        filter: { value: 'page', property: 'object' },
+        page_size: 10,
+      })
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const candidates = (res.results as any[]).filter((p) =>
+      p.parent?.database_id?.replace(/-/g, '') === dbId.replace(/-/g, '')
+    );
+
+    // 1차: 입력값 그대로 정확 일치 (사용자가 의도한 정확한 표기)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const exact = candidates.find((p: any) => {
+      const titleArr = p.properties?.['거래처명']?.title || p.properties?.['title']?.title || [];
+      return (titleArr[0]?.plain_text || '') === clinicName;
+    });
+    if (exact) return exact.id;
+
+    // 2차: 정규화 일치 (앞뒤·다중 공백 차이만 무시)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const normalized = candidates.find((p: any) => {
+      const titleArr = p.properties?.['거래처명']?.title || p.properties?.['title']?.title || [];
+      return clinicNamesMatch(titleArr[0]?.plain_text || '', clinicName);
+    });
+    if (normalized) return normalized.id;
+
+    // 3차(loose, 업서트 전용): 공백 제거 + 끝 '의원' 제거 후 비교
+    // → 재제출 시 "○○치과" vs "○○치과의원" 표기차를 같은 거래처로 인식
+    if (loose) {
+      const looseKey = (s: string) => s.replace(/\s/g, '').replace(/의원$/, '');
+      const target = looseKey(clinicName);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const lm = candidates.find((p: any) => {
+        const titleArr = p.properties?.['거래처명']?.title || p.properties?.['title']?.title || [];
+        return looseKey(titleArr[0]?.plain_text || '') === target;
+      });
+      if (lm) return lm.id;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Notion 페이지 단건 조회. 존재하지 않거나 권한 없을 때 null 반환.
+ */
+export async function getPageData(pageId: string): Promise<unknown | null> {
+  try {
+    return await withRetry(() => notion.pages.retrieve({ page_id: pageId }));
+  } catch {
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 거래처 properties / page body 빌더 (신 "거래처 DB" 스키마)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildMainProperties(data: Record<string, unknown>): Record<string, unknown> {
+  const s1 = (data.step1 || {}) as Record<string, unknown>;
+  const s2 = (data.step2 || {}) as Record<string, unknown>;
+  const s3 = (data.step3 || {}) as Record<string, unknown>;
+  const s4 = (data.step4 || {}) as Record<string, unknown>;
+  const s5 = (data.step5 || {}) as Record<string, unknown>;
+  const s6 = (data.step6 || {}) as Record<string, unknown>;
+  const region = (s1.region || {}) as Record<string, string>;
+
+  const addressParts = [region.district, region.dong, s1.address as string]
+    .filter(Boolean)
+    .join(' ');
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const props: any = {
+    '거래처명': { title: [{ text: { content: (s1.clinicName as string) || '' } }] },
+    '상태': { status: { name: '계약전' } },
+    '업종': { select: { name: '치과' } },
+    '관계유형': { select: { name: '클라이언트' } },
+    '폼 제출일': { date: { start: today() } },
+    // 현재 표준 개원세팅 자동화의 단일 트리거.
+    '신규 업무 생성': { checkbox: true },
+    '업무 생성 상태': { select: { name: '미생성' } },
+  };
+
+  if (s1.doctorName) {
+    props['원장명'] = { rich_text: [{ text: { content: s1.doctorName as string } }] };
+  }
+  if (s1.phone) {
+    props['대표 전화'] = { rich_text: [{ text: { content: s1.phone as string } }] };
+  }
+  if (addressParts) {
+    props['주소'] = { rich_text: [{ text: { content: addressParts } }] };
+  }
+  if (region.city) {
+    props['지역'] = { rich_text: [{ text: { content: region.city } }] };
   }
   if (s1.openDate) {
     props['개원예정일'] = { date: { start: s1.openDate as string } };
@@ -773,4 +1128,3 @@ function collectFiles(data: Record<string, unknown>): { label: string; urls: str
   }
   return results;
 }
-
