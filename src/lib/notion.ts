@@ -63,7 +63,6 @@ async function resolveDataSourceId(databaseId: string): Promise<string> {
   if (!dataSourceId) throw new Error(`데이터 소스를 찾을 수 없습니다: ${databaseId}`);
   return dataSourceId;
 }
-const OPENING_ASSIGNEE_ID = '341d872b-594c-816e-9f46-000212797298';
 
 const OPENING_TASKS = [
   ['담당자 초대 및 첫 인사', ['병원 운영 담당자와 원장 연락처 확인', '업무용 소통방 개설 및 담당자 초대', '담당 범위와 응답 가능 시간 안내', '첫 인사 및 진행 일정 공유', '참여자 확인 이력 저장']],
@@ -92,6 +91,36 @@ async function titlePropertyName(dataSourceId: string): Promise<string> {
   return found[0];
 }
 
+async function openingAssigneeId(clientProperties: any): Promise<string> {
+  const marketerRelations = clientProperties['담당마케터']?.relation || [];
+  if (marketerRelations.length !== 1) {
+    throw new Error(`담당마케터를 정확히 1명 지정해야 합니다. 현재 ${marketerRelations.length}명입니다.`);
+  }
+
+  const marketerPage = await withRetry(() => notion.pages.retrieve({ page_id: marketerRelations[0].id })) as any;
+  const marketerName = plainTitle(marketerPage, '사람명');
+  if (!marketerName) throw new Error('담당마케터 사람DB 페이지에서 사람명을 확인할 수 없습니다.');
+
+  const team = marketerPage.properties?.['소속팀']?.select?.name;
+  const employment = marketerPage.properties?.['재직상태']?.select?.name;
+  if (team !== '마케팅팀' || employment !== '재직') {
+    throw new Error(`담당마케터 ${marketerName}은(는) 재직 중인 마케팅팀 구성원이 아닙니다.`);
+  }
+
+  const matches: any[] = [];
+  let cursor: string | undefined;
+  do {
+    const response = await withRetry(() => notion.users.list({ start_cursor: cursor, page_size: 100 }));
+    matches.push(...response.results.filter((user: any) => user.type === 'person' && user.name?.trim() === marketerName));
+    cursor = response.has_more ? response.next_cursor || undefined : undefined;
+  } while (cursor);
+
+  if (matches.length !== 1) {
+    throw new Error(`담당마케터 ${marketerName}과(와) 일치하는 Notion 사용자가 ${matches.length}명입니다.`);
+  }
+  return matches[0].id;
+}
+
 /** 웹앱 제출과 Notion 웹훅이 공유하는 신규개원 이벤트 처리기. */
 export async function ensureOpeningSetup(pageId: string): Promise<{ created: number; existing: number }> {
   const clientPage = await withRetry(() => notion.pages.retrieve({ page_id: pageId })) as any;
@@ -103,6 +132,7 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
   if (!requested && generationState !== '생성완료') {
     throw new Error('신규 업무 생성이 체크되지 않은 거래처입니다.');
   }
+  const assigneeId = await openingAssigneeId(clientProperties);
   const taskSourceId = await resolveDataSourceId(NEW_TASK_DATABASE_ID);
   const checklistSourceId = await resolveDataSourceId(TASK_CHECKLIST_DATABASE_ID);
   const taskTitle = await titlePropertyName(taskSourceId);
@@ -135,7 +165,7 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
           [taskTitle]: { title: [{ text: { content: name } }] }, '관련거래처': { relation: [{ id: pageId }] },
           '거래처 단계': { select: { name: '신규개원' } }, '대분류': { select: { name: '개원 세팅' } },
           '업무상태': { status: { name: '요청접수' } }, '우선순위': { select: { name: '보통' } },
-          '담당팀': { select: { name: '마케팅팀' } }, '담당자': { people: [{ id: OPENING_ASSIGNEE_ID }] },
+          '담당팀': { select: { name: '마케팅팀' } }, '담당자': { people: [{ id: assigneeId }] },
         } as any,
         children: [{ object: 'block', type: 'callout', callout: { icon: { type: 'emoji', emoji: '🎯' }, rich_text: [{ type: 'text', text: { content: `${name} 업무를 완료하고 결과 증빙을 저장합니다.` } }] } }] as any,
         }));
