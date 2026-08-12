@@ -96,7 +96,7 @@ export default function ScheduleChangePage() {
   const [dateSchedules, setDateSchedules] = useState<Record<string, ScheduleTag[]>>({});
   const [dateTimes, setDateTimes] = useState<Record<string, string>>({});
 
-  const [designChoice, setDesignChoice] = useState<'A' | 'B' | 'C' | 'D' | ''>('');
+  const [designChoice, setDesignChoice] = useState<'A' | 'B' | 'C' | 'D' | 'E' | ''>('');
 
   const [holidayReason, setHolidayReason] = useState('');
   const [events, setEvents] = useState('');
@@ -407,12 +407,13 @@ export default function ScheduleChangePage() {
             </div>
 
             <div className="p-4 grid grid-cols-2 gap-3">
-              {(['A', 'B', 'C', 'D'] as const).map(letter => {
+              {(['A', 'B', 'C', 'D', 'E'] as const).map(letter => {
                 const meta: Record<string, { desc: string; accent: string }> = {
                   A: { desc: '클래식 (레드·블루 포인트)', accent: '#DC2626' },
                   B: { desc: '봄·축제 (하늘색·핑크)', accent: '#EC4899' },
                   C: { desc: '붓터치 수채화', accent: '#1E3A5F' },
                   D: { desc: '여름·바다', accent: '#0EA5E9' },
+                  E: { desc: '시안 E', accent: '#7C3AED' },
                 };
                 const { desc, accent } = meta[letter];
                 const isSelected = designChoice === letter;
@@ -428,7 +429,7 @@ export default function ScheduleChangePage() {
                     <div className="w-full aspect-square bg-[#F8FAFC] overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={`/designs/schedule_${letter}.png`}
+                        src={`/designs/진료일정_시안_${letter}.jpg`}
                         alt={`시안 ${letter}`}
                         className="w-full h-full object-cover"
                       />
