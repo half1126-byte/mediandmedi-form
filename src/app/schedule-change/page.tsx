@@ -409,11 +409,11 @@ export default function ScheduleChangePage() {
             <div className="p-4 grid grid-cols-2 gap-3">
               {(['A', 'B', 'C', 'D', 'E'] as const).map(letter => {
                 const meta: Record<string, { desc: string; accent: string }> = {
-                  A: { desc: '클래식 (레드·블루 포인트)', accent: '#DC2626' },
-                  B: { desc: '봄·축제 (하늘색·핑크)', accent: '#EC4899' },
-                  C: { desc: '붓터치 수채화', accent: '#1E3A5F' },
-                  D: { desc: '여름·바다', accent: '#0EA5E9' },
-                  E: { desc: '시안 E', accent: '#7C3AED' },
+                  A: { desc: '단풍·정자', accent: '#DC2626' },
+                  B: { desc: '보름달·한옥', accent: '#EC4899' },
+                  C: { desc: '학·전통문양', accent: '#1E3A5F' },
+                  D: { desc: '감나무·노을', accent: '#0EA5E9' },
+                  E: { desc: '보름달·풍등', accent: '#7C3AED' },
                 };
                 const { desc, accent } = meta[letter];
                 const isSelected = designChoice === letter;
