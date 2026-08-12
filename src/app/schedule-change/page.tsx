@@ -353,7 +353,6 @@ export default function ScheduleChangePage() {
           </button>
           <div className="text-center">
             <h2 className="text-base font-semibold text-[#374151]">진료일정 변경</h2>
-            <p className="text-[10px] text-[#9CA3AF]">📅 매월 8일까지 제출해 주세요</p>
           </div>
           <div className="w-10" />
         </div>
