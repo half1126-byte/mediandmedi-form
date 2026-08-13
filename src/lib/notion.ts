@@ -561,19 +561,22 @@ export async function createScheduleChangeRecord(
   const scheduleData = (data.scheduleData as string) || '';
   const printSizes = (data.printSizes as string[]) || [];
   const dateSchedulesRaw = (data.dateSchedulesRaw as Record<string, string[]>) || {};
+  const dateTimes = (data.dateTimes as Record<string, string>) || {};
   const holidayReason = (data.holidayReason as string) || '';
 
   const clinicPageId = clinicName ? await findClinicByName(clinicName, LEGACY_CLINICS_DB_ID) : null;
 
   const TAG_TYPES = ['휴진', '토요일진료', '일요일진료', '오전진료', '오후진료', '야간진료', '공휴일진료'] as const;
+  const TIMED_TAGS = new Set<string>(['토요일진료', '일요일진료', '야간진료']);
   const tagToDates: Record<string, string[]> = {};
   for (const tag of TAG_TYPES) tagToDates[tag] = [];
 
   for (const [dateStr, tags] of Object.entries(dateSchedulesRaw)) {
     const day = parseInt(dateStr.split('-')[2]);
-    const label = `${day}일`;
+    const time = dateTimes[dateStr]?.trim();
     for (const tag of tags as string[]) {
       if (tagToDates[tag]) {
+        const label = TIMED_TAGS.has(tag) && time ? `${day}일 ${time}` : `${day}일`;
         tagToDates[tag].push(label);
       }
     }
