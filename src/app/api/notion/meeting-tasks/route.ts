@@ -37,7 +37,7 @@ function findPageId(value: unknown): string | undefined {
 }
 
 export async function POST(request: NextRequest) {
-  const secret = (process.env.NOTION_AUTOMATION_SECRET || '').trim();
+  const secret = (process.env.MEETING_AUTOMATION_SECRET || process.env.NOTION_AUTOMATION_SECRET || '').trim();
   if (!secret || request.headers.get('x-automation-secret') !== secret) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
