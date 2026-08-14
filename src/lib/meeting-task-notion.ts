@@ -57,7 +57,7 @@ export async function ensureMeetingTasks(meetingId: string): Promise<{ created: 
     const meeting = await notion.pages.retrieve({ page_id: meetingId }) as AnyPage;
     const props = meeting.properties || {};
 
-    if (props['업무 생성 요청']?.checkbox !== true) throw new Error('업무 생성 요청이 체크되지 않았습니다.');
+    if (props['업무 생성 요청']?.checkbox !== true) return { created: 0, existing: 0 };
     if (props['상태']?.status?.name !== '완료') throw new Error('미팅 상태가 완료일 때만 업무를 생성할 수 있습니다.');
 
     const clients = props['Related to 거래처DB (미팅 기록)']?.relation || [];
