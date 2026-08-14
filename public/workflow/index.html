@@ -183,7 +183,7 @@
 
   <nav aria-label="문서 목차">
     <div class="wrap">
-      <a href="#client">거래처 접수</a><a href="#opening">개원 세팅</a><a href="#meeting">미팅→업무 완료</a><a href="#guard">안전장치</a><a href="#owner">배정 규칙</a><a href="#complete">완료 동기화</a><a href="#screens">실제 화면</a><a href="#qa">QA·제한</a>
+      <a href="#client">거래처 접수</a><a href="#opening">개원 세팅</a><a href="#meeting">미팅→업무 완료</a><a href="#guard">안전장치</a><a href="#owner">배정 규칙</a><a href="#complete">완료 동기화</a><a href="#writers">외주작가</a><a href="#screens">실제 화면</a><a href="#qa">QA·제한</a>
     </div>
   </nav>
 
@@ -294,9 +294,40 @@
       </div>
     </section>
 
+    <section id="writers">
+      <div class="wrap">
+        <div class="section-head"><div class="section-num">08 / OUTSOURCED WRITERS</div><div><h2>외주작가 배정부터<br>발행·정산까지</h2><p class="lede">바이럴·블로그 원고 업무는 내부 업무 생성에서 끝나지 않습니다. 계약 건수와 자료 적합성을 확인한 뒤 작가에게 배정하고, 납품·검수·발행·정산까지 하나의 운영 경로로 추적합니다.</p></div></div>
+        <div class="flow">
+          <article class="node"><span class="tag">WRITER 1</span><h3>외주 원고 판정</h3><p>업무 유형이 정보성·임상 블로그 원고인지 확인하고 내부 작성·외주작가·대행업체를 구분합니다.</p></article>
+          <article class="node"><span class="tag">WRITER 2</span><h3>계약·배정량 확인</h3><p>거래처 계약 건수, 현재 월 작업량, 이월 건수, 계약 종료 여부를 기준표와 대조합니다.</p></article>
+          <article class="node"><span class="tag">WRITER 3</span><h3>자료 적합성 검수</h3><p>MNM이 누락·오전달·명백한 중복과 대상 거래처를 확인합니다. 작가 편의를 위한 PPT 재가공은 하지 않습니다.</p></article>
+          <article class="node"><span class="tag">WRITER 4</span><h3>작가 배정</h3><p>작가 마스터의 전문 분야·담당 거래처·가용 건수와 개인 시트를 확인해 정확히 한 명에게 배정합니다.</p></article>
+          <article class="node"><span class="tag">WRITER 5</span><h3>작업 지시</h3><p>원자료 링크, 거래처, 원고 유형, 건수, 마감일, 가이드, 결과물 폴더를 하나의 업무에 연결합니다.</p></article>
+        </div>
+        <div class="flow" style="margin-top:18px">
+          <article class="node"><span class="tag">WRITER 6</span><h3>작가 전처리·작성</h3><p>작가가 ZIP 해제, 이미지 확인·선별, 필요한 배열, 임상 해석과 원고 작성을 수행합니다.</p></article>
+          <article class="node"><span class="tag">WRITER 7</span><h3>납품·오류 보고</h3><p>지정 폴더에 결과물을 업로드합니다. 작업 불가능 자료는 임의 추측하지 않고 사유와 함께 반려합니다.</p></article>
+          <article class="node"><span class="tag">WRITER 8</span><h3>내부 검수·수정</h3><p>가이드 준수, 의료광고 표현, 거래처·이미지 일치, 중복 원고를 확인하고 수정 이력을 남깁니다.</p></article>
+          <article class="node"><span class="tag">WRITER 9</span><h3>승인·발행</h3><p>최종 승인된 원고만 발행하고 발행 링크와 완료일을 기록합니다. 재작업은 별도 상태로 추적합니다.</p></article>
+          <article class="node"><span class="tag">WRITER 10</span><h3>월말 대조·정산</h3><p>계약표·중앙 배정표·작가 개인 시트·발행 건수를 대조해 누락·과다·오기를 해결한 뒤 정산합니다.</p></article>
+        </div>
+        <div class="section-head" style="margin-top:64px"><div class="section-num">R&amp;R</div><div><h2>회사와 작가의 책임 경계</h2><p class="lede">기준은 단순합니다. MNM은 정상적인 원자료와 고객 관계를 책임지고, 작가는 그 자료로 결과물을 만드는 제작 과정을 책임집니다.</p></div></div>
+        <table class="assign">
+          <thead><tr><th>구분</th><th>MNM 내부 책임</th><th>외주작가 책임</th><th>금지·예외</th></tr></thead>
+          <tbody>
+            <tr><td>자료</td><td>수령·누락·오전달·명백한 중복 확인</td><td>다운로드·압축 해제·이미지 확인·선별</td><td>내부가 작가 편의를 위해 PPT를 재제작하지 않음</td></tr>
+            <tr><td>고객 대응</td><td>자료 부족·오류 시 거래처에 재요청</td><td>작업 중 발견한 문제를 내부 담당자에게 보고</td><td>작가가 거래처와 직접 해결하거나 추측하지 않음</td></tr>
+            <tr><td>제작</td><td>가이드·마감·결과물 폴더 제공</td><td>필요한 배열·임상 해석·기획·원고 작성·납품</td><td>치과에 특정 제출 형식이나 PPT를 강제하지 않음</td></tr>
+            <tr><td>관리</td><td>계약·배정·발행·정산 DB와 과거 사용 이력 관리</td><td>본인 배정 업무의 진행 상태와 결과물 관리</td><td>작가에게 회사 전체 DB 정리나 과거 전수대조를 전가하지 않음</td></tr>
+          </tbody>
+        </table>
+        <div class="warning"><strong>반려·중단 조건:</strong> 환자·증례 구분 불가, 비정상적인 대량 파일, 계약 종료 거래처, 계약과 배정 건수 불일치, 담당 작가 미확정, 중복·누락·작가명 오기가 있으면 발행이나 정산으로 넘기지 않습니다. 내부 담당자가 원인을 해결한 뒤 다시 배정합니다.</div>
+      </div>
+    </section>
+
     <section id="screens">
       <div class="wrap">
-        <div class="section-head"><div class="section-num">08 / ACTUAL FLOW</div><div><h2>웹앱 입력부터<br>Notion 업무 실행까지</h2><p class="lede">아래 화면을 위에서 아래로 읽으면 실제 운영 순서가 됩니다. 거래처의 웹앱 입력이 거래처DB에 저장되고, 미팅 검토를 거쳐 (신)업무DB의 실행 업무로 이어집니다.</p></div></div>
+        <div class="section-head"><div class="section-num">09 / ACTUAL FLOW</div><div><h2>웹앱 입력부터<br>Notion 업무 실행까지</h2><p class="lede">아래 화면을 위에서 아래로 읽으면 실제 운영 순서가 됩니다. 거래처의 웹앱 입력이 거래처DB에 저장되고, 미팅 검토를 거쳐 (신)업무DB의 실행 업무로 이어집니다.</p></div></div>
         <div class="screen-note"><strong>🔒 공개 안전본</strong><span>웹앱은 빈 입력 화면이며, Notion은 실제 거래처명·구성원명·업무 행을 캡처에서 제외했습니다.</span></div>
         <div class="screens">
           <figure class="shot">
@@ -321,7 +352,7 @@
 
     <section id="qa">
       <div class="wrap">
-        <div class="section-head"><div class="section-num">09 / QA</div><div><h2>현재 검증 결과와 남은 일</h2><p class="lede">Vercel 배포와 Notion 웹훅 연결은 완료되었습니다. 운영 전 실제 샘플 미팅 1건으로 종단 간 검수하는 것이 마지막 단계입니다.</p></div></div>
+        <div class="section-head"><div class="section-num">10 / QA</div><div><h2>현재 검증 결과와 남은 일</h2><p class="lede">Vercel 배포와 Notion 웹훅 연결은 완료되었습니다. 운영 전 실제 샘플 미팅 1건으로 종단 간 검수하는 것이 마지막 단계입니다.</p></div></div>
         <div class="qa-grid">
           <ul class="checklist">
             <li>미팅 전용 API 배포 및 Vercel 배포 성공</li>
