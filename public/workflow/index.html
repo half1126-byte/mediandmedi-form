@@ -182,7 +182,7 @@
 
   <nav aria-label="문서 목차">
     <div class="wrap">
-      <a href="#client">거래처 접수</a><a href="#opening">개원 세팅</a><a href="#meeting">미팅 업무화</a><a href="#guard">안전장치</a><a href="#owner">배정 규칙</a><a href="#complete">완료 동기화</a><a href="#screens">실제 화면</a><a href="#qa">QA·제한</a>
+      <a href="#client">거래처 접수</a><a href="#opening">개원 세팅</a><a href="#meeting">미팅→업무 완료</a><a href="#guard">안전장치</a><a href="#owner">배정 규칙</a><a href="#complete">완료 동기화</a><a href="#screens">실제 화면</a><a href="#qa">QA·제한</a>
     </div>
   </nav>
 
@@ -215,12 +215,27 @@
 
     <section id="meeting">
       <div class="wrap">
-        <div class="section-head"><div class="section-num">03 / MEETING</div><div><h2>녹음과 수기,<br>하나의 승인 경로</h2><p class="lede">원본 본문이나 녹취를 즉시 업무로 만들지 않습니다. 두 입력 방식 모두 정리된 `액션 아이템`을 거쳐야 합니다.</p></div></div>
+        <div class="section-head"><div class="section-num">03 / MEETING → DONE</div><div><h2>미팅 기록부터<br>업무분배·완료까지</h2><p class="lede">녹음과 수기 모두 같은 검토 관문을 통과합니다. 사람이 실행할 내용을 확정하고 승인한 뒤에만 업무가 생성되며, 체크리스트가 100%가 되어야 종료됩니다.</p></div></div>
         <div class="split">
-          <article class="panel record"><h3>🎙 녹음 기반</h3><ol><li>Notion 음성 메모·녹음 파일</li><li>받아쓰기 및 AI 요약</li><li>확정된 사내 실행 항목 추출</li><li>`액션 아이템` 속성에 한 업무당 한 줄</li></ol></article>
-          <article class="panel manual"><h3>✍️ 자유 수기</h3><ol><li>미팅 본문은 자유롭게 작성</li><li>결정·검토·아이디어를 구분</li><li>실행 확정 항목만 사람이 정리</li><li>`액션 아이템` 속성에 한 업무당 한 줄</li></ol></article>
+          <article class="panel record"><h3>🎙 녹음으로 시작</h3><ol><li>Notion 음성 메모 또는 녹음 파일 저장</li><li>받아쓰기·요약으로 논의 내용을 구조화</li><li>결정사항과 사내 실행 항목 후보를 추출</li><li>담당자가 원문과 비교해 액션 아이템을 확정</li></ol></article>
+          <article class="panel manual"><h3>✍️ 수기로 시작</h3><ol><li>미팅 본문은 형식 없이 자유롭게 작성 가능</li><li>담당자가 결정·요청·검토·아이디어를 구분</li><li>실행이 확정된 항목만 액션 아이템으로 이동</li><li>업무 하나당 한 줄로 정리하고 모호한 표현 제거</li></ol></article>
         </div>
-        <div class="merge"><strong>공통 승인점</strong><br>사람이 내용을 검토한 뒤 `상태=완료` + `업무 생성 요청=체크`</div>
+        <div class="merge"><strong>공통 승인점</strong><br>사람이 내용을 검토한 뒤 <code>미팅 상태=완료</code> + <code>업무 생성 요청=체크</code></div>
+        <div class="flow" style="margin-top:42px">
+          <article class="node"><span class="tag">STEP 1</span><h3>미팅 기록 수집</h3><p>녹음 또는 수기 본문과 거래처·참석자·미팅 담당자를 한 미팅 페이지에 모읍니다.</p></article>
+          <article class="node"><span class="tag">STEP 2</span><h3>내용 전처리</h3><p>인사말·반복·아이디어를 걷어내고 실제 실행이 필요한 문장만 업무 후보로 정리합니다.</p></article>
+          <article class="node"><span class="tag">STEP 3</span><h3>사람 검토·승인</h3><p>업무명·대상 거래처·실행 범위를 확인합니다. 자동 요약만으로는 생성되지 않습니다.</p></article>
+          <article class="node"><span class="tag">STEP 4</span><h3>안전 조건 검사</h3><p>완료 상태, 생성 요청, 거래처 1곳, 유효 액션을 확인하고 중복 업무를 검사합니다.</p></article>
+          <article class="node"><span class="tag">STEP 5</span><h3>팀 분류</h3><p>내용을 마케팅·바이럴·디자인·웹 업무로 분류합니다. 미지원·모호 항목은 생성하지 않습니다.</p></article>
+        </div>
+        <div class="flow" style="margin-top:18px">
+          <article class="node"><span class="tag">STEP 6</span><h3>담당자 결정</h3><p>마케팅은 거래처DB 담당마케터를 우선하고, 다른 팀은 미팅 담당자를 기준으로 검증합니다.</p></article>
+          <article class="node"><span class="tag">STEP 7</span><h3>(신)업무DB 생성</h3><p>업무명·관련거래처·담당팀·담당자·상태를 저장하고 원본 미팅 Relation을 연결합니다.</p></article>
+          <article class="node"><span class="tag">STEP 8</span><h3>직원 실행</h3><p>업무 페이지의 필터된 체크리스트에서 실행하고 결과 링크·캡처·접수번호 등 증빙을 남깁니다.</p></article>
+          <article class="node"><span class="tag">STEP 9</span><h3>진행률 자동 집계</h3><p>업무 체크리스트DB의 완료 체크 수가 Rollup으로 집계되어 진행률이 올라갑니다.</p></article>
+          <article class="node"><span class="tag">STEP 10</span><h3>업무 완료·종료</h3><p>체크리스트가 1개 이상이고 모두 완료되면 업무상태를 완료로 바꾸고 종료일을 기록합니다.</p></article>
+        </div>
+        <div class="warning"><strong>오류 시 동작:</strong> 거래처 없음·복수 연결, 담당자 불명확, 동일 업무 중복, 지원하지 않는 팀이면 업무를 만들지 않습니다. 원인을 <code>업무 생성 오류</code>에 기록하고 운영자가 수정한 뒤 다시 승인합니다.</div>
       </div>
     </section>
 
