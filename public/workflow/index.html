@@ -19,7 +19,9 @@
       --yellow: #f1d268;
       --blue: #225a85;
       --red: #a33e2e;
-      --white: #fffdf6;
+      --white: #fffdf8;
+      --soft: #e9e7dd;
+      --measure: 68ch;
     }
 
     * { box-sizing: border-box; }
@@ -33,16 +35,17 @@
         var(--paper);
       background-size: 28px 28px;
       font-family: "IBM Plex Sans KR", sans-serif;
-      line-height: 1.62;
+      line-height: 1.7;
+      text-rendering: optimizeLegibility;
     }
 
     a { color: inherit; }
     button { font: inherit; }
-    .wrap { width: min(1180px, calc(100% - 36px)); margin: auto; }
+    .wrap { width: min(1080px, calc(100% - 40px)); margin: auto; }
 
     header {
       position: relative;
-      min-height: 82vh;
+      min-height: 68vh;
       display: grid;
       align-items: center;
       overflow: hidden;
@@ -59,8 +62,8 @@
     }
     .eyebrow { font-weight: 700; letter-spacing: .12em; color: var(--green); text-transform: uppercase; }
     h1, h2, h3 { margin: 0; line-height: 1.14; }
-    h1 { max-width: 900px; margin-top: 22px; font: 700 clamp(3.5rem, 8vw, 7.6rem)/.98 "Gowun Batang", serif; letter-spacing: -.055em; }
-    .hero-copy { max-width: 690px; margin: 28px 0 0; font-size: clamp(1.05rem, 1.8vw, 1.35rem); color: var(--muted); }
+    h1 { max-width: 820px; margin-top: 18px; font: 700 clamp(3.2rem, 7vw, 6.4rem)/1 "Gowun Batang", serif; letter-spacing: -.05em; }
+    .hero-copy { max-width: var(--measure); margin: 24px 0 0; font-size: clamp(1.02rem, 1.6vw, 1.24rem); color: var(--muted); }
     .stamp {
       display: inline-flex; gap: 10px; align-items: center; margin-top: 34px; padding: 10px 16px;
       border: 1px solid var(--green); border-radius: 999px; color: var(--green); background: rgba(255,253,246,.7); font-weight: 700;
@@ -68,22 +71,31 @@
     .stamp::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 5px rgba(13,109,85,.12); }
 
     nav { position: sticky; top: 0; z-index: 20; background: rgba(242,239,229,.9); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
-    nav .wrap { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; }
-    nav a { white-space: nowrap; text-decoration: none; padding: 8px 12px; border: 1px solid transparent; border-radius: 999px; font-size: .9rem; font-weight: 600; }
+    nav .wrap { display: flex; gap: 5px; overflow-x: auto; padding: 9px 0; scrollbar-width: thin; }
+    nav a { white-space: nowrap; text-decoration: none; padding: 8px 11px; border: 1px solid transparent; border-radius: 999px; font-size: .86rem; font-weight: 600; }
     nav a:hover { border-color: var(--ink); background: var(--white); }
 
-    section { padding: 100px 0; border-bottom: 1px solid var(--line); }
-    .section-head { display: grid; grid-template-columns: .35fr 1fr; gap: 30px; margin-bottom: 48px; }
+    main > section { content-visibility: auto; contain-intrinsic-size: 900px; }
+    section { padding: 82px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 64px; }
+    section:nth-of-type(even) { background: rgba(255,253,248,.42); }
+    .section-head { display: grid; grid-template-columns: 180px 1fr; gap: 34px; margin-bottom: 40px; }
     .section-num { color: var(--orange); font-weight: 700; letter-spacing: .08em; }
-    h2 { font: 700 clamp(2.2rem, 5vw, 4.4rem)/1.05 "Gowun Batang", serif; letter-spacing: -.045em; }
-    .lede { max-width: 720px; margin: 18px 0 0; color: var(--muted); font-size: 1.05rem; }
+    h2 { font: 700 clamp(2.15rem, 4.2vw, 3.65rem)/1.08 "Gowun Batang", serif; letter-spacing: -.04em; }
+    .lede { max-width: var(--measure); margin: 16px 0 0; color: var(--muted); font-size: 1.02rem; }
+
+    .reading-guide { padding: 26px 0; border-bottom: 1px solid var(--line); background: var(--ink); color: var(--white); }
+    .guide-grid { display: grid; grid-template-columns: 190px repeat(3, 1fr); gap: 18px; align-items: start; }
+    .guide-title { font: 700 1.25rem "Gowun Batang", serif; }
+    .guide-item { display: grid; grid-template-columns: 24px 1fr; gap: 9px; font-size: .88rem; color: rgba(255,255,255,.76); }
+    .guide-item b { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: var(--ink); background: var(--yellow); font-size: .75rem; }
+    .guide-item strong { display: block; color: var(--white); margin-bottom: 2px; }
 
     .flow { display: grid; grid-template-columns: repeat(5, 1fr); align-items: stretch; gap: 14px; }
     .node {
       position: relative; min-height: 215px; padding: 22px; border: 1.5px solid var(--ink); background: var(--white);
-      box-shadow: 7px 7px 0 rgba(24,32,30,.12); transition: transform .2s ease, box-shadow .2s ease;
+      box-shadow: 4px 4px 0 rgba(24,32,30,.10); transition: transform .2s ease, box-shadow .2s ease;
     }
-    .node:hover { transform: translate(-3px,-3px); box-shadow: 11px 11px 0 var(--mint); }
+    .node:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--mint); }
     .node:not(:last-child)::after { content: "→"; position: absolute; right: -22px; top: 50%; z-index: 2; font-size: 1.45rem; font-weight: 700; color: var(--orange); }
     .node .tag { display: inline-block; margin-bottom: 30px; padding: 4px 8px; background: var(--mint); font-size: .75rem; font-weight: 700; }
     .node h3 { font-size: 1.16rem; }
@@ -123,7 +135,7 @@
     .verify-chip { display: inline-flex; margin-top: 14px; padding: 3px 8px; border-radius: 999px; color: var(--green); background: var(--mint); font-size: .72rem; font-weight: 700; }
     .change-step.rule .verify-chip { color: var(--ink); background: var(--yellow); }
 
-    .assign { width: 100%; border-collapse: collapse; background: var(--white); border: 1px solid var(--ink); }
+    .assign { display: table; width: 100%; border-collapse: collapse; background: var(--white); border: 1px solid var(--ink); }
     .assign th, .assign td { padding: 17px 18px; text-align: left; border-bottom: 1px solid var(--line); }
     .assign th { color: white; background: var(--ink); font-size: .85rem; }
     .assign tr:last-child td { border-bottom: 0; }
@@ -175,8 +187,9 @@
     .btn:hover { color: white; background: var(--ink); }
 
     @media (max-width: 900px) {
-      header { min-height: 68vh; }
+      header { min-height: 60vh; }
       .section-head, .split, .qa-grid { grid-template-columns: 1fr; }
+      .guide-grid { grid-template-columns: 1fr 1fr; }
       .flow { grid-template-columns: 1fr; }
       .node:not(:last-child)::after { content: "↓"; right: 20px; top: auto; bottom: -24px; }
       .gate, .state-line, .change-map, .source-grid { grid-template-columns: 1fr 1fr; }
@@ -187,14 +200,20 @@
       .shot figcaption { grid-template-columns: 1fr; gap: 6px; }
     }
     @media (max-width: 560px) {
-      .wrap { width: min(100% - 24px, 1180px); }
-      section { padding: 72px 0; }
+      .wrap { width: min(100% - 24px, 1080px); }
+      header { min-height: 54vh; padding: 56px 0 44px; }
+      header::after { font-size: 5.2rem; bottom: -16px; }
+      h1 { font-size: clamp(2.85rem, 15vw, 4.5rem); }
+      .stamp { border-radius: 14px; align-items: flex-start; }
+      section { padding: 62px 0; }
+      .section-head { gap: 10px; margin-bottom: 30px; }
+      .guide-grid { grid-template-columns: 1fr; gap: 14px; }
       .gate, .state-line, .change-map, .source-grid, .folder-map { grid-template-columns: 1fr; }
       .change-step::after { content: "↓"; right: 18px; top: auto; bottom: -14px; }
       .folder-step { min-height: auto; border-right: 0; }
       .folder-step:not(:last-child)::after { content: "↓"; top: auto; right: 50%; bottom: -13px; transform: translateX(50%); }
       .panel { padding: 24px; }
-      .assign { font-size: .84rem; }
+      .assign { display: block; overflow-x: auto; white-space: nowrap; font-size: .84rem; }
       .assign th, .assign td { padding: 12px 10px; }
       .foot { display: block; }
       .actions { margin-top: 24px; }
@@ -223,6 +242,15 @@
       <a href="#client">거래처 접수</a><a href="#opening">개원 세팅</a><a href="#meeting">미팅→업무 완료</a><a href="#guard">안전장치</a><a href="#owner">배정 규칙</a><a href="#complete">완료 동기화</a><a href="#writers">외주작가</a><a href="#screens">실제 화면</a><a href="#qa">QA·제한</a>
     </div>
   </nav>
+
+  <aside class="reading-guide" aria-label="문서 읽는 방법">
+    <div class="wrap guide-grid">
+      <div class="guide-title">이 문서 읽는 법</div>
+      <div class="guide-item"><b>1</b><div><strong>왼쪽에서 오른쪽</strong>기존 방식 → 문제 → 개선 → 운영 기준 순서입니다.</div></div>
+      <div class="guide-item"><b>2</b><div><strong>초록색은 현재 기준</strong>실제 운영에 적용했거나 QA를 통과한 흐름입니다.</div></div>
+      <div class="guide-item"><b>3</b><div><strong>붉은색은 중단 조건</strong>사람 확인이 필요하거나 자동 생성을 막아야 하는 지점입니다.</div></div>
+    </div>
+  </aside>
 
   <main>
     <section id="client">
