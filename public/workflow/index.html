@@ -180,6 +180,15 @@
     .step-proof > .node { min-height: auto; margin-bottom: 14px; border-bottom: 4px solid var(--green); box-shadow: none; }
     .step-proof > .node::after { display: none; }
     .step-proof > .shot { margin-top: 0; }
+    .plain-summary { padding: 46px 0; border-bottom: 1px solid var(--ink); background: var(--white); }
+    .plain-summary h2 { margin-bottom: 8px; font-size: clamp(2rem, 4vw, 3.2rem); }
+    .plain-summary > .wrap > p { margin: 0 0 26px; color: var(--muted); }
+    .plain-steps { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--ink); }
+    .plain-step { padding: 20px; border-right: 1px solid var(--ink); }
+    .plain-step:last-child { border-right: 0; }
+    .plain-step b { display: block; margin-bottom: 10px; color: var(--orange); font-size: .78rem; }
+    .plain-step h3 { font-size: 1.05rem; }
+    .plain-step p { margin: 8px 0 0; color: var(--muted); font-size: .84rem; }
     .source-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 40px; }
     .source-card { border: 1px solid var(--ink); background: var(--white); padding: 24px; min-height: 220px; }
     .source-card .source-no { display: inline-block; margin-bottom: 20px; padding: 5px 8px; border: 1px solid currentColor; color: var(--orange); font: 800 12px/1.1 var(--sans); letter-spacing: .08em; }
@@ -206,7 +215,7 @@
       .guide-grid { grid-template-columns: 1fr 1fr; }
       .flow { grid-template-columns: 1fr; }
       .node:not(:last-child)::after { content: "↓"; right: 20px; top: auto; bottom: -24px; }
-      .gate, .state-line, .change-map, .source-grid, .proof-grid.three { grid-template-columns: 1fr 1fr; }
+      .gate, .state-line, .change-map, .source-grid, .proof-grid.three, .plain-steps { grid-template-columns: 1fr 1fr; }
       .folder-map { grid-template-columns: 1fr 1fr; }
       .folder-step { border-bottom: 1px solid var(--ink); }
       .folder-step:nth-child(2n) { border-right: 0; }
@@ -222,7 +231,9 @@
       section { padding: 62px 0; }
       .section-head { gap: 10px; margin-bottom: 30px; }
       .guide-grid { grid-template-columns: 1fr; gap: 14px; }
-      .gate, .state-line, .change-map, .source-grid, .folder-map, .proof-grid, .proof-grid.three { grid-template-columns: 1fr; }
+      .gate, .state-line, .change-map, .source-grid, .folder-map, .proof-grid, .proof-grid.three, .plain-steps { grid-template-columns: 1fr; }
+      .plain-step { border-right: 0; border-bottom: 1px solid var(--ink); }
+      .plain-step:last-child { border-bottom: 0; }
       .proof-head { display: block; }
       .proof-head p { margin-top: 8px; }
       .change-step::after { content: "↓"; right: 18px; top: auto; bottom: -14px; }
@@ -246,32 +257,46 @@
 <body>
   <header id="top">
     <div class="wrap">
-      <div class="eyebrow">Medi &amp; Medi · Notion Operations Map</div>
-      <h1>거래처에서<br>완료 증빙까지.</h1>
-      <p class="hero-copy">거래처 접수 웹앱, 신규개원 12개 업무, 실행 체크리스트, 미팅 액션 아이템이 하나의 승인형 워크플로우로 연결됩니다.</p>
+      <div class="eyebrow">메디앤메디 업무 자동화 안내</div>
+      <h1>입력부터<br>업무 완료까지.</h1>
+      <p class="hero-copy">원장님이 정보를 입력하면 거래처DB에 저장됩니다. 내부 담당자가 확인 버튼을 누르면 필요한 업무가 만들어지고, 직원이 체크리스트를 모두 끝내면 업무도 완료됩니다.</p>
       <div class="stamp">2026.08 운영 기준 · 구현 및 배포 완료</div>
     </div>
   </header>
 
   <nav aria-label="문서 목차">
     <div class="wrap">
-      <a href="#client">거래처 접수</a><a href="#opening">개원 세팅</a><a href="#meeting">미팅→업무 완료</a><a href="#guard">안전장치</a><a href="#owner">배정 규칙</a><a href="#complete">완료 동기화</a><a href="#writers">외주작가</a><a href="#qa">QA·제한</a>
+      <a href="#client">병원 정보 받기</a><a href="#opening">개원 업무 만들기</a><a href="#meeting">미팅을 업무로</a><a href="#guard">실수 막기</a><a href="#owner">담당자 정하기</a><a href="#complete">업무 끝내기</a><a href="#writers">외주작가</a><a href="#qa">확인 결과</a>
     </div>
   </nav>
 
   <aside class="reading-guide" aria-label="문서 읽는 방법">
     <div class="wrap guide-grid">
-      <div class="guide-title">이 문서 읽는 법</div>
+      <div class="guide-title">색상만 기억하세요</div>
       <div class="guide-item"><b>1</b><div><strong>왼쪽에서 오른쪽</strong>기존 방식 → 문제 → 개선 → 운영 기준 순서입니다.</div></div>
-      <div class="guide-item"><b>2</b><div><strong>초록색은 현재 기준</strong>실제 운영에 적용했거나 QA를 통과한 흐름입니다.</div></div>
+      <div class="guide-item"><b>2</b><div><strong>초록색은 현재 쓰는 방식</strong>실제로 확인을 마친 흐름입니다.</div></div>
       <div class="guide-item"><b>3</b><div><strong>붉은색은 중단 조건</strong>사람 확인이 필요하거나 자동 생성을 막아야 하는 지점입니다.</div></div>
     </div>
   </aside>
 
+  <section class="plain-summary" aria-label="전체 흐름 한눈에 보기">
+    <div class="wrap">
+      <h2>전체 흐름 한눈에 보기</h2>
+      <p>복잡한 용어 없이, 실제로 누가 무엇을 하는지만 정리했습니다.</p>
+      <div class="plain-steps">
+        <article class="plain-step"><b>1 · 원장님</b><h3>병원 정보 입력</h3><p>웹앱에서 개원 정보와 요청사항을 작성합니다.</p></article>
+        <article class="plain-step"><b>2 · 시스템</b><h3>거래처DB 저장</h3><p>같은 병원인지 확인한 뒤 한 곳에 저장합니다.</p></article>
+        <article class="plain-step"><b>3 · 내부 담당자</b><h3>확인 후 업무 생성</h3><p>담당마케터를 정하고 생성 버튼을 누릅니다.</p></article>
+        <article class="plain-step"><b>4 · 직원</b><h3>체크리스트 실행</h3><p>배정된 업무를 하고 완료 표시와 증빙을 남깁니다.</p></article>
+        <article class="plain-step"><b>5 · 시스템</b><h3>모두 끝나면 완료</h3><p>모든 항목이 끝나면 업무 상태와 종료일을 바꿉니다.</p></article>
+      </div>
+    </div>
+  </section>
+
   <main>
     <section id="client">
       <div class="wrap">
-        <div class="section-head"><div class="section-num">01 / INTAKE</div><div><h2>거래처 접수 웹앱</h2><p class="lede">외부 거래처가 입력한 정보는 Vercel 웹앱을 거쳐 Notion 거래처DB에 저장됩니다. 업무용으로 쓰지 않는 속성은 웹앱 저장 대상에서 제외하는 방향으로 정리했습니다.</p></div></div>
+        <div class="section-head"><div class="section-num">01 / 병원 정보 받기</div><div><h2>원장님이 정보를 입력합니다</h2><p class="lede">원장님이 웹앱에 적은 내용은 거래처DB에 저장됩니다. 실제 업무에 쓰는 정보만 저장하고, 외부 화면에는 내부용 버튼을 보여주지 않습니다.</p></div></div>
         <div class="change-map" aria-label="거래처 접수 개선 비교">
           <article class="change-step asis"><span class="change-label">기존 방식</span><h3>담당자가 여러 문서에 재입력</h3><p>원장님 전달 내용과 내부 DB 값이 달라지고, 사용하지 않는 속성까지 함께 저장됐습니다.</p></article>
           <article class="change-step problem"><span class="change-label">발생 문제</span><h3>누락·중복·담당자 공백</h3><p>같은 병원이 중복 생성되거나 담당마케터 없이 후속 자동화가 멈출 수 있었습니다.</p></article>
@@ -280,8 +305,8 @@
         </div>
         <div class="flow">
           <article class="node"><span class="tag">외부 사용자</span><h3>웹앱 작성</h3><p>병원 기본정보와 운영에 필요한 항목을 입력합니다.</p></article>
-          <article class="node"><span class="tag">Vercel</span><h3>입력 검증</h3><p>허용 필드만 정리해 서버 API로 전송합니다.</p></article>
-          <article class="node"><span class="tag">Notion API</span><h3>거래처DB 저장</h3><p>거래처 한 건을 기준 레코드로 생성·갱신합니다.</p></article>
+          <article class="node"><span class="tag">웹앱</span><h3>입력 내용 확인</h3><p>필요한 항목만 골라 안전하게 전달합니다.</p></article>
+          <article class="node"><span class="tag">Notion</span><h3>거래처DB 저장</h3><p>병원 한 곳을 한 줄로 만들거나 기존 내용을 고칩니다.</p></article>
           <article class="node"><span class="tag">내부 담당자</span><h3>담당마케터 지정</h3><p>사람DB의 재직 마케팅팀 구성원을 연결합니다.</p></article>
           <article class="node"><span class="tag">승인 트리거</span><h3>신규 업무 생성</h3><p>내부 사용자가 체크해야 다음 단계가 시작됩니다.</p></article>
         </div>
@@ -290,11 +315,11 @@
 
     <section id="clinic-live-test">
       <div class="wrap">
-        <div class="section-head"><div class="section-num">01A / LIVE TEST</div><div><h2>신규개원 원장님 입력부터 업무 생성까지</h2><p class="lede">실제 배포 웹앱에 <strong>QA 신규개원 테스트치과 20260814</strong>를 상세 입력해 거래처DB 저장과 개원세팅 업무 생성을 검증했습니다. 아래 테스트 값은 운영 금지로 표시한 가상 데이터입니다.</p></div></div>
+        <div class="section-head"><div class="section-num">01A / 실제 확인</div><div><h2>원장님 입력부터 업무 생성까지</h2><p class="lede">가상 치과 정보를 직접 입력해 거래처DB 저장, 담당자 연결, 개원 업무 생성을 확인했습니다. 아래 값은 확인용이며 실제 운영에는 쓰지 않습니다.</p></div></div>
         <div class="change-map" aria-label="신규개원 테스트 개선 비교">
           <article class="change-step asis"><span class="change-label">기존 방식</span><h3>체크 후 결과를 사람이 추적</h3><p>업무가 일부만 생겨도 완료 여부를 한눈에 확인하기 어려웠습니다.</p></article>
           <article class="change-step problem"><span class="change-label">발생 문제</span><h3>담당자 공백이면 500 중단</h3><p>거래처 저장 성공과 12개 업무 생성 성공이 같은 결과처럼 보였습니다.</p></article>
-          <article class="change-step tobe"><span class="change-label">개선 중인 방향</span><h3>12개 업무·71개 체크 검증</h3><p>누락 업무만 보완하고, Relation과 체크리스트까지 확인한 뒤 완료 처리합니다.</p><span class="verify-chip">실데이터 QA 완료</span></article>
+          <article class="change-step tobe"><span class="change-label">개선한 방식</span><h3>12개 업무·71개 항목 확인</h3><p>빠진 업무만 추가하고, 거래처 연결과 체크리스트를 모두 확인한 뒤 완료로 바꿉니다.</p><span class="verify-chip">실제 테스트 완료</span></article>
           <article class="change-step rule"><span class="change-label">운영 기준</span><h3>전부 성공해야 생성완료</h3><p>한 건이라도 실패하면 체크를 해제하지 않고 거래처와 원인을 보고합니다.</p><span class="verify-chip">부분 성공 금지</span></article>
         </div>
         <div class="step-proof">
@@ -303,12 +328,12 @@
         </div>
         <div class="step-proof">
           <article class="node"><span class="tag">제출 결과</span><h3>입력한 내용이 거래처DB 한 건으로 저장됩니다</h3><p>동일 치과명이 없으면 새 레코드를 만들고, 재제출이면 기존 레코드를 갱신해 중복을 막습니다.</p></article>
-          <figure class="shot"><img src="/workflow/assets/qa-notion-client-record.png" alt="QA 신규개원 테스트치과 거래처DB 실제 레코드" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">바로 다음 실제 화면</span><br>거래처DB 저장 결과</div><div class="shot-copy"><strong>내부 담당자가 보는 것:</strong> 웹앱 입력값, 담당마케터, 신규 업무 생성 승인, 생성된 업무 Relation과 처리 상태를 확인합니다.</div></figcaption></figure>
+          <figure class="shot"><img src="/workflow/assets/qa-notion-client-record.png" alt="확인용 신규개원 테스트치과 거래처DB 실제 화면" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">바로 다음 실제 화면</span><br>거래처DB 저장 결과</div><div class="shot-copy"><strong>내부 담당자가 보는 것:</strong> 웹앱 입력값, 담당마케터, 신규 업무 생성 승인, 생성된 업무 연결과 처리 상태를 확인합니다.</div></figcaption></figure>
         </div>
         <div class="flow">
           <article class="node"><span class="tag">내부 검수</span><h3>담당마케터 지정</h3><p>사람DB의 재직 중 마케팅팀 구성원 1명을 담당마케터로 연결합니다. 담당자가 없으면 업무 생성은 중단됩니다.</p></article>
           <article class="node"><span class="tag">승인</span><h3>신규 업무 생성</h3><p>거래처DB의 체크박스를 켜면 동일 거래처·동일 업무명을 검사한 뒤 누락된 표준 업무만 생성합니다.</p></article>
-          <article class="node"><span class="tag">(신)업무DB</span><h3>12개 업무 + 71개 체크</h3><p>개원 세팅 12건과 연결 체크리스트 71건이 담당마케터에게 배정되고 거래처 Relation에 다시 연결됩니다.</p></article>
+          <article class="node"><span class="tag">(신)업무DB</span><h3>12개 업무 + 71개 항목</h3><p>개원 업무 12개와 체크할 항목 71개가 담당마케터에게 배정되고 거래처에도 연결됩니다.</p></article>
         </div>
         <table class="assign" style="margin-top:40px">
           <thead><tr><th>테스트 입력</th><th>값</th><th>저장·활용 위치</th></tr></thead>
@@ -321,27 +346,27 @@
           </tbody>
         </table>
         <div class="merge"><strong>검증된 실제 결과</strong><br>내부 QA 레코드 기준 거래처 1건 · 개원 세팅 업무 12건 · 업무 체크리스트 71건을 확인했습니다. 공개 문서에서는 내부 Notion 페이지 링크를 제공하지 않습니다.</div>
-        <div class="merge"><strong>2026-08-16 개선 완료</strong><br>개원세팅 QA 거래처에서 표준 업무 12건, 체크리스트 71건, 각 업무 페이지의 UUID 필터 linked view를 다시 확인했습니다. 거래처DB의 <code>신규 업무 생성</code> 승인 후 누락 업무만 보완되고, 모든 검증이 끝난 뒤 생성완료로 전환됩니다.</div>
+        <div class="merge"><strong>2026-08-16 확인 완료</strong><br>개원 업무 12개와 체크리스트 71개가 각각 알맞은 업무에만 보이는지 확인했습니다. 내부 담당자가 <code>신규 업무 생성</code>을 체크하면 빠진 업무만 추가하고, 모든 확인이 끝난 뒤 생성완료로 바뀝니다.</div>
       </div>
     </section>
 
     <section id="as-is-systems">
       <div class="wrap">
-        <div class="section-head"><div class="section-num">01B / AS-IS SYSTEM</div><div><h2>회의 전 필수<br>현재 내부 시스템 Flow</h2><p class="lede"><strong>신실장님 지시사항:</strong> 회의 전에 현재 내부 시스템 흐름을 먼저 확인합니다. 지금은 하나의 마스터가 아니라 마케팅 계정정보, 블로그 구버전, 블로그 신버전이 서로 다른 기준으로 운영되고 있어 거래처명·계정·담당자·발행 현황을 대조해야 합니다.</p></div></div>
+        <div class="section-head"><div class="section-num">01B / 기존 자료 확인</div><div><h2>회의 전에<br>흩어진 자료부터 확인합니다</h2><p class="lede"><strong>신실장님 요청:</strong> 회의 전에 현재 자료 흐름을 먼저 봅니다. 마케팅 계정정보, 블로그 구버전, 블로그 신버전이 서로 다른 기준을 쓰므로 병원명·계정·담당자·발행 현황이 같은지 확인해야 합니다.</p></div></div>
         <div class="change-map" aria-label="내부 시트 통합 개선 비교">
           <article class="change-step asis"><span class="change-label">기존 방식</span><h3>세 시트가 각자 다른 이름 사용</h3><p>마케팅 계정, 구버전 계약, 신버전 발행 데이터가 별도 기준으로 관리됩니다.</p></article>
           <article class="change-step problem"><span class="change-label">발생 문제</span><h3>같은 병원이 다른 거래처처럼 보임</h3><p>계정·담당자·계약 건수·병원코드가 정확히 연결되지 않습니다.</p></article>
-          <article class="change-step tobe"><span class="change-label">개선 중인 방향</span><h3>거래처DB ID 중심 매핑</h3><p>기존 값은 유지한 채 공식 거래처 하나에 세 원천의 식별자를 연결합니다.</p><span class="verify-chip">POC 설계 완료</span></article>
+          <article class="change-step tobe"><span class="change-label">개선하는 방식</span><h3>거래처DB 번호로 연결</h3><p>기존 자료는 그대로 두고, 공식 거래처 한 곳에 세 자료의 번호를 연결합니다.</p><span class="verify-chip">시험 설계 완료</span></article>
           <article class="change-step rule"><span class="change-label">운영 기준</span><h3>회의 전에 불일치부터 확인</h3><p>매핑되지 않은 계정과 병원코드를 회의 안건으로 먼저 올리고 임의로 합치지 않습니다.</p><span class="verify-chip">원본 삭제 금지</span></article>
         </div>
         <div class="flow">
-          <article class="node"><span class="tag">AS-IS 1</span><h3>마케팅 계정정보</h3><p><code>병원명 → 항목 → 아이디·URL</code> 구조입니다. 플랫폼별 계정은 모여 있지만 병원명 표기와 계정 행이 분리돼 있습니다.</p></article>
-          <article class="node"><span class="tag">AS-IS 2</span><h3>블로그 구버전</h3><p><code>병원 → 계약 건수 → 콘텐츠 유형 → 담당자</code> 중심입니다. 병원별 개별 탭과 전체 탭이 함께 존재합니다.</p></article>
-          <article class="node"><span class="tag">AS-IS 3</span><h3>블로그 신버전</h3><p><code>병원코드 → 채널 → 콘텐츠 → 발행 일정·성과</code> 중심입니다. 운영 단위는 정교하지만 기존 시트와 식별자가 다릅니다.</p></article>
-          <article class="node"><span class="tag">PRE-MEETING</span><h3>불일치 대조</h3><p>병원명 정규화, 블로그 ID, 계약 건수, 담당자, 구·신버전 이관 여부를 확인한 뒤 회의 안건을 확정합니다.</p></article>
+          <article class="node"><span class="tag">기존 자료 1</span><h3>마케팅 계정정보</h3><p><code>병원명 → 항목 → 아이디·URL</code> 순서입니다. 계정은 모여 있지만 병원 이름 표기가 제각각입니다.</p></article>
+          <article class="node"><span class="tag">기존 자료 2</span><h3>블로그 구버전</h3><p><code>병원 → 계약 건수 → 글 종류 → 담당자</code> 순서입니다. 병원별 탭과 전체 탭이 함께 있습니다.</p></article>
+          <article class="node"><span class="tag">기존 자료 3</span><h3>블로그 신버전</h3><p><code>병원번호 → 채널 → 글 → 발행 일정·결과</code> 순서입니다. 기존 시트와 병원 번호가 다릅니다.</p></article>
+          <article class="node"><span class="tag">회의 전</span><h3>다른 값 찾기</h3><p>병원명, 블로그 ID, 계약 건수, 담당자, 자료 이동 여부를 확인한 뒤 회의할 내용을 정합니다.</p></article>
         </div>
         <table class="assign" style="margin-top:40px">
-          <thead><tr><th>원천</th><th>지정 탭</th><th>주요 기준</th><th>현재 문제</th><th>회의 전 확인</th></tr></thead>
+          <thead><tr><th>기존 자료</th><th>확인할 탭</th><th>주요 정보</th><th>현재 문제</th><th>회의 전 확인</th></tr></thead>
           <tbody>
             <tr><td>기존 마케팅 시트</td><td>계정정보</td><td>병원명·플랫폼 계정</td><td>한 병원의 계정이 여러 행·표기로 분산</td><td>공식 병원명과 실제 사용 계정 확정</td></tr>
             <tr><td>블로그 시트 구버전</td><td>전체</td><td>계약 건수·콘텐츠·작가</td><td>병원별 탭과 전체 현황의 동기화 기준 불명확</td><td>유효 계약·현재 담당자·이관 완료 여부</td></tr>
@@ -362,7 +387,7 @@
             <figure class="shot"><img src="/workflow/assets/as-is-blog-new-sheet.png" alt="블로그 시트 신버전 실제 화면" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">SOURCE 03</span><br>블로그 신버전</div><div class="shot-copy">병원코드·스케줄·발행 성과 중심 구조를 확인합니다.</div></figcaption></figure>
           </div>
         </div>
-        <div class="warning"><strong>POC 결론:</strong> 세 시트를 바로 합치거나 삭제하지 않습니다. 먼저 거래처DB의 공식 거래처 ID를 공통 키로 두고 <code>공식 거래처명 ↔ 기존 계정 ↔ 구버전 행 ↔ 신버전 병원코드</code> 매핑표를 만든 뒤, 불일치가 0건인 범위부터 단계적으로 이관합니다.</div>
+        <div class="warning"><strong>시험 결과:</strong> 세 시트를 바로 합치거나 지우지 않습니다. 먼저 거래처DB 번호를 기준으로 <code>공식 병원명 ↔ 기존 계정 ↔ 구버전 행 ↔ 신버전 병원번호</code> 연결표를 만듭니다. 값이 모두 맞는 자료부터 차례로 옮깁니다.</div>
       </div>
     </section>
 
@@ -373,7 +398,7 @@
           <article class="change-step asis"><span class="change-label">기존 방식</span><h3>거래처당 ‘신규 개원 세팅’ 1건</h3><p>업무 범위가 한 페이지에 뭉쳐 담당자와 완료 기준이 흐렸습니다.</p></article>
           <article class="change-step problem"><span class="change-label">발생 문제</span><h3>누락과 중복을 판별하기 어려움</h3><p>일부 작업만 끝나도 전체가 끝난 것처럼 보이고 재실행 시 중복될 수 있었습니다.</p></article>
           <article class="change-step tobe"><span class="change-label">개선 중인 방향</span><h3>표준 12개 업무로 분해</h3><p>업무명 단위로 존재 여부를 검사하고 빠진 업무만 체크리스트와 함께 생성합니다.</p><span class="verify-chip">12개 표준 확정</span></article>
-          <article class="change-step rule"><span class="change-label">운영 기준</span><h3>동일명 2건이면 즉시 중단</h3><p>중복이 의심되면 자동 수정하지 않고 거래처와 업무명을 보고합니다.</p><span class="verify-chip">멱등성 적용</span></article>
+          <article class="change-step rule"><span class="change-label">운영 기준</span><h3>같은 업무가 2개면 즉시 중단</h3><p>중복이 의심되면 자동으로 고치지 않고 병원과 업무명을 알려줍니다.</p><span class="verify-chip">중복 생성 방지</span></article>
         </div>
         <div class="flow">
           <article class="node"><span class="tag">1</span><h3>대상 확인</h3><p>체크 여부와 업무 생성 상태를 검사합니다.</p></article>
@@ -381,10 +406,10 @@
           <article class="node"><span class="tag">3</span><h3>누락 업무 생성</h3><p>첫 인사부터 최종 개원 점검까지 표준 12종을 구성합니다.</p></article>
         </div>
         <div class="step-proof">
-          <article class="node"><span class="tag">4 · 직원 화면</span><h3>생성된 업무에 전용 체크리스트가 연결됩니다</h3><p>직원은 본문에 중복된 To-do가 아니라 해당 업무 UUID로 필터된 업무 체크리스트DB만 사용합니다.</p></article>
-          <figure class="shot"><img src="/workflow/assets/qa-notion-task-checklist.png" alt="개원세팅 업무의 필터된 체크리스트 실제 화면" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">(신)업무DB</span><br>업무별 체크리스트와 완료율</div><div class="shot-copy"><strong>확인 포인트:</strong> 해당 업무의 행만 보이고, 체크할 때 완료율 Rollup이 올라가며 모든 행 완료 시 업무가 종료됩니다.</div></figcaption></figure>
+          <article class="node"><span class="tag">4 · 직원 화면</span><h3>각 업무에 필요한 체크리스트만 보입니다</h3><p>직원은 업무 본문의 중복 목록이 아니라, 지금 열어본 업무에 해당하는 체크리스트만 사용합니다.</p></article>
+          <figure class="shot"><img src="/workflow/assets/qa-notion-task-checklist.png" alt="개원 업무의 체크리스트 실제 화면" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">(신)업무DB</span><br>업무별 체크리스트와 완료율</div><div class="shot-copy"><strong>확인 포인트:</strong> 해당 업무의 항목만 보이고, 체크할 때 완료율이 올라가며 모든 항목을 끝내면 업무도 완료됩니다.</div></figcaption></figure>
         </div>
-        <div class="flow"><article class="node"><span class="tag">5</span><h3>거래처 완료 처리</h3><p>모든 검증 성공 후에만 Relation과 생성완료 상태를 저장합니다.</p></article></div>
+        <div class="flow"><article class="node"><span class="tag">5</span><h3>거래처 완료 처리</h3><p>모든 확인을 통과한 뒤에만 업무 연결과 생성완료 상태를 저장합니다.</p></article></div>
       </div>
     </section>
 
@@ -394,7 +419,7 @@
         <div class="change-map" aria-label="미팅 업무화 개선 비교">
           <article class="change-step asis"><span class="change-label">기존 방식</span><h3>녹음 요약·수기 메모를 그대로 보관</h3><p>결정, 요청, 아이디어와 실제 실행 업무가 한 본문에 섞였습니다.</p></article>
           <article class="change-step problem"><span class="change-label">발생 문제</span><h3>모호한 문장까지 업무화될 위험</h3><p>담당팀과 완료 기준이 없는 업무가 생성되거나 같은 요청이 반복될 수 있습니다.</p></article>
-          <article class="change-step tobe"><span class="change-label">개선된 방식</span><h3>전처리 후 사람 승인</h3><p>녹음과 수기 모두 액션 후보로 정리하고 담당자가 확정한 문장만 생성 요청합니다.</p><span class="verify-chip">E2E 생성 QA 완료</span></article>
+          <article class="change-step tobe"><span class="change-label">개선한 방식</span><h3>내용 정리 후 사람이 확인</h3><p>녹음과 수기에서 실행할 내용만 추리고, 담당자가 확정한 문장만 업무로 만듭니다.</p><span class="verify-chip">처음부터 끝까지 확인 완료</span></article>
           <article class="change-step rule"><span class="change-label">운영 기준</span><h3>완료 상태 + 생성 요청 체크</h3><p>거래처 1곳, 실행 문장, 담당자까지 유효할 때만 (신)업무DB에 저장합니다.</p><span class="verify-chip">무승인 생성 금지</span></article>
         </div>
         <div class="split">
@@ -408,22 +433,22 @@
         </div>
         <div class="flow" style="margin-top:42px">
           <article class="node"><span class="tag">STEP 1</span><h3>미팅 기록 수집</h3><p>녹음 또는 수기 본문과 거래처·참석자·미팅 담당자를 한 미팅 페이지에 모읍니다.</p></article>
-          <article class="node"><span class="tag">STEP 2</span><h3>내용 전처리</h3><p>인사말·반복·아이디어를 걷어내고 실제 실행이 필요한 문장만 업무 후보로 정리합니다.</p></article>
+          <article class="node"><span class="tag">2단계</span><h3>필요한 내용만 정리</h3><p>인사말·반복·단순 아이디어를 빼고 실제로 해야 할 문장만 남깁니다.</p></article>
           <article class="node"><span class="tag">STEP 3</span><h3>사람 검토·승인</h3><p>업무명·대상 거래처·실행 범위를 확인합니다. 자동 요약만으로는 생성되지 않습니다.</p></article>
           <article class="node"><span class="tag">STEP 4</span><h3>안전 조건 검사</h3><p>완료 상태, 생성 요청, 거래처 1곳, 유효 액션을 확인하고 중복 업무를 검사합니다.</p></article>
           <article class="node"><span class="tag">STEP 5</span><h3>팀 분류</h3><p>내용을 마케팅·바이럴·디자인·웹 업무로 분류합니다. 미지원·모호 항목은 생성하지 않습니다.</p></article>
         </div>
         <div class="flow" style="margin-top:18px">
-          <article class="node"><span class="tag">STEP 6</span><h3>담당자 결정</h3><p>마케팅은 거래처DB 담당마케터를 우선합니다. 사람DB Relation이 통합 권한 때문에 가려진 경우에만 미팅 담당자 1명을 안전 대체값으로 사용하며, 다른 팀 업무도 미팅 담당자 1명을 요구합니다.</p></article>
-          <article class="node"><span class="tag">STEP 7</span><h3>(신)업무DB 생성</h3><p>업무명·관련거래처·담당팀·담당자·상태를 저장하고 원본 미팅 Relation을 연결합니다.</p></article>
+          <article class="node"><span class="tag">6단계</span><h3>담당자 정하기</h3><p>마케팅 업무는 거래처DB의 담당마케터에게 먼저 배정합니다. 그 정보를 읽을 수 없을 때만 미팅 담당자 1명에게 배정하며, 담당자가 없거나 여러 명이면 멈춥니다.</p></article>
+          <article class="node"><span class="tag">7단계</span><h3>(신)업무DB에 만들기</h3><p>업무명·병원·담당팀·담당자·상태를 저장하고 원래 미팅도 함께 연결합니다.</p></article>
         </div>
         <div class="step-proof">
-          <article class="node"><span class="tag">생성 결과</span><h3>승인된 실행 항목이 담당자의 업무로 배정됩니다</h3><p>업무명, 거래처, 담당팀, 담당자와 원본 미팅 Relation이 (신)업무DB에 기록됩니다.</p></article>
+          <article class="node"><span class="tag">생성 결과</span><h3>승인된 할 일이 담당자의 업무로 배정됩니다</h3><p>업무명, 병원, 담당팀, 담당자와 원래 미팅이 (신)업무DB에 함께 기록됩니다.</p></article>
           <figure class="shot"><img src="/workflow/assets/public-notion-task-db.png" alt="Notion 신규 업무 DB 실제 화면" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">바로 다음 실제 화면</span><br>담당자에게 생성된 업무</div><div class="shot-copy">미팅에서 확정한 실행 항목이 실제 업무 레코드로 전환된 결과입니다.</div></figcaption></figure>
         </div>
         <div class="flow" style="margin-top:18px">
           <article class="node"><span class="tag">STEP 8</span><h3>직원 실행</h3><p>업무 페이지의 필터된 체크리스트에서 실행하고 결과 링크·캡처·접수번호 등 증빙을 남깁니다.</p></article>
-          <article class="node"><span class="tag">STEP 9</span><h3>진행률 자동 집계</h3><p>업무 체크리스트DB의 완료 체크 수가 Rollup으로 집계되어 진행률이 올라갑니다.</p></article>
+          <article class="node"><span class="tag">9단계</span><h3>진행률 자동 계산</h3><p>체크리스트에서 완료한 개수를 세어 진행률을 자동으로 올립니다.</p></article>
           <article class="node"><span class="tag">STEP 10</span><h3>업무 완료·종료</h3><p>체크리스트가 1개 이상이고 모두 완료되면 업무상태를 완료로 바꾸고 종료일을 기록합니다.</p></article>
         </div>
         <div class="warning"><strong>오류 시 동작:</strong> 거래처 없음·복수 연결, 담당자 불명확, 동일 업무 중복, 지원하지 않는 팀이면 업무를 만들지 않습니다. 원인을 <code>업무 생성 오류</code>에 기록하고 운영자가 수정한 뒤 다시 승인합니다.</div>
@@ -432,11 +457,11 @@
 
     <section id="guard">
       <div class="wrap">
-        <div class="section-head"><div class="section-num">04 / GATES</div><div><h2>무작정 생성되지 않는 조건</h2><p class="lede">아래 네 조건을 모두 만족해야만 미팅 액션 아이템이 실제 업무가 됩니다.</p></div></div>
+        <div class="section-head"><div class="section-num">04 / 실수 막기</div><div><h2>아무 내용이나<br>업무로 만들지 않습니다</h2><p class="lede">아래 네 가지가 모두 맞아야 미팅 내용이 실제 업무로 만들어집니다.</p></div></div>
         <div class="change-map" aria-label="업무 생성 안전장치 개선 비교">
           <article class="change-step asis"><span class="change-label">기존 방식</span><h3>체크 한 번으로 즉시 생성</h3><p>본문 품질이나 거래처 연결 상태와 관계없이 실행될 가능성이 있었습니다.</p></article>
           <article class="change-step problem"><span class="change-label">발생 문제</span><h3>빈 업무·복수 거래처·중복 생성</h3><p>수정 비용이 큰 잘못된 업무가 직원 화면에 섞일 수 있습니다.</p></article>
-          <article class="change-step tobe"><span class="change-label">개선된 방식</span><h3>네 가지 사전 조건 검사</h3><p>승인 체크, 미팅 완료, 거래처 1곳, 유효 액션을 모두 통과시킵니다.</p><span class="verify-chip">실제 웹훅 QA 통과</span></article>
+          <article class="change-step tobe"><span class="change-label">개선한 방식</span><h3>네 가지 조건 먼저 확인</h3><p>승인 체크, 미팅 완료, 병원 한 곳, 실제 할 일을 모두 확인합니다.</p><span class="verify-chip">실제 자동 연결 확인</span></article>
           <article class="change-step rule"><span class="change-label">운영 기준</span><h3>모호하면 만들지 않고 오류 기록</h3><p>자동 추정 대신 생성 오류 속성에 원인을 남겨 사람이 보완합니다.</p><span class="verify-chip">Fail closed</span></article>
         </div>
         <div class="gate">
@@ -451,11 +476,11 @@
 
     <section id="owner">
       <div class="wrap">
-        <div class="section-head"><div class="section-num">05 / ROUTING</div><div><h2>담당팀·담당자 배정</h2><p class="lede">조아라 고정 배정이 아니라 거래처와 미팅의 실제 담당 관계를 우선합니다.</p></div></div>
+        <div class="section-head"><div class="section-num">05 / 담당자 정하기</div><div><h2>누가 할 일인지 정합니다</h2><p class="lede">특정 사람에게 고정하지 않고, 병원과 미팅의 실제 담당자를 먼저 확인합니다.</p></div></div>
         <div class="change-map" aria-label="담당자 배정 개선 비교">
           <article class="change-step asis"><span class="change-label">기존 방식</span><h3>조아라 이사에게 고정 배정</h3><p>실제 거래처 담당자와 업무 담당자가 달라 재분배가 필요했습니다.</p></article>
           <article class="change-step problem"><span class="change-label">발생 문제</span><h3>알림 집중과 책임 불일치</h3><p>업무를 아는 사람이 아닌 다른 사람에게 알림과 마감 책임이 몰렸습니다.</p></article>
-          <article class="change-step tobe"><span class="change-label">개선 중인 방향</span><h3>관계 기반 자동 라우팅</h3><p>마케팅은 거래처DB 담당마케터, 다른 팀은 미팅 담당자와 업무 유형을 기준으로 배정합니다.</p><span class="verify-chip">마케팅 규칙 반영</span></article>
+          <article class="change-step tobe"><span class="change-label">개선하는 방식</span><h3>담당 정보를 보고 자동 배정</h3><p>마케팅은 병원 담당마케터, 다른 팀은 미팅 담당자와 업무 종류를 보고 배정합니다.</p><span class="verify-chip">마케팅 규칙 적용</span></article>
           <article class="change-step rule"><span class="change-label">운영 기준</span><h3>재직자 1명만 확정</h3><p>사람DB의 소속팀·재직상태를 검증하고 0명 또는 복수면 생성하지 않습니다.</p><span class="verify-chip">사람DB 기준</span></article>
         </div>
         <table class="assign">
@@ -473,17 +498,17 @@
 
     <section id="complete">
       <div class="wrap">
-        <div class="section-head"><div class="section-num">06 / SYNC</div><div><h2>체크리스트와 완료율</h2><p class="lede">업무 본문에 체크리스트를 중복 작성하지 않고 업무 체크리스트DB를 단일 기준으로 사용합니다.</p></div></div>
+        <div class="section-head"><div class="section-num">06 / 업무 끝내기</div><div><h2>체크리스트를 모두 끝내면<br>업무도 완료됩니다</h2><p class="lede">직원은 업무 체크리스트DB 한 곳만 사용합니다. 같은 목록을 본문에 또 만들지 않아 두 번 체크할 필요가 없습니다.</p></div></div>
         <div class="change-map" aria-label="체크리스트 동기화 개선 비교">
           <article class="change-step asis"><span class="change-label">기존 방식</span><h3>본문 To-do와 DB 체크가 중복</h3><p>같은 항목을 두 곳에서 체크해 서로 다른 완료 상태가 생겼습니다.</p></article>
-          <article class="change-step problem"><span class="change-label">발생 문제</span><h3>진행률이 실제 실행과 불일치</h3><p>본문만 체크하면 rollup이 오르지 않고 무엇이 기준인지 사용자가 헷갈렸습니다.</p></article>
-          <article class="change-step tobe"><span class="change-label">개선된 방식</span><h3>업무 체크리스트DB 단일 기준</h3><p>업무 페이지에는 해당 업무 UUID로 필터된 linked view만 보여주고 DB 체크를 집계합니다.</p><span class="verify-chip">12개 view·71개 행 QA</span></article>
+          <article class="change-step problem"><span class="change-label">발생 문제</span><h3>체크해도 진행률이 오르지 않음</h3><p>본문 목록만 체크하면 진행률이 오르지 않아 어떤 목록을 써야 하는지 헷갈렸습니다.</p></article>
+          <article class="change-step tobe"><span class="change-label">개선한 방식</span><h3>업무 체크리스트DB만 사용</h3><p>업무 페이지에는 지금 업무에 해당하는 항목만 보여주고, 이곳의 완료 표시만 계산합니다.</p><span class="verify-chip">12개 화면·71개 항목 확인</span></article>
           <article class="change-step rule"><span class="change-label">운영 기준</span><h3>모든 행 완료 시 업무 완료</h3><p>체크리스트가 1개 이상이고 전부 체크됐을 때만 업무상태와 종료일을 바꿉니다.</p><span class="verify-chip">100% 완료 조건</span></article>
         </div>
         <div class="flow">
-          <article class="node"><span class="tag">업무 페이지</span><h3>필터된 Linked View</h3><p>해당 업무 UUID만 보이도록 필터하고 순서 오름차순으로 표시합니다.</p></article>
+          <article class="node"><span class="tag">업무 페이지</span><h3>이 업무의 항목만 표시</h3><p>지금 열어본 업무에 필요한 항목만 순서대로 보여줍니다.</p></article>
           <article class="node"><span class="tag">직원 실행</span><h3>완료 체크</h3><p>필요한 항목은 결과 링크·캡처·접수번호 등 증빙을 먼저 남깁니다.</p></article>
-          <article class="node"><span class="tag">Rollup</span><h3>완료율 상승</h3><p>완료 체크 개수에 따라 (신)업무DB 진행률이 집계됩니다.</p></article>
+          <article class="node"><span class="tag">자동 계산</span><h3>완료율 상승</h3><p>완료한 항목 수에 따라 (신)업무DB의 진행률이 올라갑니다.</p></article>
           <article class="node"><span class="tag">100%</span><h3>업무 완료</h3><p>체크리스트가 1개 이상이고 전부 완료일 때만 업무상태를 완료로 바꿉니다.</p></article>
           <article class="node"><span class="tag">종료</span><h3>종료일 기록</h3><p>완료 전환 실행일을 종료일로 저장하고 이미 완료된 업무는 재수정하지 않습니다.</p></article>
         </div>
@@ -502,7 +527,7 @@
         <div class="state-line">
           <article class="state"><h3><span class="dot"></span>대기</h3><p>아직 생성 요청 전이거나 재검토 중</p></article>
           <article class="state"><h3><span class="dot"></span>생성중</h3><p>중복 검사 및 업무 생성 진행 중</p></article>
-          <article class="state"><h3><span class="dot"></span>생성완료</h3><p>업무 Relation 저장까지 성공</p></article>
+          <article class="state"><h3><span class="dot"></span>생성완료</h3><p>병원과 업무 연결까지 성공</p></article>
           <article class="state"><h3><span class="dot"></span>오류</h3><p>원인 기록 후 요청 체크 자동 해제</p></article>
         </div>
       </div>
@@ -525,7 +550,7 @@
           <article class="folder-step"><b>LEVEL 04</b><h3>카테고리</h3><p><code>임상</code> 또는 <code>정보성</code>을 선택합니다.</p></article>
           <article class="folder-step"><b>LEVEL 05</b><h3>자료 · 원고</h3><p>담당자는 자료를 제공하고 작가는 버전이 포함된 원고를 제출합니다.</p></article>
         </div>
-        <div class="section-head"><div class="section-num">08 / OUTSOURCED WRITERS</div><div><h2>외주작가 배정부터<br>발행·정산까지</h2><p class="lede">바이럴·블로그 원고 업무는 내부 업무 생성에서 끝나지 않습니다. 계약 건수와 자료 적합성을 확인한 뒤 작가에게 배정하고, 납품·검수·발행·정산까지 하나의 운영 경로로 추적합니다.</p></div></div>
+        <div class="section-head"><div class="section-num">08 / 외주작가</div><div><h2>작가 배정부터<br>발행·정산까지</h2><p class="lede">블로그 원고는 업무를 만드는 데서 끝나지 않습니다. 계약 건수와 자료를 확인하고 작가를 정한 뒤, 원고 제출·검토·발행·정산까지 이어서 관리합니다.</p></div></div>
         <div class="change-map" aria-label="외주작가 운영 개선 비교">
           <article class="change-step asis"><span class="change-label">기존 방식</span><h3>카톡·개인 폴더·시트에 분산</h3><p>누가 어떤 거래처 자료를 받았고 어디에 납품했는지 담당자 기억에 의존했습니다.</p></article>
           <article class="change-step problem"><span class="change-label">발생 문제</span><h3>자료 누락·버전 혼선·정산 오류</h3><p>원자료와 완성 원고가 섞이고 월별 건수와 최종본을 찾기 어려웠습니다.</p></article>
@@ -546,7 +571,7 @@
           <article class="node"><span class="tag">WRITER 9</span><h3>승인·발행</h3><p>최종 승인된 원고만 발행하고 발행 링크와 완료일을 기록합니다. 재작업은 별도 상태로 추적합니다.</p></article>
           <article class="node"><span class="tag">WRITER 10</span><h3>월말 대조·정산</h3><p>계약표·중앙 배정표·작가 개인 시트·발행 건수를 대조해 누락·과다·오기를 해결한 뒤 정산합니다.</p></article>
         </div>
-        <div class="section-head" style="margin-top:64px"><div class="section-num">R&amp;R</div><div><h2>회사와 작가의 책임 경계</h2><p class="lede">기준은 단순합니다. MNM은 정상적인 원자료와 고객 관계를 책임지고, 작가는 그 자료로 결과물을 만드는 제작 과정을 책임집니다.</p></div></div>
+        <div class="section-head" style="margin-top:64px"><div class="section-num">누가 무엇을 하나요?</div><div><h2>회사와 작가가 맡는 일</h2><p class="lede">회사는 쓸 수 있는 자료와 고객 소통을 맡고, 작가는 받은 자료로 원고를 만드는 일을 맡습니다.</p></div></div>
         <table class="assign">
           <thead><tr><th>구분</th><th>MNM 내부 책임</th><th>외주작가 책임</th><th>금지·예외</th></tr></thead>
           <tbody>
@@ -562,17 +587,17 @@
 
     <section id="qa">
       <div class="wrap">
-        <div class="section-head"><div class="section-num">09 / QA</div><div><h2>현재 검증 결과와 남은 일</h2><p class="lede">Vercel 배포, Notion 즉시 웹훅, 거래처 담당마케터 배정, 원본 미팅 Relation 연결까지 종단 간 검증했습니다. 남은 항목은 외주작가 운영의 실제 제출·반려·재제출 스모크 테스트입니다.</p></div></div>
+        <div class="section-head"><div class="section-num">09 / 확인 결과</div><div><h2>지금 되는 것과<br>아직 확인할 것</h2><p class="lede">웹앱 배포, Notion 즉시 연결, 병원 담당마케터 배정, 원래 미팅 연결까지 처음부터 끝까지 확인했습니다. 외주작가가 실제로 원고를 내고, 반려받고, 다시 내는 과정은 추가 확인이 필요합니다.</p></div></div>
         <div class="qa-grid">
           <ul class="checklist">
-            <li>미팅 전용 API 배포 및 Vercel 배포 성공</li>
-            <li>Notion 자동화 `미팅 액션 아이템 → (신)업무DB` 활성화</li>
+            <li>미팅 내용을 받는 서버와 웹앱 배포 완료</li>
+            <li>미팅에서 확정한 일을 (신)업무DB로 만드는 자동화 작동</li>
             <li>인증 없는 외부 요청 401 차단 확인</li>
-            <li>녹음·수기 액션 아이템 전처리 및 사람 승인 관문 적용</li>
+            <li>녹음·수기에서 할 일을 정리하고 사람이 확인하는 단계 적용</li>
             <li>QA 미팅 1건에서 박영빈 담당자 업무 생성 성공</li>
             <li>중복 검사 및 부분 생성 실패 시 신규 업무 롤백</li>
           </ul>
-          <aside class="risk"><h3>남은 운영 과제</h3><ul><li>사람DB를 웹훅 통합과 직접 공유해 담당마케터 fallback 의존 제거</li><li>영상팀 속성과 담당자 규칙 확정</li><li>정보성 외주작가 계정·온보딩 완료</li><li>2026-08 계약 데이터 보강</li><li>Drive 실제 제출·반려·재제출 스모크 테스트</li></ul></aside>
+          <aside class="risk"><h3>아직 할 일</h3><ul><li>사람DB 담당자 정보를 자동화가 직접 읽도록 권한 정리</li><li>영상팀 업무와 담당자 규칙 확정</li><li>정보성 외주작가 계정과 사용 안내 완료</li><li>2026-08 계약 자료 보강</li><li>Drive에서 실제 원고 제출·반려·재제출 확인</li></ul></aside>
         </div>
       </div>
     </section>
