@@ -176,6 +176,10 @@
     .proof-grid .shot figcaption { grid-template-columns: 1fr; gap: 6px; padding-top: 14px; }
     .proof-grid .shot-title { font-size: 1.05rem; }
     .proof-grid .shot-copy { font-size: .84rem; }
+    .step-proof { margin: 34px 0 44px; }
+    .step-proof > .node { min-height: auto; margin-bottom: 14px; border-bottom: 4px solid var(--green); box-shadow: none; }
+    .step-proof > .node::after { display: none; }
+    .step-proof > .shot { margin-top: 0; }
     .source-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 40px; }
     .source-card { border: 1px solid var(--ink); background: var(--white); padding: 24px; min-height: 220px; }
     .source-card .source-no { display: inline-block; margin-bottom: 20px; padding: 5px 8px; border: 1px solid currentColor; color: var(--orange); font: 800 12px/1.1 var(--sans); letter-spacing: .08em; }
@@ -281,10 +285,6 @@
           <article class="node"><span class="tag">내부 담당자</span><h3>담당마케터 지정</h3><p>사람DB의 재직 마케팅팀 구성원을 연결합니다.</p></article>
           <article class="node"><span class="tag">승인 트리거</span><h3>신규 업무 생성</h3><p>내부 사용자가 체크해야 다음 단계가 시작됩니다.</p></article>
         </div>
-        <div class="proof-block">
-          <div class="proof-head"><h3>바로 확인하는 실제 화면</h3><p>설명과 화면을 오가며 찾지 않도록, 해당 단계의 실제 캡처를 바로 아래에 붙였습니다.</p></div>
-          <figure class="shot"><img src="/workflow/assets/public-webapp-new-clinic.png" alt="신규개원 거래처 정보 입력 웹앱 실제 화면" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">웹앱</span><br>원장님이 작성하는 신규개원 입력 화면</div><div class="shot-copy"><strong>확인 포인트:</strong> 외부 제출은 거래처DB 저장까지만 수행하며, 내부 업무 생성 체크는 노출하지 않습니다.</div></figcaption></figure>
-        </div>
       </div>
     </section>
 
@@ -297,9 +297,15 @@
           <article class="change-step tobe"><span class="change-label">개선 중인 방향</span><h3>12개 업무·71개 체크 검증</h3><p>누락 업무만 보완하고, Relation과 체크리스트까지 확인한 뒤 완료 처리합니다.</p><span class="verify-chip">실데이터 QA 완료</span></article>
           <article class="change-step rule"><span class="change-label">운영 기준</span><h3>전부 성공해야 생성완료</h3><p>한 건이라도 실패하면 체크를 해제하지 않고 거래처와 원인을 보고합니다.</p><span class="verify-chip">부분 성공 금지</span></article>
         </div>
+        <div class="step-proof">
+          <article class="node"><span class="tag">원장님 화면</span><h3>웹앱 링크를 열어 병원 정보를 작성합니다</h3><p>치과명, 원장명, 개원예정일, 주소, 진료과목·시간, 시설, 브랜딩, 마케팅 요청을 단계별로 입력합니다.</p></article>
+          <figure class="shot"><img src="/workflow/assets/public-webapp-new-clinic.png" alt="신규개원 거래처 정보 입력 웹앱 실제 화면" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">바로 다음 실제 화면</span><br>원장님이 작성하는 신규개원 입력 화면</div><div class="shot-copy"><strong>원장님이 보는 것:</strong> 병원 정보를 단계별로 입력하고 제출합니다. 내부 업무 생성 체크는 노출되지 않습니다.</div></figcaption></figure>
+        </div>
+        <div class="step-proof">
+          <article class="node"><span class="tag">제출 결과</span><h3>입력한 내용이 거래처DB 한 건으로 저장됩니다</h3><p>동일 치과명이 없으면 새 레코드를 만들고, 재제출이면 기존 레코드를 갱신해 중복을 막습니다.</p></article>
+          <figure class="shot"><img src="/workflow/assets/qa-notion-client-record.png" alt="QA 신규개원 테스트치과 거래처DB 실제 레코드" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">바로 다음 실제 화면</span><br>거래처DB 저장 결과</div><div class="shot-copy"><strong>내부 담당자가 보는 것:</strong> 웹앱 입력값, 담당마케터, 신규 업무 생성 승인, 생성된 업무 Relation과 처리 상태를 확인합니다.</div></figcaption></figure>
+        </div>
         <div class="flow">
-          <article class="node"><span class="tag">원장님</span><h3>웹앱 링크 작성</h3><p>치과명, 원장명, 개원예정일, 주소, 진료과목·시간, 시설, 브랜딩, 마케팅 요청을 단계별로 입력합니다.</p></article>
-          <article class="node"><span class="tag">웹앱 제출</span><h3>거래처DB 저장</h3><p>동일 치과명이 없으면 새 레코드를 만들고, 재제출이면 기존 레코드를 갱신해 중복을 막습니다.</p></article>
           <article class="node"><span class="tag">내부 검수</span><h3>담당마케터 지정</h3><p>사람DB의 재직 중 마케팅팀 구성원 1명을 담당마케터로 연결합니다. 담당자가 없으면 업무 생성은 중단됩니다.</p></article>
           <article class="node"><span class="tag">승인</span><h3>신규 업무 생성</h3><p>거래처DB의 체크박스를 켜면 동일 거래처·동일 업무명을 검사한 뒤 누락된 표준 업무만 생성합니다.</p></article>
           <article class="node"><span class="tag">(신)업무DB</span><h3>12개 업무 + 71개 체크</h3><p>개원 세팅 12건과 연결 체크리스트 71건이 담당마케터에게 배정되고 거래처 Relation에 다시 연결됩니다.</p></article>
@@ -316,10 +322,6 @@
         </table>
         <div class="merge"><strong>검증된 실제 결과</strong><br>내부 QA 레코드 기준 거래처 1건 · 개원 세팅 업무 12건 · 업무 체크리스트 71건을 확인했습니다. 공개 문서에서는 내부 Notion 페이지 링크를 제공하지 않습니다.</div>
         <div class="merge"><strong>2026-08-16 개선 완료</strong><br>개원세팅 QA 거래처에서 표준 업무 12건, 체크리스트 71건, 각 업무 페이지의 UUID 필터 linked view를 다시 확인했습니다. 거래처DB의 <code>신규 업무 생성</code> 승인 후 누락 업무만 보완되고, 모든 검증이 끝난 뒤 생성완료로 전환됩니다.</div>
-        <div class="proof-block">
-          <div class="proof-head"><h3>웹앱 제출 직후의 거래처DB</h3><p>입력값 저장과 내부 승인 상태가 한 레코드에서 이어지는지 확인합니다.</p></div>
-          <figure class="shot"><img src="/workflow/assets/qa-notion-client-record.png" alt="QA 신규개원 테스트치과 거래처DB 실제 레코드" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">NOTION</span><br>거래처DB 저장·담당마케터·생성 승인</div><div class="shot-copy"><strong>확인 포인트:</strong> 담당마케터 연결, <code>신규 업무 생성</code>, 12개 업무 Relation, 생성완료와 생성일을 한 화면에서 확인합니다.</div></figcaption></figure>
-        </div>
       </div>
     </section>
 
@@ -377,13 +379,12 @@
           <article class="node"><span class="tag">1</span><h3>대상 확인</h3><p>체크 여부와 업무 생성 상태를 검사합니다.</p></article>
           <article class="node"><span class="tag">2</span><h3>중복 검사</h3><p>동일 거래처·표준 업무명 기준으로 <strong>0·1·2건 이상</strong>을 판정합니다.</p></article>
           <article class="node"><span class="tag">3</span><h3>누락 업무 생성</h3><p>첫 인사부터 최종 개원 점검까지 표준 12종을 구성합니다.</p></article>
-          <article class="node"><span class="tag">4</span><h3>체크리스트 연결</h3><p>업무마다 필터된 업무 체크리스트DB 보기를 연결합니다.</p></article>
-          <article class="node"><span class="tag">5</span><h3>거래처 완료 처리</h3><p>모든 검증 성공 후에만 Relation과 생성완료 상태를 저장합니다.</p></article>
         </div>
-        <div class="proof-block">
-          <div class="proof-head"><h3>생성된 업무에서 바로 실행</h3><p>직원은 본문에 중복된 To-do가 아니라 필터된 업무 체크리스트DB만 사용합니다.</p></div>
+        <div class="step-proof">
+          <article class="node"><span class="tag">4 · 직원 화면</span><h3>생성된 업무에 전용 체크리스트가 연결됩니다</h3><p>직원은 본문에 중복된 To-do가 아니라 해당 업무 UUID로 필터된 업무 체크리스트DB만 사용합니다.</p></article>
           <figure class="shot"><img src="/workflow/assets/qa-notion-task-checklist.png" alt="개원세팅 업무의 필터된 체크리스트 실제 화면" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">(신)업무DB</span><br>업무별 체크리스트와 완료율</div><div class="shot-copy"><strong>확인 포인트:</strong> 해당 업무의 행만 보이고, 체크할 때 완료율 Rollup이 올라가며 모든 행 완료 시 업무가 종료됩니다.</div></figcaption></figure>
         </div>
+        <div class="flow"><article class="node"><span class="tag">5</span><h3>거래처 완료 처리</h3><p>모든 검증 성공 후에만 Relation과 생성완료 상태를 저장합니다.</p></article></div>
       </div>
     </section>
 
@@ -401,6 +402,10 @@
           <article class="panel manual"><h3>✍️ 수기로 시작</h3><ol><li>미팅 본문은 형식 없이 자유롭게 작성 가능</li><li>담당자가 결정·요청·검토·아이디어를 구분</li><li>실행이 확정된 항목만 액션 아이템으로 이동</li><li>업무 하나당 한 줄로 정리하고 모호한 표현 제거</li></ol></article>
         </div>
         <div class="merge"><strong>공통 승인점</strong><br>사람이 내용을 검토한 뒤 <code>미팅 상태=완료</code> + <code>업무 생성 요청=체크</code></div>
+        <div class="step-proof">
+          <article class="node"><span class="tag">미팅 담당자 화면</span><h3>녹음·수기 내용을 검토하고 업무 생성을 승인합니다</h3><p>미팅 상태, 관련 거래처, 담당자와 실행 문장을 확인한 뒤 생성 요청을 체크합니다.</p></article>
+          <figure class="shot"><img src="/workflow/assets/public-notion-meeting-db.png" alt="Notion 미팅 기록 DB 실제 화면" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">바로 다음 실제 화면</span><br>미팅 기록·사람 승인</div><div class="shot-copy">자동 요약만으로 생성하지 않고 담당자가 원문과 실행 항목을 확인하는 화면입니다.</div></figcaption></figure>
+        </div>
         <div class="flow" style="margin-top:42px">
           <article class="node"><span class="tag">STEP 1</span><h3>미팅 기록 수집</h3><p>녹음 또는 수기 본문과 거래처·참석자·미팅 담당자를 한 미팅 페이지에 모읍니다.</p></article>
           <article class="node"><span class="tag">STEP 2</span><h3>내용 전처리</h3><p>인사말·반복·아이디어를 걷어내고 실제 실행이 필요한 문장만 업무 후보로 정리합니다.</p></article>
@@ -411,18 +416,17 @@
         <div class="flow" style="margin-top:18px">
           <article class="node"><span class="tag">STEP 6</span><h3>담당자 결정</h3><p>마케팅은 거래처DB 담당마케터를 우선합니다. 사람DB Relation이 통합 권한 때문에 가려진 경우에만 미팅 담당자 1명을 안전 대체값으로 사용하며, 다른 팀 업무도 미팅 담당자 1명을 요구합니다.</p></article>
           <article class="node"><span class="tag">STEP 7</span><h3>(신)업무DB 생성</h3><p>업무명·관련거래처·담당팀·담당자·상태를 저장하고 원본 미팅 Relation을 연결합니다.</p></article>
+        </div>
+        <div class="step-proof">
+          <article class="node"><span class="tag">생성 결과</span><h3>승인된 실행 항목이 담당자의 업무로 배정됩니다</h3><p>업무명, 거래처, 담당팀, 담당자와 원본 미팅 Relation이 (신)업무DB에 기록됩니다.</p></article>
+          <figure class="shot"><img src="/workflow/assets/public-notion-task-db.png" alt="Notion 신규 업무 DB 실제 화면" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">바로 다음 실제 화면</span><br>담당자에게 생성된 업무</div><div class="shot-copy">미팅에서 확정한 실행 항목이 실제 업무 레코드로 전환된 결과입니다.</div></figcaption></figure>
+        </div>
+        <div class="flow" style="margin-top:18px">
           <article class="node"><span class="tag">STEP 8</span><h3>직원 실행</h3><p>업무 페이지의 필터된 체크리스트에서 실행하고 결과 링크·캡처·접수번호 등 증빙을 남깁니다.</p></article>
           <article class="node"><span class="tag">STEP 9</span><h3>진행률 자동 집계</h3><p>업무 체크리스트DB의 완료 체크 수가 Rollup으로 집계되어 진행률이 올라갑니다.</p></article>
           <article class="node"><span class="tag">STEP 10</span><h3>업무 완료·종료</h3><p>체크리스트가 1개 이상이고 모두 완료되면 업무상태를 완료로 바꾸고 종료일을 기록합니다.</p></article>
         </div>
         <div class="warning"><strong>오류 시 동작:</strong> 거래처 없음·복수 연결, 담당자 불명확, 동일 업무 중복, 지원하지 않는 팀이면 업무를 만들지 않습니다. 원인을 <code>업무 생성 오류</code>에 기록하고 운영자가 수정한 뒤 다시 승인합니다.</div>
-        <div class="proof-block">
-          <div class="proof-head"><h3>미팅 기록이 업무로 바뀌는 실제 화면</h3><p>미팅DB에서 사람이 승인한 뒤 (신)업무DB에 생성되는 순서입니다.</p></div>
-          <div class="proof-grid">
-            <figure class="shot"><img src="/workflow/assets/public-notion-meeting-db.png" alt="Notion 미팅 기록 DB 실제 화면" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">STEP 01</span><br>미팅 기록·사람 승인</div><div class="shot-copy">녹음 또는 수기 내용을 정리하고 완료 상태와 업무 생성 요청을 확인합니다.</div></figcaption></figure>
-            <figure class="shot"><img src="/workflow/assets/public-notion-task-db.png" alt="Notion 신규 업무 DB 실제 화면" loading="lazy" /><figcaption><div class="shot-title"><span class="shot-step">STEP 02</span><br>담당자에게 업무 배정</div><div class="shot-copy">업무명·거래처·담당팀·담당자·원본 미팅 Relation이 저장된 결과를 확인합니다.</div></figcaption></figure>
-          </div>
-        </div>
       </div>
     </section>
 
