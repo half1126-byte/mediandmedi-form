@@ -28,8 +28,16 @@ async function userIdByExactName(name: string): Promise<string> {
   return matches[0].id;
 }
 
-async function marketerId(clientPage: AnyPage): Promise<string> {
+async function marketerId(clientPage: AnyPage, meetingOwners: any[]): Promise<string> {
   const relations = clientPage.properties?.['담당마케터']?.relation || [];
+  // A linked People DB may be hidden from the webhook integration even when the
+  // client record itself is visible. Prefer the client marketer relation, but
+  // fail safely unless the meeting has exactly one explicit owner to use as a
+  // permission-safe fallback.
+  if (relations.length === 0) {
+    if (meetingOwners.length === 1) return meetingOwners[0].id;
+    throw new Error(`거래처 담당마케터 Relation을 읽을 수 없고 미팅 담당자도 정확히 1명이 아닙니다. 현재 ${meetingOwners.length}명입니다.`);
+  }
   if (relations.length !== 1) throw new Error(`거래처 담당마케터를 정확히 1명 지정해야 합니다. 현재 ${relations.length}명입니다.`);
   const person = await notion.pages.retrieve({ page_id: relations[0].id }) as AnyPage;
   const name = textOf(person.properties?.['사람명']);
@@ -75,7 +83,7 @@ export async function ensureMeetingTasks(meetingId: string): Promise<{ created: 
     }
 
     const client = await notion.pages.retrieve({ page_id: clientId }) as AnyPage;
-    const marketingOwner = classified.some((item) => item.team === '마케팅팀') ? await marketerId(client) : undefined;
+    const marketingOwner = classified.some((item) => item.team === '마케팅팀') ? await marketerId(client, meetingOwners) : undefined;
     const assigneeFor = (team: MeetingTeam) => team === '마케팅팀' ? marketingOwner! : meetingOwners[0].id;
 
     const existingPages: AnyPage[] = [];
