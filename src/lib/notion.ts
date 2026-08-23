@@ -1,7 +1,7 @@
 import { Client, isNotionClientError } from '@notionhq/client';
 import { SERVICES } from '@/data/services';
 import { clinicNamesMatch, normalizeClinicName } from './normalize';
-import { isActiveRoutingOwner, linkedPersonAccountId } from './notion/people';
+import { resolveNamedActiveTeamMember } from './notion/people';
 
 // 환경변수의 공백/개행 제거 — Vercel 등에 복붙으로 값을 넣을 때 끝에 개행이 섞이면
 // DB ID/키가 깨져 제출이 통째로 실패한다. 읽는 지점마다 trim.
@@ -57,6 +57,8 @@ export interface SubmitResult {
 
 const NEW_TASK_DATABASE_ID = '97e9a82d-b9c4-8349-9bea-01e15d30e007';
 const TASK_CHECKLIST_DATABASE_ID = 'dd2371df-6b67-4572-8bc5-3d01765cde06';
+const PEOPLE_DATA_SOURCE_ID = envTrim('NOTION_PEOPLE_DATA_SOURCE_ID') || '3599a82d-b9c4-8078-89a8-000bfce48529';
+const OPENING_ASSIGNEE_NAME = '강재오';
 
 async function resolveDataSourceId(databaseId: string): Promise<string> {
   const database = await withRetry(() => notion.databases.retrieve({ database_id: databaseId })) as {
@@ -94,27 +96,16 @@ async function titlePropertyName(dataSourceId: string): Promise<string> {
   return found[0];
 }
 
-async function openingAssignee(clientProperties: any): Promise<{
+async function openingAssignee(): Promise<{
   accountId: string;
   peoplePageId: string;
 }> {
-  const marketerRelations = clientProperties['담당마케터']?.relation || [];
-  if (marketerRelations.length !== 1) {
-    throw new Error(`담당마케터를 정확히 1명 지정해야 합니다. 현재 ${marketerRelations.length}명입니다.`);
-  }
-
-  const marketerPage = await withRetry(() => notion.pages.retrieve({ page_id: marketerRelations[0].id })) as any;
-  const marketerName = plainTitle(marketerPage, '사람명');
-  if (!marketerName) throw new Error('담당마케터 사람DB 페이지에서 사람명을 확인할 수 없습니다.');
-
-  if (!isActiveRoutingOwner(marketerPage, '마케팅팀')) {
-    throw new Error(`담당마케터 ${marketerName}은(는) 재직 중인 마케팅 업무 배분 담당자가 아닙니다.`);
-  }
-
-  return {
-    accountId: linkedPersonAccountId(marketerPage, `담당마케터 ${marketerName}`),
-    peoplePageId: marketerRelations[0].id,
-  };
+  const response = await withRetry(() => notion.dataSources.query({
+    data_source_id: PEOPLE_DATA_SOURCE_ID,
+    filter: { property: '사람명', title: { equals: OPENING_ASSIGNEE_NAME } },
+    page_size: 10,
+  } as any)) as any;
+  return resolveNamedActiveTeamMember(response.results || [], OPENING_ASSIGNEE_NAME, '마케팅팀');
 }
 
 /** 웹앱 제출과 Notion 웹훅이 공유하는 신규개원 이벤트 처리기. */
@@ -128,7 +119,7 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
   if (!requested && generationState !== '생성완료') {
     throw new Error('신규 업무 생성이 체크되지 않은 거래처입니다.');
   }
-  const assignee = await openingAssignee(clientProperties);
+  const assignee = await openingAssignee();
   const taskSourceId = await resolveDataSourceId(NEW_TASK_DATABASE_ID);
   const checklistSourceId = await resolveDataSourceId(TASK_CHECKLIST_DATABASE_ID);
   const taskTitle = await titlePropertyName(taskSourceId);
@@ -154,6 +145,11 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
       let task = byName.get(name)?.[0];
       if (task) {
         existing += 1;
+        await safePageUpdate(task.id, {
+          '담당팀': { select: { name: '마케팅팀' } },
+          '담당자': { people: [{ id: assignee.accountId }] },
+          '담당 직원': { relation: [{ id: assignee.peoplePageId }] },
+        });
       } else {
         task = await withRetry(() => notion.pages.create({
         parent: { database_id: NEW_TASK_DATABASE_ID },

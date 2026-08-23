@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { isActiveRoutingOwner, linkedPersonAccountId } from '@/lib/notion/people';
+import {
+  isActiveRoutingOwner,
+  linkedPersonAccountId,
+  resolveNamedActiveTeamMember,
+} from '@/lib/notion/people';
 
 describe('linkedPersonAccountId', () => {
   it('uses the selected Notion account ID without comparing display names', () => {
@@ -45,6 +49,38 @@ describe('isActiveRoutingOwner', () => {
       재직상태: { select: { name: '재직' } },
       '업무 배분 담당팀': { multi_select: [] },
     } }, '마케팅팀')).toBe(false);
+  });
+});
+
+describe('resolveNamedActiveTeamMember', () => {
+  const kangJaeo = {
+    id: 'people-row-kang-jaeo',
+    properties: {
+      사람명: { title: [{ plain_text: '강재오' }] },
+      사람: { people: [{ id: 'notion-account-kang-jaeo', name: '강재오' }] },
+      소속팀: { select: { name: '마케팅팀' } },
+      재직상태: { select: { name: '재직' } },
+    },
+  };
+
+  it('assigns every opening task to the one active marketing employee 강재오', () => {
+    expect(resolveNamedActiveTeamMember([kangJaeo], '강재오', '마케팅팀')).toEqual({
+      accountId: 'notion-account-kang-jaeo',
+      peoplePageId: 'people-row-kang-jaeo',
+    });
+  });
+
+  it('rejects duplicate, inactive, or wrong-team PeopleDB rows', () => {
+    expect(() => resolveNamedActiveTeamMember([kangJaeo, { ...kangJaeo, id: 'duplicate' }], '강재오', '마케팅팀'))
+      .toThrow('현재 2명');
+    expect(() => resolveNamedActiveTeamMember([{
+      ...kangJaeo,
+      properties: { ...kangJaeo.properties, 재직상태: { select: { name: '퇴사' } } },
+    }], '강재오', '마케팅팀')).toThrow('현재 0명');
+    expect(() => resolveNamedActiveTeamMember([{
+      ...kangJaeo,
+      properties: { ...kangJaeo.properties, 소속팀: { select: { name: '영상팀' } } },
+    }], '강재오', '마케팅팀')).toThrow('현재 0명');
   });
 });
 
