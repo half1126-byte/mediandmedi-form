@@ -29,5 +29,37 @@ export function isActiveRoutingOwner(page: any, team: string): boolean {
     && routingTeams.some((option: any) => option?.name === team);
 }
 
+export interface PersonAssignment {
+  accountId: string;
+  peoplePageId: string;
+}
+
+/** Resolves one named active employee from PeopleDB for a fixed workflow owner. */
+export function resolveNamedActiveTeamMember(
+  pages: any[],
+  employeeName: string,
+  team: string,
+): PersonAssignment {
+  const matches = pages.filter((page) => {
+    const name = (page?.properties?.['사람명']?.title || [])
+      .map((item: any) => item?.plain_text || item?.text?.content || '')
+      .join('')
+      .trim();
+    return name === employeeName
+      && page?.properties?.['재직상태']?.select?.name === '재직'
+      && page?.properties?.['소속팀']?.select?.name === team;
+  });
+
+  if (matches.length !== 1) {
+    throw new Error(`사람DB에서 재직 중인 ${team} ${employeeName}을(를) 정확히 1명 찾아야 합니다. 현재 ${matches.length}명입니다.`);
+  }
+
+  const person = matches[0];
+  return {
+    accountId: linkedPersonAccountId(person, employeeName),
+    peoplePageId: person.id,
+  };
+}
+
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
