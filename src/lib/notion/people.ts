@@ -21,5 +21,13 @@ export function linkedPersonAccountId(page: any, context: string): string {
   return accountId;
 }
 
+/** Checks the operational routing role instead of the employee's HR team. */
+export function isActiveRoutingOwner(page: any, team: string): boolean {
+  const active = page?.properties?.['재직상태']?.select?.name === '재직';
+  const routingTeams = page?.properties?.['업무 배분 담당팀']?.multi_select;
+  return active && Array.isArray(routingTeams)
+    && routingTeams.some((option: any) => option?.name === team);
+}
+
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
