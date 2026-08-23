@@ -1,7 +1,7 @@
 import { Client, isNotionClientError } from '@notionhq/client';
 import { SERVICES } from '@/data/services';
 import { clinicNamesMatch, normalizeClinicName } from './normalize';
-import { linkedPersonAccountId } from './notion/people';
+import { isActiveRoutingOwner, linkedPersonAccountId } from './notion/people';
 
 // 환경변수의 공백/개행 제거 — Vercel 등에 복붙으로 값을 넣을 때 끝에 개행이 섞이면
 // DB ID/키가 깨져 제출이 통째로 실패한다. 읽는 지점마다 trim.
@@ -107,10 +107,8 @@ async function openingAssignee(clientProperties: any): Promise<{
   const marketerName = plainTitle(marketerPage, '사람명');
   if (!marketerName) throw new Error('담당마케터 사람DB 페이지에서 사람명을 확인할 수 없습니다.');
 
-  const team = marketerPage.properties?.['소속팀']?.select?.name;
-  const employment = marketerPage.properties?.['재직상태']?.select?.name;
-  if (team !== '마케팅팀' || employment !== '재직') {
-    throw new Error(`담당마케터 ${marketerName}은(는) 재직 중인 마케팅팀 구성원이 아닙니다.`);
+  if (!isActiveRoutingOwner(marketerPage, '마케팅팀')) {
+    throw new Error(`담당마케터 ${marketerName}은(는) 재직 중인 마케팅 업무 배분 담당자가 아닙니다.`);
   }
 
   return {
