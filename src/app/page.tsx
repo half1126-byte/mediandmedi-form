@@ -97,8 +97,9 @@ export default function Home() {
               </svg>
               계약변경
             </button>
+            {/* 진료일정 제출은 신규 MNM Calendar 앱으로 이관 (기존 /schedule-change 라우트는 롤백 대비 유지) */}
             <button
-              onClick={() => router.push('/schedule-change')}
+              onClick={() => { window.location.href = 'https://mnn-calendar-customer.vercel.app/'; }}
               className="w-full h-14 bg-white text-[#374151] border border-[#D1D5DB] rounded-xl
                          font-medium text-base hover:border-[#2563EB] hover:text-[#2563EB]
                          active:scale-[0.98] transition-all

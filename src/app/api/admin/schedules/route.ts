@@ -92,9 +92,11 @@ export async function GET(request: NextRequest) {
         calendarText: getText(p['달력 표기 필수내용 원문']),
         specialNote: getText(p['특이사항/병원요청']),
         holidayReason: getText(p['휴진사유']),
-        status: getSelect(p['처리상태_폼']),
+        // MNM Calendar(신규 고객 앱) 제출은 처리상태_폼을 비워두고 제출일을 datetime으로 저장
+        // → 빈 상태는 초기값 '접수'로 취급, 제출일은 날짜(YYYY-MM-DD)로 정규화해 콘솔 표시 통일.
+        status: getSelect(p['처리상태_폼']) || '접수',
         assignee: getText(p['담당자']),
-        submittedAt: getDate(p['제출일']),
+        submittedAt: getDate(p['제출일']).slice(0, 10),
         tagData: {
           '휴진': getText(p['휴진일']),
           '토요일진료': getText(p['토요일진료']),
@@ -103,6 +105,7 @@ export async function GET(request: NextRequest) {
           '오후진료': getText(p['오후진료']),
           '야간진료': getText(p['야간진료_변경']),
           '공휴일진료': getText(p['공휴일진료']),
+          '소아진료': getText(p['소아진료']),
         },
       };
     });
