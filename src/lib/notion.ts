@@ -268,7 +268,7 @@ export async function createMainRecord(
   const s1 = (data.step1 || {}) as Record<string, unknown>;
   const clinicName = (s1.clinicName as string) || '';
 
-  const coreProps = buildMainProperties(data);
+  const coreProps = await filterPropsBySchema(dbId, buildMainProperties(data));
   const children = buildMainPageChildren(data);
 
   // 최신 우선 업서트: 같은 거래처(의원/공백 표기차 포함)가 이미 있으면 새로 만들지 않고
@@ -343,6 +343,37 @@ async function safePageUpdate(pageId: string, props: Record<string, unknown>): P
     }
   }
   throw new Error('[safePageUpdate] too many unknown properties, giving up');
+}
+
+// 거래처DB 실스키마를 조회해 "지금 존재하고 타입까지 일치하는 속성만" 남긴다.
+// 운영 중 컬럼을 삭제·개명·타입변경해도 제출은 그대로 진행되고(해당 값은 본문 블록에 보존),
+// 컬럼을 복원하면 코드 수정 없이 다음 제출부터 자동으로 다시 채워진다.
+// 스키마 조회에 실패하면 필터 없이 전체를 보내고 safePageCreate가 최후 방어선이 된다.
+async function filterPropsBySchema(
+  dbId: string,
+  props: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  let schema: Record<string, { type?: string }> | undefined;
+  try {
+    const db = await withRetry(() => notion.databases.retrieve({ database_id: dbId })) as {
+      properties?: Record<string, { type?: string }>;
+    };
+    schema = db?.properties;
+  } catch {
+    // 스키마 조회 실패 → 필터 생략 (fail-open)
+  }
+  if (!schema) return props;
+
+  const out: Record<string, unknown> = {};
+  for (const [name, value] of Object.entries(props)) {
+    const type = schema[name]?.type;
+    if (type && value && typeof value === 'object' && type in (value as Record<string, unknown>)) {
+      out[name] = value;
+    } else {
+      console.warn(`[filterPropsBySchema] 거래처DB에 없는/타입이 다른 속성 제외: "${name}"`);
+    }
+  }
+  return out;
 }
 
 // pages.create도 동일: DB 스키마에 없는 속성명이 하나라도 있으면 노션이 요청 전체를 거부 → 제출 실패.
@@ -872,8 +903,16 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     props['임플란트 재료'] = { multi_select: implantBrands.map((b) => ({ name: b })) };
   }
 
-  // '진료시간'·'월 계약금' 컬럼은 2026-09 거래처DB에서 삭제됨 — 속성으로 보내면 노션이
-  // 요청 전체를 거부해 제출이 실패한다. 값은 본문 블록(buildMainPageChildren)에 저장된다.
+  // 아래 매핑은 filterPropsBySchema가 실스키마와 대조해 "존재하는 속성만" 전송한다.
+  // → 거래처DB에서 컬럼을 삭제하면 자동 제외되고, 복원하면 코드 수정 없이 다시 채워진다.
+  const schedule = (s2.schedule || {}) as Record<string, { enabled: boolean; start: string; end: string }>;
+  const scheduleLine = Object.entries(schedule)
+    .filter(([, v]) => v.enabled)
+    .map(([day, v]) => `${day} ${v.start}~${v.end}`)
+    .join(', ');
+  if (scheduleLine) {
+    props['진료시간'] = { rich_text: [{ text: { content: scheduleLine } }] };
+  }
 
   if (s3.chairs) {
     const chairs = parseInt(s3.chairs as string);
@@ -932,6 +971,9 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
   const contractStart = (s6.contractStartDate as string) || (s1.openDate as string);
   if (contractStart) {
     props['거래시작일'] = { date: { start: contractStart } };
+  }
+  if (s6.monthlyFee) {
+    props['월 계약금'] = { rich_text: [{ text: { content: s6.monthlyFee as string } }] };
   }
   if (s6.specialNotes) {
     props['특이사항'] = { rich_text: [{ text: { content: (s6.specialNotes as string).substring(0, 1900) } }] };
