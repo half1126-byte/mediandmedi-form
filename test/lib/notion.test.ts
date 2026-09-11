@@ -105,6 +105,43 @@ describe('createMainRecord', () => {
     await expect(createMainRecord(sampleFormData)).rejects.toThrow('Server error');
     expect(mockCreate).toHaveBeenCalledTimes(3);
   }, 30000);
+
+  it('DB에서 삭제된 속성은 자동 제거 후 재시도해 생성 성공 (스키마 드리프트 방어)', async () => {
+    // 거래처DB에서 '예산범위' 컬럼이 삭제된 상황: 해당 속성이 포함된 요청은 노션이 전체 거부한다.
+    mockCreate.mockImplementation((arg: { properties: Record<string, unknown> }) =>
+      arg.properties['예산범위']
+        ? Promise.reject(new Error('body failed validation: Could not find property with name or id: 예산범위.'))
+        : Promise.resolve({ id: 'page-789' })
+    );
+    const data = {
+      ...sampleFormData,
+      step5: { ...sampleFormData.step5, budgetRange: '500만원 이상' },
+    };
+    const id = await createMainRecord(data);
+    expect(id).toBe('page-789');
+    const lastCall = mockCreate.mock.calls.at(-1)![0] as { properties: Record<string, unknown> };
+    expect(lastCall.properties['예산범위']).toBeUndefined(); // 없는 속성만 제거
+    expect(lastCall.properties['거래처명']).toBeDefined(); // 나머지 속성은 유지
+  }, 30000);
+
+  it('거래처DB에서 삭제된 진료시간·월 계약금은 속성으로 보내지 않는다 (본문 블록에는 유지)', async () => {
+    mockCreate.mockResolvedValue({ id: 'page-1' });
+    const data = {
+      ...sampleFormData,
+      step2: { ...sampleFormData.step2, schedule: { '월': { enabled: true, start: '09:00', end: '18:00' } } },
+      step6: { ...sampleFormData.step6, monthlyFee: '100만원' },
+    };
+    await createMainRecord(data);
+    const arg = mockCreate.mock.calls[0][0] as {
+      properties: Record<string, unknown>;
+      children: Array<Record<string, unknown>>;
+    };
+    expect(arg.properties['진료시간']).toBeUndefined();
+    expect(arg.properties['월 계약금']).toBeUndefined();
+    const bodyText = JSON.stringify(arg.children);
+    expect(bodyText).toContain('진료시간: 월 09:00~18:00');
+    expect(bodyText).toContain('월 계약금: 100만원');
+  });
 });
 
 describe('createTaskRecord', () => {

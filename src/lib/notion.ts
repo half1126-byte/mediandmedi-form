@@ -285,15 +285,7 @@ export async function createMainRecord(
     }
   }
 
-  const response = await withRetry(() =>
-    notion.pages.create({
-      parent: { database_id: dbId },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      properties: coreProps as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      children: children as any,
-    })
-  );
+  const response = await safePageCreate(dbId, coreProps, children);
 
   return response.id;
 }
@@ -351,6 +343,41 @@ async function safePageUpdate(pageId: string, props: Record<string, unknown>): P
     }
   }
   throw new Error('[safePageUpdate] too many unknown properties, giving up');
+}
+
+// pages.create도 동일: DB 스키마에 없는 속성명이 하나라도 있으면 노션이 요청 전체를 거부 → 제출 실패.
+// 운영 중 거래처DB 컬럼이 삭제·개명돼도 제출이 죽지 않도록, 없는 속성만 제거하고 재시도한다.
+// (핵심 값은 buildMainPageChildren이 본문 블록에도 저장하므로 속성이 빠져도 데이터 유실 없음)
+async function safePageCreate(
+  parentDbId: string,
+  props: Record<string, unknown>,
+  children: Array<Record<string, unknown>>
+): Promise<{ id: string }> {
+  const remaining = { ...props };
+  for (let attempt = 0; attempt < 15; attempt++) {
+    try {
+      return await withRetry(() =>
+        notion.pages.create({
+          parent: { database_id: parentDbId },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          properties: remaining as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          children: children as any,
+        })
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const match = msg.match(/Could not find property with name or id:\s*(.+?)(?:\s*\.|$)/i);
+      if (match) {
+        const bad = match[1].trim();
+        console.warn(`[safePageCreate] removing unknown prop "${bad}" and retrying`);
+        delete remaining[bad];
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw new Error('[safePageCreate] too many unknown properties, giving up');
 }
 
 /**
@@ -845,14 +872,8 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     props['임플란트 재료'] = { multi_select: implantBrands.map((b) => ({ name: b })) };
   }
 
-  const schedule = (s2.schedule || {}) as Record<string, { enabled: boolean; start: string; end: string }>;
-  const scheduleLine = Object.entries(schedule)
-    .filter(([, v]) => v.enabled)
-    .map(([day, v]) => `${day} ${v.start}~${v.end}`)
-    .join(', ');
-  if (scheduleLine) {
-    props['진료시간'] = { rich_text: [{ text: { content: scheduleLine } }] };
-  }
+  // '진료시간'·'월 계약금' 컬럼은 2026-09 거래처DB에서 삭제됨 — 속성으로 보내면 노션이
+  // 요청 전체를 거부해 제출이 실패한다. 값은 본문 블록(buildMainPageChildren)에 저장된다.
 
   if (s3.chairs) {
     const chairs = parseInt(s3.chairs as string);
@@ -911,9 +932,6 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
   const contractStart = (s6.contractStartDate as string) || (s1.openDate as string);
   if (contractStart) {
     props['거래시작일'] = { date: { start: contractStart } };
-  }
-  if (s6.monthlyFee) {
-    props['월 계약금'] = { rich_text: [{ text: { content: s6.monthlyFee as string } }] };
   }
   if (s6.specialNotes) {
     props['특이사항'] = { rich_text: [{ text: { content: (s6.specialNotes as string).substring(0, 1900) } }] };
