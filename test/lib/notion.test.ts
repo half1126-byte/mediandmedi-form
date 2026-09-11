@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBlocksAppend, mockBlocksDelete } = vi.hoisted(() => {
+const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBlocksAppend, mockBlocksDelete, mockDbRetrieve } = vi.hoisted(() => {
   return {
     mockCreate: vi.fn(),
     mockRetrieve: vi.fn(),
@@ -9,6 +9,7 @@ const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBl
     mockBlocksList: vi.fn(),
     mockBlocksAppend: vi.fn(),
     mockBlocksDelete: vi.fn(),
+    mockDbRetrieve: vi.fn(),
   };
 });
 
@@ -25,6 +26,9 @@ vi.mock('@notionhq/client', () => {
         delete: mockBlocksDelete,
       };
       search = mockSearch;
+      databases = {
+        retrieve: mockDbRetrieve,
+      };
     },
     isNotionClientError: (error: unknown): boolean =>
       error instanceof Error && 'status' in error,
@@ -60,6 +64,7 @@ describe('createMainRecord', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearch.mockResolvedValue({ results: [] }); // 기본: 동일 거래처 없음 → 새로 생성
+    mockDbRetrieve.mockResolvedValue(undefined); // 기본: 스키마 정보 없음 → 필터 없이 진행(fail-open)
   });
 
   it('성공 시 페이지 ID 반환', async () => {
@@ -124,24 +129,70 @@ describe('createMainRecord', () => {
     expect(lastCall.properties['거래처명']).toBeDefined(); // 나머지 속성은 유지
   }, 30000);
 
-  it('거래처DB에서 삭제된 진료시간·월 계약금은 속성으로 보내지 않는다 (본문 블록에는 유지)', async () => {
+  // ── 스키마 유연 대응: 제출 시 거래처DB 실스키마를 조회해 "지금 있는 속성만" 보낸다 ──
+  const FULL_SCHEMA: Record<string, { type: string }> = Object.fromEntries((
+    [
+      ['거래처명', 'title'], ['상태', 'status'], ['업종', 'select'], ['관계유형', 'select'],
+      ['폼 제출일', 'date'], ['신규 업무 생성', 'checkbox'], ['업무 생성 상태', 'select'],
+      ['원장명', 'rich_text'], ['대표 전화', 'rich_text'], ['주소', 'rich_text'], ['지역', 'rich_text'],
+      ['개원예정일', 'date'], ['진료과목', 'multi_select'], ['주력진료', 'multi_select'],
+      ['진료시간', 'rich_text'], ['체어수', 'number'], ['시설', 'multi_select'],
+      ['예산범위', 'select'], ['거래시작일', 'date'], ['월 계약금', 'rich_text'],
+      ['계약 서비스', 'multi_select'], ['의료진', 'rich_text'],
+    ] as Array<[string, string]>
+  ).map(([name, type]) => [name, { type }]));
+  const schemaWithout = (...names: string[]) =>
+    Object.fromEntries(Object.entries(FULL_SCHEMA).filter(([n]) => !names.includes(n)));
+  const richScheduleData = {
+    ...sampleFormData,
+    step2: { ...sampleFormData.step2, schedule: { '월': { enabled: true, start: '09:00', end: '18:00' } } },
+    step6: { ...sampleFormData.step6, monthlyFee: '100만원' },
+  };
+
+  it('DB 스키마에 없는 속성은 제외하고 재시도 없이 1회에 생성 성공 (컬럼 삭제 유연 대응)', async () => {
+    mockDbRetrieve.mockResolvedValue({ properties: schemaWithout('진료시간', '월 계약금') });
     mockCreate.mockResolvedValue({ id: 'page-1' });
-    const data = {
-      ...sampleFormData,
-      step2: { ...sampleFormData.step2, schedule: { '월': { enabled: true, start: '09:00', end: '18:00' } } },
-      step6: { ...sampleFormData.step6, monthlyFee: '100만원' },
-    };
-    await createMainRecord(data);
+    await createMainRecord(richScheduleData);
+    expect(mockCreate).toHaveBeenCalledTimes(1); // 에러-제거-재시도 낭비 없음
     const arg = mockCreate.mock.calls[0][0] as {
       properties: Record<string, unknown>;
       children: Array<Record<string, unknown>>;
     };
     expect(arg.properties['진료시간']).toBeUndefined();
     expect(arg.properties['월 계약금']).toBeUndefined();
+    expect(arg.properties['거래처명']).toBeDefined(); // 존재하는 속성은 유지
     const bodyText = JSON.stringify(arg.children);
-    expect(bodyText).toContain('진료시간: 월 09:00~18:00');
+    expect(bodyText).toContain('진료시간: 월 09:00~18:00'); // 본문 블록에는 항상 유지
     expect(bodyText).toContain('월 계약금: 100만원');
   });
+
+  it('컬럼이 복원되면 코드 수정 없이 다시 속성으로 반영된다', async () => {
+    mockDbRetrieve.mockResolvedValue({ properties: FULL_SCHEMA });
+    mockCreate.mockResolvedValue({ id: 'page-1' });
+    await createMainRecord(richScheduleData);
+    const arg = mockCreate.mock.calls[0][0] as { properties: Record<string, unknown> };
+    expect(arg.properties['진료시간']).toEqual({ rich_text: [{ text: { content: '월 09:00~18:00' } }] });
+    expect(arg.properties['월 계약금']).toEqual({ rich_text: [{ text: { content: '100만원' } }] });
+  });
+
+  it('타입이 바뀐 속성도 제외한다 (예: 예산범위 select → rich_text)', async () => {
+    mockDbRetrieve.mockResolvedValue({ properties: { ...FULL_SCHEMA, '예산범위': { type: 'rich_text' } } });
+    mockCreate.mockResolvedValue({ id: 'page-1' });
+    const data = { ...sampleFormData, step5: { ...sampleFormData.step5, budgetRange: '500만원 이상' } };
+    await createMainRecord(data);
+    const arg = mockCreate.mock.calls[0][0] as { properties: Record<string, unknown> };
+    expect(arg.properties['예산범위']).toBeUndefined();
+    expect(arg.properties['거래처명']).toBeDefined();
+  });
+
+  it('스키마 조회가 실패해도 전체 속성으로 제출을 진행한다 (fail-open)', async () => {
+    mockDbRetrieve.mockRejectedValue(new Error('schema fetch failed'));
+    mockCreate.mockResolvedValue({ id: 'page-1' });
+    await createMainRecord(richScheduleData);
+    const arg = mockCreate.mock.calls[0][0] as { properties: Record<string, unknown> };
+    expect(arg.properties['거래처명']).toBeDefined();
+    expect(arg.properties['진료시간']).toBeDefined(); // 필터를 건너뛰고 전부 전송 → safePageCreate가 방어
+  }, 30000);
 });
 
 describe('createTaskRecord', () => {
