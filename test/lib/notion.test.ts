@@ -185,6 +185,27 @@ describe('createMainRecord', () => {
     expect(arg.properties['거래처명']).toBeDefined();
   });
 
+  it('본문 블록이 100개를 넘으면 100개씩 나눠 저장한다 (노션 children 한도 대응)', async () => {
+    mockCreate.mockResolvedValue({ id: 'page-1' });
+    mockBlocksAppend.mockResolvedValue({});
+    // 의료진 120명 → 본문 블록 100개 초과 payload (반듯치과처럼 데이터가 많은 제출 재현)
+    const doctors = Array.from({ length: 120 }, (_, i) => ({ name: `의사${i + 1}`, title: '원장', specialty: '' }));
+    const data = { ...sampleFormData, step1: { ...sampleFormData.step1, doctors } };
+    const id = await createMainRecord(data);
+    expect(id).toBe('page-1');
+
+    const createArg = mockCreate.mock.calls[0][0] as { children: Array<Record<string, unknown>> };
+    expect(createArg.children.length).toBeLessThanOrEqual(100); // 생성 요청은 한도 이내
+    expect(mockBlocksAppend).toHaveBeenCalled(); // 나머지는 본문 추가로 이어붙임
+    const appendCalls = mockBlocksAppend.mock.calls as Array<[{ block_id: string; children: Array<Record<string, unknown>> }]>;
+    for (const [call] of appendCalls) {
+      expect(call.block_id).toBe('page-1');
+      expect(call.children.length).toBeLessThanOrEqual(100); // 추가분도 100개씩
+    }
+    const total = createArg.children.length + appendCalls.reduce((n, [c]) => n + c.children.length, 0);
+    expect(total).toBeGreaterThan(100); // 전체 블록이 유실 없이 저장됨
+  });
+
   it('스키마 조회가 실패해도 전체 속성으로 제출을 진행한다 (fail-open)', async () => {
     mockDbRetrieve.mockRejectedValue(new Error('schema fetch failed'));
     mockCreate.mockResolvedValue({ id: 'page-1' });

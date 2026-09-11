@@ -379,21 +379,27 @@ async function filterPropsBySchema(
 // pages.create도 동일: DB 스키마에 없는 속성명이 하나라도 있으면 노션이 요청 전체를 거부 → 제출 실패.
 // 운영 중 거래처DB 컬럼이 삭제·개명돼도 제출이 죽지 않도록, 없는 속성만 제거하고 재시도한다.
 // (핵심 값은 buildMainPageChildren이 본문 블록에도 저장하므로 속성이 빠져도 데이터 유실 없음)
+// 노션 pages.create는 본문 children을 최대 100개까지만 받는다(초과 시 요청 전체 거부).
+// 모든 섹션을 채운 제출은 100개를 넘을 수 있어, 초과분은 생성 후 100개씩 이어붙인다.
+const NOTION_CHILDREN_LIMIT = 100;
+
 async function safePageCreate(
   parentDbId: string,
   props: Record<string, unknown>,
   children: Array<Record<string, unknown>>
 ): Promise<{ id: string }> {
+  const firstBatch = children.slice(0, NOTION_CHILDREN_LIMIT);
   const remaining = { ...props };
-  for (let attempt = 0; attempt < 15; attempt++) {
+  let page: { id: string } | undefined;
+  for (let attempt = 0; attempt < 15 && !page; attempt++) {
     try {
-      return await withRetry(() =>
+      page = await withRetry(() =>
         notion.pages.create({
           parent: { database_id: parentDbId },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           properties: remaining as any,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          children: children as any,
+          children: firstBatch as any,
         })
       );
     } catch (err) {
@@ -408,7 +414,25 @@ async function safePageCreate(
       }
     }
   }
-  throw new Error('[safePageCreate] too many unknown properties, giving up');
+  if (!page) throw new Error('[safePageCreate] too many unknown properties, giving up');
+  const pageId = page.id;
+
+  // 초과 본문 블록은 100개씩 append. 부분 실패는 제출 자체를 실패시키지 않고 로그만 남긴다
+  // (속성·앞부분 본문은 이미 저장됨 — 진료일정 달력 이미지 append와 동일한 정책).
+  for (let i = NOTION_CHILDREN_LIMIT; i < children.length; i += NOTION_CHILDREN_LIMIT) {
+    const batch = children.slice(i, i + NOTION_CHILDREN_LIMIT);
+    try {
+      await withRetry(() =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (notion.blocks.children as any).append({ block_id: pageId, children: batch as any })
+      );
+    } catch (e) {
+      console.warn(`[safePageCreate] 본문 블록 추가 부분 실패 (${i}번째~): 제출은 유지`, e);
+      break;
+    }
+  }
+
+  return page;
 }
 
 /**
