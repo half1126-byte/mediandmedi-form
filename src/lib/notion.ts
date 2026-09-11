@@ -321,6 +321,21 @@ function filterFilledProps(
   return out;
 }
 
+// 노션 스키마 불일치 에러 메시지에서 문제 속성명들을 추출한다. API 버전별로 형식이 다르다:
+//  - 구형(2022-06): "Could not find property with name or id: X."
+//  - 신형(2025-09): "X is not a property that exists." / "X is expected to be relation."
+//    여러 문제가 마침표로 이어진 복합 메시지로 올 수 있어 절 단위로 전부 파싱한다.
+function parseInvalidProps(message: string): string[] {
+  const names = new Set<string>();
+  const legacy = message.match(/Could not find property with name or id:\s*(.+?)(?:\s*\.|$)/i);
+  if (legacy) names.add(legacy[1].trim());
+  for (const clause of message.split(/\.\s*/)) {
+    const m = clause.match(/^(.+?) is (?:not a property that exists|expected to be )/i);
+    if (m) names.add(m[1].trim());
+  }
+  return [...names];
+}
+
 // Notion pages.update는 DB 스키마에 없는 속성명이 포함되면 400 validation_error 반환.
 // 에러 메시지에서 속성명을 파싱해 제거하고 재시도 → DB 스키마 불일치에 자동 대응.
 async function safePageUpdate(pageId: string, props: Record<string, unknown>): Promise<void> {
@@ -332,11 +347,10 @@ async function safePageUpdate(pageId: string, props: Record<string, unknown>): P
       return;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      const match = msg.match(/Could not find property with name or id:\s*(.+?)(?:\s*\.|$)/i);
-      if (match) {
-        const bad = match[1].trim();
-        console.warn(`[safePageUpdate] removing unknown prop "${bad}" and retrying`);
-        delete remaining[bad];
+      const bad = parseInvalidProps(msg).filter((name) => name in remaining);
+      if (bad.length > 0) {
+        console.warn(`[safePageUpdate] removing invalid props ${bad.map((n) => `"${n}"`).join(', ')} and retrying`);
+        for (const name of bad) delete remaining[name];
       } else {
         throw err;
       }
@@ -355,10 +369,23 @@ async function filterPropsBySchema(
 ): Promise<Record<string, unknown>> {
   let schema: Record<string, { type?: string }> | undefined;
   try {
+    // @notionhq/client v5(API 2025-09)의 databases.retrieve는 properties를 주지 않고
+    // data_sources만 반환한다 → 데이터소스를 경유해 실스키마를 조회한다.
+    // (구형 응답이 properties를 직접 주는 경우도 폴백으로 지원)
     const db = await withRetry(() => notion.databases.retrieve({ database_id: dbId })) as {
       properties?: Record<string, { type?: string }>;
+      data_sources?: Array<{ id?: string }>;
     };
     schema = db?.properties;
+    if (!schema) {
+      const dataSourceId = db?.data_sources?.[0]?.id;
+      if (dataSourceId) {
+        const source = await withRetry(() => notion.dataSources.retrieve({ data_source_id: dataSourceId })) as {
+          properties?: Record<string, { type?: string }>;
+        };
+        schema = source?.properties;
+      }
+    }
   } catch {
     // 스키마 조회 실패 → 필터 생략 (fail-open)
   }
@@ -404,11 +431,10 @@ async function safePageCreate(
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      const match = msg.match(/Could not find property with name or id:\s*(.+?)(?:\s*\.|$)/i);
-      if (match) {
-        const bad = match[1].trim();
-        console.warn(`[safePageCreate] removing unknown prop "${bad}" and retrying`);
-        delete remaining[bad];
+      const bad = parseInvalidProps(msg).filter((name) => name in remaining);
+      if (bad.length > 0) {
+        console.warn(`[safePageCreate] removing invalid props ${bad.map((n) => `"${n}"`).join(', ')} and retrying`);
+        for (const name of bad) delete remaining[name];
       } else {
         throw err;
       }

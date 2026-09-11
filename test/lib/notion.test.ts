@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBlocksAppend, mockBlocksDelete, mockDbRetrieve } = vi.hoisted(() => {
+const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBlocksAppend, mockBlocksDelete, mockDbRetrieve, mockDsRetrieve } = vi.hoisted(() => {
   return {
     mockCreate: vi.fn(),
     mockRetrieve: vi.fn(),
@@ -10,6 +10,7 @@ const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBl
     mockBlocksAppend: vi.fn(),
     mockBlocksDelete: vi.fn(),
     mockDbRetrieve: vi.fn(),
+    mockDsRetrieve: vi.fn(),
   };
 });
 
@@ -28,6 +29,9 @@ vi.mock('@notionhq/client', () => {
       search = mockSearch;
       databases = {
         retrieve: mockDbRetrieve,
+      };
+      dataSources = {
+        retrieve: mockDsRetrieve,
       };
     },
     isNotionClientError: (error: unknown): boolean =>
@@ -205,6 +209,35 @@ describe('createMainRecord', () => {
     const total = createArg.children.length + appendCalls.reduce((n, [c]) => n + c.children.length, 0);
     expect(total).toBeGreaterThan(100); // 전체 블록이 유실 없이 저장됨
   });
+
+  it('신 API(v5): databases.retrieve가 properties 없이 data_sources만 줘도 데이터소스 경유로 필터한다', async () => {
+    // @notionhq/client v5(API 2025-09)의 실제 응답 형태 재현
+    mockDbRetrieve.mockResolvedValue({ data_sources: [{ id: 'ds-1', name: '거래처DB' }] });
+    mockDsRetrieve.mockResolvedValue({ properties: schemaWithout('진료시간', '월 계약금') });
+    mockCreate.mockResolvedValue({ id: 'page-1' });
+    await createMainRecord(richScheduleData);
+    expect(mockDsRetrieve).toHaveBeenCalledWith({ data_source_id: 'ds-1' });
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    const arg = mockCreate.mock.calls[0][0] as { properties: Record<string, unknown> };
+    expect(arg.properties['진료시간']).toBeUndefined();
+    expect(arg.properties['월 계약금']).toBeUndefined();
+    expect(arg.properties['거래처명']).toBeDefined();
+  });
+
+  it('신 API(v5) 에러 메시지 형식도 파싱해 문제 속성만 제거 후 재시도한다', async () => {
+    // 실제 운영에서 관측된 복합 에러 메시지 (타입 불일치 + 미존재, 마침표로 연결)
+    mockCreate.mockImplementation((arg: { properties: Record<string, unknown> }) =>
+      arg.properties['진료시간'] || arg.properties['월 계약금']
+        ? Promise.reject(new Error('진료시간 is expected to be relation. 월 계약금 is not a property that exists.'))
+        : Promise.resolve({ id: 'page-1' })
+    );
+    const id = await createMainRecord(richScheduleData); // 스키마 조회 불가(fail-open) 상태
+    expect(id).toBe('page-1');
+    const lastCall = mockCreate.mock.calls.at(-1)![0] as { properties: Record<string, unknown> };
+    expect(lastCall.properties['진료시간']).toBeUndefined();
+    expect(lastCall.properties['월 계약금']).toBeUndefined();
+    expect(lastCall.properties['거래처명']).toBeDefined();
+  }, 30000);
 
   it('스키마 조회가 실패해도 전체 속성으로 제출을 진행한다 (fail-open)', async () => {
     mockDbRetrieve.mockRejectedValue(new Error('schema fetch failed'));
