@@ -279,8 +279,12 @@ export async function createMainRecord(
     if (existing) {
       const filled = filterFilledProps(coreProps, ['상태']);
       await safePageUpdate(existing, filled);
-      // 직원이 본문에 추가한 운영 기록을 보호한다. 재제출은 속성만 갱신하고
-      // 기존 본문을 통째로 교체하지 않는다.
+      // 직원이 본문에 추가한 운영 기록을 보호한다: 기존 본문은 지우지 않고 아래에 이어붙인다.
+      // 폼 본문이 아직 없으면(직원이 미리 만든 빈 페이지 등 — 수원세브란스 사례) 그대로 채우고,
+      // 이미 있으면(재제출) 날짜를 단 재제출 섹션으로 추가한다. 속성에 없는 본문 전용 항목
+      // (진료시간·브랜딩 상세·웹·디자인 등)이 유실되지 않도록 실패 시 제출을 실패시킨다.
+      const blocks = (await hasFormBody(existing)) ? resubmissionBlocks(children) : children;
+      await appendBlocks(existing, blocks);
       return existing;
     }
   }
@@ -410,6 +414,9 @@ async function filterPropsBySchema(
 // 모든 섹션을 채운 제출은 100개를 넘을 수 있어, 초과분은 생성 후 100개씩 이어붙인다.
 const NOTION_CHILDREN_LIMIT = 100;
 
+// 폼이 만든 본문의 첫 콜아웃 문구. 기존 페이지에 폼 본문이 이미 있는지 판별하는 표식으로도 쓴다.
+const FORM_BODY_MARKER = '신규개원 폼으로 자동 생성된 거래처 페이지';
+
 async function safePageCreate(
   parentDbId: string,
   props: Record<string, unknown>,
@@ -445,20 +452,60 @@ async function safePageCreate(
 
   // 초과 본문 블록은 100개씩 append. 부분 실패는 제출 자체를 실패시키지 않고 로그만 남긴다
   // (속성·앞부분 본문은 이미 저장됨 — 진료일정 달력 이미지 append와 동일한 정책).
-  for (let i = NOTION_CHILDREN_LIMIT; i < children.length; i += NOTION_CHILDREN_LIMIT) {
-    const batch = children.slice(i, i + NOTION_CHILDREN_LIMIT);
-    try {
-      await withRetry(() =>
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (notion.blocks.children as any).append({ block_id: pageId, children: batch as any })
-      );
-    } catch (e) {
-      console.warn(`[safePageCreate] 본문 블록 추가 부분 실패 (${i}번째~): 제출은 유지`, e);
-      break;
-    }
+  try {
+    await appendBlocks(pageId, children.slice(NOTION_CHILDREN_LIMIT));
+  } catch (e) {
+    console.warn(`[safePageCreate] 본문 블록 추가 부분 실패 (${NOTION_CHILDREN_LIMIT}번째 이후): 제출은 유지`, e);
   }
 
   return page;
+}
+
+// 본문 블록을 노션 children 한도(100개)씩 나눠 페이지 끝에 이어붙인다. 실패하면 throw.
+async function appendBlocks(pageId: string, blocks: Array<Record<string, unknown>>): Promise<void> {
+  for (let i = 0; i < blocks.length; i += NOTION_CHILDREN_LIMIT) {
+    const batch = blocks.slice(i, i + NOTION_CHILDREN_LIMIT);
+    await withRetry(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (notion.blocks.children as any).append({ block_id: pageId, children: batch as any })
+    );
+  }
+}
+
+// 기존 거래처 페이지에 폼이 쓴 본문(안내 콜아웃)이 이미 있는지 확인한다.
+async function hasFormBody(pageId: string): Promise<boolean> {
+  let cursor: string | undefined;
+  for (let page = 0; page < 20; page++) {
+    const res = await withRetry(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (notion.blocks.children as any).list({ block_id: pageId, page_size: 100, ...(cursor ? { start_cursor: cursor } : {}) })
+    ) as { results?: Array<{ type?: string; callout?: { rich_text?: Array<{ plain_text?: string; text?: { content?: string } }> } }>; has_more?: boolean; next_cursor?: string };
+    const found = (res.results || []).some((b) =>
+      b.type === 'callout' &&
+      (b.callout?.rich_text || []).map((t) => t.plain_text || t.text?.content || '').join('').includes(FORM_BODY_MARKER)
+    );
+    if (found) return true;
+    if (!res.has_more || !res.next_cursor) return false;
+    cursor = res.next_cursor;
+  }
+  return false;
+}
+
+// 재제출 본문: 구분선 + 재제출 안내 콜아웃 + 새 폼 본문(첫 블록인 최초 생성 안내 콜아웃은 제외).
+function resubmissionBlocks(children: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  return [
+    { object: 'block', type: 'divider', divider: {} },
+    {
+      object: 'block',
+      type: 'callout',
+      callout: {
+        rich_text: [{ type: 'text', text: { content: `🔁 ${today()} 폼 재제출 내용 — 위 본문보다 최신입니다. 직원 메모 보호를 위해 기존 본문은 그대로 두고 아래에 추가했습니다.` } }],
+        icon: { type: 'emoji', emoji: '🔁' },
+        color: 'blue_background',
+      },
+    },
+    ...children.slice(1),
+  ];
 }
 
 /**
@@ -1064,7 +1111,7 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
     object: 'block',
     type: 'callout',
     callout: {
-      rich_text: [{ type: 'text', text: { content: '🏥 신규개원 폼으로 자동 생성된 거래처 페이지. 핵심 필드는 상단 속성에, 상세 정보는 아래 본문에 저장됩니다.' } }],
+      rich_text: [{ type: 'text', text: { content: `🏥 ${FORM_BODY_MARKER}. 핵심 필드는 상단 속성에, 상세 정보는 아래 본문에 저장됩니다.` } }],
       icon: { type: 'emoji', emoji: '🏥' },
       color: 'gray_background',
     },
