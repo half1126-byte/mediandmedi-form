@@ -2,6 +2,7 @@ import { Client, isNotionClientError } from '@notionhq/client';
 import { SERVICES } from '@/data/services';
 import { clinicNamesMatch, normalizeClinicName } from './normalize';
 import { resolveNamedActiveTeamMember } from './notion/people';
+import { resolveDoctors, type Doctor } from './doctors';
 
 // 환경변수의 공백/개행 제거 — Vercel 등에 복붙으로 값을 넣을 때 끝에 개행이 섞이면
 // DB ID/키가 깨져 제출이 통째로 실패한다. 읽는 지점마다 trim.
@@ -668,7 +669,8 @@ export async function createChangeRecord(
   const agendaText = agendaLines.join('\n');
 
   const dateStr = today();
-  const clinicPageId = clinicName ? await findClinicByName(clinicName, LEGACY_CLINICS_DB_ID) : null;
+  // 미팅 기록의 거래처 relation은 신 거래처DB(NOTION_MAIN_DB_ID)를 가리킨다 — 구 거래처 DB relation은 삭제됨.
+  const clinicPageId = clinicName ? await findClinicByName(clinicName, undefined, true) : null;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const properties: any = {
@@ -682,15 +684,12 @@ export async function createChangeRecord(
     '상태': { status: { name: '시작 전' } },
   };
   if (clinicPageId) {
-    properties['거래처'] = { relation: [{ id: clinicPageId }] };
+    properties['Related to 거래처DB (미팅 기록)'] = { relation: [{ id: clinicPageId }] };
   }
 
-  const response = await withRetry(() =>
-    notion.pages.create({
-      parent: { database_id: dbId },
-      properties,
-    })
-  );
+  // 미팅 기록 스키마가 바뀌어도(예: '미팅 유형'이 date로 변경됨) 제출이 통째로 실패하지 않도록
+  // 실스키마에 존재하고 타입이 맞는 속성만 보낸다. 계약변경 구분은 제목의 [계약변경]으로 남는다.
+  const response = await safePageCreate(dbId, await filterPropsBySchema(dbId, properties), []);
 
   return response.id;
 }
@@ -1083,7 +1082,7 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     props['계약 서비스'] = { multi_select: contractTeams.map((t) => ({ name: t })) };
   }
 
-  const doctors = (s1.doctors as { name: string; title: string; specialty: string }[]) || [];
+  const doctors = resolveDoctors(s1.doctors as Doctor[] | undefined, s1.doctorName as string | undefined);
   if (doctors.length > 0) {
     const doctorText = doctors
       .map((d) => `${d.name || '미입력'}(${d.title}${d.specialty ? `·${d.specialty}` : ''})`)
@@ -1091,7 +1090,17 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     props['의료진'] = { rich_text: [{ text: { content: doctorText.substring(0, 1900) } }] };
   }
 
+  stripSelectCommas(props);
   return props;
+}
+
+// 노션 select/multi_select 옵션 이름에는 쉼표를 쓸 수 없어 하나라도 있으면 요청 전체가 거부된다
+// (parseInvalidProps가 못 잡는 오류라 제출 실패로 끝남). 저장 직전에 쉼표를 제거한다.
+function stripSelectCommas(props: Record<string, unknown>): void {
+  for (const value of Object.values(props) as Array<{ select?: { name: string }; multi_select?: { name: string }[] }>) {
+    if (value?.select?.name) value.select.name = value.select.name.replace(/,/g, '');
+    if (value?.multi_select) value.multi_select = value.multi_select.map((o) => ({ ...o, name: o.name.replace(/,/g, '') }));
+  }
 }
 
 function buildMainPageChildren(data: Record<string, unknown>): Array<Record<string, unknown>> {
@@ -1129,7 +1138,7 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   }
 
   // 의료진
-  const doctors = (s1.doctors as { name: string; title: string; specialty: string }[]) || [];
+  const doctors = resolveDoctors(s1.doctors as Doctor[] | undefined, s1.doctorName as string | undefined);
   if (doctors.length > 0) {
     blocks.push(heading('의료진'));
     doctors.forEach((d) => {

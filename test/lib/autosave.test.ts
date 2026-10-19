@@ -121,4 +121,25 @@ describe('findExistingSaves', () => {
     const saves = findExistingSaves();
     expect(saves[0].savedAt).toBe('2026-06-01T00:00:00Z');
   });
+
+  it('세션 ID가 빈 저장본(복원 창이 떠 있는 동안 생긴 빈 폼)은 무시해 진짜 작성본을 가리지 않는다', () => {
+    saveForm('real', makeSaved({ sessionId: 'real', clinicName: '이종광치과', savedAt: '2026-10-19T09:30:16Z' }));
+    // 버그로 이미 만들어진 빈 저장본: 키 'mediandmedi-form-', 더 늦은 시각
+    mockStorage['mediandmedi-form-'] = JSON.stringify(makeSaved({ sessionId: '', clinicName: '', currentStep: 0, savedAt: '2026-10-19T09:30:19Z' }));
+
+    const saves = findExistingSaves();
+    expect(saves.map((s) => s.sessionId)).toEqual(['real']);
+  });
+});
+
+describe('saveForm — 세션 ID 없음', () => {
+  beforeEach(() => {
+    localStorageMock.clear();
+    vi.clearAllMocks();
+  });
+
+  it('세션 ID가 비어 있으면 저장하지 않는다 (복원 창 표시 중·제출 완료 후 자동저장 차단)', () => {
+    expect(saveForm('', makeSaved({ sessionId: '' }))).toBe(false);
+    expect(mockStorage['mediandmedi-form-']).toBeUndefined();
+  });
 });

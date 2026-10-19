@@ -18,6 +18,7 @@ import {
   clearForm,
   type SavedFormData,
 } from '@/lib/autosave';
+import { resolveDoctors } from '@/lib/doctors';
 import { type UploadedFile } from '@/components/FileUpload';
 import { SERVICES as SERVICES_LIST } from '@/data/services';
 import {
@@ -574,6 +575,8 @@ export default function NewClinicPage() {
       setSubmitStep(2);
 
       clearForm(sessionId);
+      // 제출 완료 후 남은 자동저장(30초 백업·페이지 이탈 저장)이 초안을 되살리지 않도록 세션 종료
+      setSessionId('');
       localStorage.setItem('mediandmedi-last-submission', pageId);
       localStorage.setItem(`mediandmedi-pin-${pageId}`, pin);
 
@@ -2100,7 +2103,7 @@ function Step7({
         {step1.doctors && step1.doctors.length > 0 && (
           <SummaryItem
             label="명단"
-            value={step1.doctors
+            value={resolveDoctors(step1.doctors, step1.doctorName)
               .filter((d) => d.name || d.title || d.specialty)
               .map((d) => `${d.name || '미입력'} ${d.title}${d.specialty ? ` · ${d.specialty}` : ''}`)
               .join(' / ')}
