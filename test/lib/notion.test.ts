@@ -344,6 +344,73 @@ describe('createChangeRecord', () => {
     });
     expect(id).toBe('change-1');
   });
+
+  it('미팅 기록 실스키마에 맞춰 보낸다: 타입이 다른 미팅 유형(date)은 빼고, 거래처는 신 거래처DB relation으로 연결', async () => {
+    // 운영 미팅 기록 DB: '미팅 유형'이 date로 바뀌어 있고, 거래처 relation 이름은 'Related to 거래처DB (미팅 기록)'
+    mockDbRetrieve.mockResolvedValueOnce({ data_sources: [{ id: 'ds-meeting' }] });
+    mockDsRetrieve.mockResolvedValueOnce({
+      properties: {
+        '미팅 제목': { type: 'title' }, '미팅 유형': { type: 'date' }, '일자': { type: 'date' },
+        '참석자(외부)': { type: 'rich_text' }, '주요 안건': { type: 'rich_text' }, '핵심 결정사항': { type: 'rich_text' },
+        '액션 아이템': { type: 'rich_text' }, '상태': { type: 'status' },
+        'Related to 거래처DB (미팅 기록)': { type: 'relation' },
+      },
+    });
+    mockSearch.mockResolvedValueOnce({
+      results: [{ id: 'clinic-new', parent: { database_id: 'main-db-id' }, properties: { '거래처명': { title: [{ plain_text: '해피치과' }] } } }],
+    });
+    mockCreate.mockResolvedValueOnce({ id: 'change-2' });
+
+    const id = await createChangeRecord({
+      clinicName: '해피치과', doctorName: '김행복', currentServices: [], addServices: ['블로그작성(임상)'], removeServices: [], reason: '채널 확대',
+    });
+    expect(id).toBe('change-2');
+    const arg = mockCreate.mock.calls[0][0] as { parent: { database_id: string }; properties: NotionProps };
+    expect(arg.parent.database_id).toBe('change-db-id');
+    expect(arg.properties['미팅 유형']).toBeUndefined(); // select로 보내면 노션이 요청 전체를 거부
+    expect(arg.properties['거래처']).toBeUndefined(); // 없는 속성
+    expect(arg.properties['Related to 거래처DB (미팅 기록)'].relation?.[0].id).toBe('clinic-new');
+    expect(arg.properties['미팅 제목'].title?.[0].text.content).toContain('[계약변경] 해피치과');
+  });
+});
+
+describe('createMainRecord — 쉼표 선택값·대표 원장 이름', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSearch.mockResolvedValue({ results: [] });
+    mockDbRetrieve.mockResolvedValue(undefined);
+    mockCreate.mockResolvedValue({ id: 'page-1' });
+  });
+
+  it('선택값의 쉼표를 제거한다 (노션 select/multi_select는 쉼표를 거부해 제출 전체가 실패)', async () => {
+    const data = {
+      ...sampleFormData,
+      step3: { ...sampleFormData.step3, facilities: ['수술실', '상담실,VIP'] },
+      step5: { ...sampleFormData.step5, budgetRange: '1,000만원 이상' },
+    };
+    await createMainRecord(data);
+    const arg = mockCreate.mock.calls[0][0] as { properties: Record<string, { select?: { name: string }; multi_select?: { name: string }[] }> };
+    expect(arg.properties['예산범위'].select?.name).toBe('1000만원 이상');
+    expect(arg.properties['시설'].multi_select?.map((o) => o.name)).toEqual(['수술실', '상담실VIP']);
+  });
+
+  it('대표 원장 카드 성함이 비어 있으면 원장님 성함으로 채운다 (화면에 보인 그대로 저장, "미입력" 방지)', async () => {
+    const data = {
+      ...sampleFormData,
+      step1: {
+        ...sampleFormData.step1,
+        doctorName: '김행복',
+        doctors: [{ name: '', title: '원장', specialty: '보철과' }, { name: '이부원', title: '봉직의', specialty: '' }],
+      },
+    };
+    await createMainRecord(data);
+    const arg = mockCreate.mock.calls[0][0] as { properties: NotionProps; children: unknown[] };
+    const staff = arg.properties['의료진'].rich_text?.[0].text.content;
+    expect(staff).toBe('김행복(원장·보철과), 이부원(봉직의)');
+    const body = JSON.stringify(arg.children);
+    expect(body).toContain('김행복 · 원장 · 보철과');
+    expect(body).not.toContain('미입력');
+  });
 });
 
 describe('createMainRecord — 신규 필드 매핑 (디자인/브랜딩·홈페이지·브랜딩)', () => {

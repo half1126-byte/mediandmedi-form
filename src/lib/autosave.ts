@@ -45,6 +45,9 @@ function getKey(sessionId: string): string {
 }
 
 export function saveForm(sessionId: string, data: SavedFormData): boolean {
+  // 세션이 없을 때(복원 창 표시 중·제출 완료 후)는 저장하지 않는다. 빈 폼이 더 최신 저장본으로
+  // 남아 다음 방문 때 진짜 작성본 대신 복원 창에 뜨는 문제 방지.
+  if (!sessionId) return false;
   const storage = getStorage();
   if (!storage) return false;
 
@@ -92,7 +95,8 @@ export function findExistingSaves(): SavedFormData[] {
     if (key?.startsWith(STORAGE_PREFIX)) {
       try {
         const data = JSON.parse(storage.getItem(key) || '');
-        if (data && !data.submitted) {
+        // 세션 ID 없는 저장본은 위 버그로 생긴 빈 폼이라 무시
+        if (data && !data.submitted && data.sessionId) {
           saves.push(data);
         }
       } catch {
