@@ -98,6 +98,66 @@ describe('createMainRecord', () => {
     expect(updateArg.properties['거래처명']).toBeDefined(); // 채워진 값은 갱신
   });
 
+  describe('업서트 본문 (수원세브란스: 미리 만든 빈 페이지에 제출 → 본문 유실 회귀)', () => {
+    const existingSearch = {
+      results: [
+        { id: 'existing-page', parent: { database_id: 'main-db-id' }, properties: { '거래처명': { title: [{ plain_text: '해피치과' }] } } },
+      ],
+    };
+    type AppendCall = [{ block_id: string; children: Array<Record<string, unknown>> }];
+    const appendedText = () =>
+      JSON.stringify((mockBlocksAppend.mock.calls as AppendCall[]).flatMap(([c]) => c.children));
+
+    beforeEach(() => {
+      mockSearch.mockResolvedValue(existingSearch);
+      mockUpdate.mockResolvedValue({ id: 'existing-page' });
+      mockBlocksAppend.mockResolvedValue({});
+    });
+
+    it('기존 페이지 본문이 비어 있으면 폼 본문을 그대로 채운다', async () => {
+      mockBlocksList.mockResolvedValue({ results: [], has_more: false });
+      await createMainRecord(sampleFormData);
+
+      const [[first]] = mockBlocksAppend.mock.calls as AppendCall[];
+      expect(first.block_id).toBe('existing-page');
+      expect(appendedText()).toContain('신규개원 폼으로 자동 생성된 거래처 페이지');
+      expect(appendedText()).toContain('점심시간: 12:00~13:00');
+      expect(appendedText()).not.toContain('재제출');
+      expect(mockBlocksDelete).not.toHaveBeenCalled();
+    });
+
+    it('직원 메모만 있고 폼 본문이 없으면 메모는 두고 폼 본문을 아래에 추가한다', async () => {
+      mockBlocksList.mockResolvedValue({
+        results: [{ type: 'paragraph', paragraph: { rich_text: [{ plain_text: '직원 메모: 원장님 통화 완료' }] } }],
+        has_more: false,
+      });
+      await createMainRecord(sampleFormData);
+
+      expect(appendedText()).toContain('신규개원 폼으로 자동 생성된 거래처 페이지');
+      expect(mockBlocksDelete).not.toHaveBeenCalled();
+    });
+
+    it('이미 폼 본문이 있으면(재제출) 기존 본문은 두고 재제출 내용을 날짜와 함께 아래에 추가한다', async () => {
+      mockBlocksList.mockResolvedValue({
+        results: [{ type: 'callout', callout: { rich_text: [{ plain_text: '🏥 신규개원 폼으로 자동 생성된 거래처 페이지. 핵심 필드는 상단 속성에, 상세 정보는 아래 본문에 저장됩니다.' }] } }],
+        has_more: false,
+      });
+      await createMainRecord(sampleFormData);
+
+      const text = appendedText();
+      expect(text).toContain('재제출');
+      expect(text).toContain(new Date().toISOString().split('T')[0]);
+      expect(text).toContain('점심시간: 12:00~13:00');
+      expect(mockBlocksDelete).not.toHaveBeenCalled();
+    });
+
+    it('본문 추가가 끝내 실패하면 제출을 실패시킨다 (조용한 유실 방지 — 원장님 화면에서 재시도 가능)', async () => {
+      mockBlocksList.mockResolvedValue({ results: [], has_more: false });
+      mockBlocksAppend.mockRejectedValue(new Error('append failed'));
+      await expect(createMainRecord(sampleFormData)).rejects.toThrow('append failed');
+    }, 15000);
+  });
+
   it('429 에러 시 재시도', async () => {
     const error429 = Object.assign(new Error('Rate limited'), { status: 429 });
     mockCreate
