@@ -269,7 +269,7 @@ interface FormData {
     monthlyFee: string;
     specialNotes: string;
   };
-  /** 플랫폼 계정정보 (마케팅·웹 세팅용) — 노션에 평문 저장(내부 공유) */
+  /** 플랫폼 계정정보 (마케팅·웹 세팅용) — 노션 계정DB에 플랫폼별로 저장, 거래처와 연결 */
   accounts: {
     naver: { id: string; pw: string };
     google: { id: string; pw: string };
