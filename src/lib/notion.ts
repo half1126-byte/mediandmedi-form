@@ -286,13 +286,114 @@ export async function createMainRecord(
       // (진료시간·브랜딩 상세·웹·디자인 등)이 유실되지 않도록 실패 시 제출을 실패시킨다.
       const blocks = (await hasFormBody(existing)) ? resubmissionBlocks(children) : children;
       await appendBlocks(existing, blocks);
+      await saveAccountsOrWarn(existing, data);
       return existing;
     }
   }
 
   const response = await safePageCreate(dbId, coreProps, children);
+  await saveAccountsOrWarn(response.id, data);
 
   return response.id;
+}
+
+// 계정DB: 플랫폼 계정(아이디·비밀번호)을 거래처와 relation으로 연결해 보관한다.
+// 거래처 페이지 본문에는 평문을 쓰지 않고, 상단 '계정 DB' 연결로 확인한다.
+const ACCOUNT_DATABASE_ID = envTrim('NOTION_ACCOUNT_DB_ID') || '3c29a82d-b9c4-8043-ab9e-c86f407f46b8';
+
+// 폼 accounts 키 → 계정DB '이름' (계정DB에서 실제로 쓰는 표기에 맞춤)
+const ACCOUNT_LABELS: [string, string][] = [
+  ['naver', '네이버'], ['google', '구글'], ['kakao', '카카오'], ['instagram', '인스타그램'],
+  ['youtube', '유튜브'], ['danggeun', '당근'], ['blog', '운영 블로그'], ['dentalAd', '의료심의'],
+  ['domain', '도메인'], ['hosting', '호스팅'], ['ftp', 'FTP'], ['admin', '홈페이지 관리자'],
+];
+
+interface FilledAccount { name: string; order: number; id: string; pw: string; url: string }
+
+// 아이디·비밀번호·URL 중 하나라도 입력된 플랫폼만 (폼 표시 순서대로)
+function filledAccounts(data: Record<string, unknown>): FilledAccount[] {
+  const acc = (data.accounts || {}) as Record<string, { id?: string; pw?: string; url?: string }>;
+  return ACCOUNT_LABELS.flatMap(([key, name], i) => {
+    const a = acc[key] || {};
+    const id = (a.id || '').trim();
+    const pw = (a.pw || '').trim();
+    const url = (a.url || '').trim();
+    return id || pw || url ? [{ name, order: i + 1, id, pw, url }] : [];
+  });
+}
+
+function accountRowProps(clinicPageId: string, a: FilledAccount): Record<string, unknown> {
+  const text = (v: string) => ({ rich_text: v ? [{ text: { content: v.substring(0, 1900) } }] : [] });
+  return {
+    '이름': { title: [{ text: { content: a.name } }] },
+    '아이디': text(a.id),
+    '비밀번호': text(a.pw),
+    'URL': { url: a.url || null },
+    '비고': text(`신규개원 폼 제출 (${today()})`),
+    '정렬순서': { number: a.order },
+    '거래처DB': { relation: [{ id: clinicPageId }] },
+  };
+}
+
+/**
+ * 폼에 입력된 플랫폼 계정을 계정DB에 플랫폼별 1행으로 저장하고 거래처와 연결한다.
+ * 같은 거래처에 이름·아이디·비밀번호·URL이 모두 같은 행이 이미 있으면 건너뛰고(재제출·재시도 중복 방지),
+ * 값이 달라진 계정은 기존 행을 덮어쓰지 않고 새 행으로 추가한다(직원이 갱신한 값 보호).
+ */
+async function saveAccounts(clinicPageId: string, data: Record<string, unknown>): Promise<void> {
+  const accounts = filledAccounts(data);
+  if (accounts.length === 0) return;
+
+  const dataSourceId = await resolveDataSourceId(ACCOUNT_DATABASE_ID);
+  const res = await withRetry(() => notion.dataSources.query({
+    data_source_id: dataSourceId,
+    filter: { property: '거래처DB', relation: { contains: clinicPageId } },
+    page_size: 100,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any)) as { results?: any[] };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const textOf = (page: any, name: string) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (page?.properties?.[name]?.rich_text || []).map((t: any) => t.plain_text || t.text?.content || '').join('');
+  const keyOf = (a: Pick<FilledAccount, 'name' | 'id' | 'pw' | 'url'>) => [a.name, a.id, a.pw, a.url].join('\u0000');
+  const existing = new Set((res.results || []).map((page) => keyOf({
+    name: plainTitle(page, '이름'),
+    id: textOf(page, '아이디'),
+    pw: textOf(page, '비밀번호'),
+    url: page?.properties?.['URL']?.url || '',
+  })));
+
+  // 계정DB 스키마가 바뀌어도 저장이 통째로 실패하지 않도록 존재·타입 일치 속성만 보낸다(1회 조회).
+  const allowed = new Set(Object.keys(await filterPropsBySchema(ACCOUNT_DATABASE_ID, accountRowProps(clinicPageId, accounts[0]))));
+  for (const account of accounts) {
+    if (existing.has(keyOf(account))) continue;
+    const props = Object.fromEntries(Object.entries(accountRowProps(clinicPageId, account)).filter(([k]) => allowed.has(k)));
+    await withRetry(() => notion.pages.create({
+      parent: { database_id: ACCOUNT_DATABASE_ID },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      properties: props as any,
+    }));
+  }
+}
+
+// 계정 저장이 실패해도 거래처 제출 자체는 유지한다(재시도 시 본문 중복 방지).
+// 대신 조용히 사라지지 않도록 거래처 페이지에 경고를 남긴다(계정 값은 남기지 않음).
+async function saveAccountsOrWarn(clinicPageId: string, data: Record<string, unknown>): Promise<void> {
+  try {
+    await saveAccounts(clinicPageId, data);
+  } catch (e) {
+    console.error('[accounts] 계정DB 저장 실패:', e);
+    const names = filledAccounts(data).map((a) => a.name).join(', ');
+    await appendBlocks(clinicPageId, [{
+      object: 'block',
+      type: 'callout',
+      callout: {
+        rich_text: [{ type: 'text', text: { content: `⚠️ 계정정보 저장 실패 (${today()}) — 원장님이 입력한 계정(${names})을 계정DB에 저장하지 못했습니다. 원장님께 계정정보를 다시 받아주세요.` } }],
+        icon: { type: 'emoji', emoji: '⚠️' },
+        color: 'red_background',
+      },
+    }]);
+  }
 }
 
 // 업서트용: 비어있지 않은 속성만 추림 (새 제출이 비운 칸은 기존 값 유지 → 손실 0).
@@ -1328,7 +1429,12 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   if (s6.monthlyFee) blocks.push(bullet(`월 계약금: ${s6.monthlyFee}`));
   if (s6.specialNotes) blocks.push(bullet(`특이사항: ${s6.specialNotes}`));
 
-  // 계정 아이디·비밀번호는 Notion 페이지 본문에 평문으로 저장하지 않는다.
+  // 계정 아이디·비밀번호는 본문에 평문으로 쓰지 않고 계정DB에 저장한다(saveAccounts). 본문엔 플랫폼명만 안내.
+  const accountNames = filledAccounts(data).map((a) => a.name);
+  if (accountNames.length > 0) {
+    blocks.push(heading('🔐 계정정보'));
+    blocks.push(bullet(`계정DB에 저장: ${accountNames.join(', ')} — 아이디·비밀번호는 상단 '계정 DB' 연결에서 확인`));
+  }
 
   // 첨부 자료
   const files = collectFiles(data);

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBlocksAppend, mockBlocksDelete, mockDbRetrieve, mockDsRetrieve } = vi.hoisted(() => {
+const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBlocksAppend, mockBlocksDelete, mockDbRetrieve, mockDsRetrieve, mockDsQuery } = vi.hoisted(() => {
   return {
     mockCreate: vi.fn(),
     mockRetrieve: vi.fn(),
@@ -11,6 +11,7 @@ const { mockCreate, mockRetrieve, mockSearch, mockUpdate, mockBlocksList, mockBl
     mockBlocksDelete: vi.fn(),
     mockDbRetrieve: vi.fn(),
     mockDsRetrieve: vi.fn(),
+    mockDsQuery: vi.fn(),
   };
 });
 
@@ -32,6 +33,7 @@ vi.mock('@notionhq/client', () => {
       };
       dataSources = {
         retrieve: mockDsRetrieve,
+        query: mockDsQuery,
       };
     },
     isNotionClientError: (error: unknown): boolean =>
@@ -372,6 +374,81 @@ describe('createChangeRecord', () => {
     expect(arg.properties['Related to 거래처DB (미팅 기록)'].relation?.[0].id).toBe('clinic-new');
     expect(arg.properties['미팅 제목'].title?.[0].text.content).toContain('[계약변경] 해피치과');
   });
+});
+
+describe('createMainRecord — 계정정보를 계정DB에 저장 (수원세브란스: 입력했는데 노션에 없음)', () => {
+  const ACCOUNT_DB = '3c29a82d-b9c4-8043-ab9e-c86f407f46b8';
+  const accountSchema = {
+    properties: {
+      '이름': { type: 'title' }, '아이디': { type: 'rich_text' }, '비밀번호': { type: 'rich_text' },
+      'URL': { type: 'url' }, '비고': { type: 'rich_text' }, '정렬순서': { type: 'number' }, '거래처DB': { type: 'relation' },
+    },
+  };
+  const withAccounts = {
+    ...sampleFormData,
+    accounts: {
+      naver: { id: 'nv-id', pw: 'nv-pw' },
+      google: { id: '', pw: '' }, // 비어 있으면 저장하지 않음
+      admin: { id: 'adm', pw: 'adm-pw', url: 'https://example.com/admin' },
+    },
+  };
+  type CreateArg = { parent: { database_id: string }; properties: Record<string, { title?: { text: { content: string } }[]; rich_text?: { text: { content: string } }[]; url?: string | null; number?: number; relation?: { id: string }[] }>; children?: unknown[] };
+  const accountCreates = () =>
+    (mockCreate.mock.calls as [CreateArg][]).map(([a]) => a).filter((a) => a.parent.database_id === ACCOUNT_DB);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSearch.mockResolvedValue({ results: [] });
+    mockDbRetrieve.mockImplementation(({ database_id }: { database_id: string }) =>
+      Promise.resolve(database_id === ACCOUNT_DB ? { data_sources: [{ id: 'ds-acc' }] } : undefined));
+    mockDsRetrieve.mockResolvedValue(accountSchema);
+    mockDsQuery.mockResolvedValue({ results: [] });
+    mockCreate.mockImplementation((arg: CreateArg) =>
+      Promise.resolve({ id: arg.parent.database_id === ACCOUNT_DB ? 'acc-row' : 'page-1' }));
+    mockBlocksAppend.mockResolvedValue({});
+  });
+
+  it('입력된 플랫폼만 계정DB에 1행씩 저장하고 거래처와 연결, 거래처 본문에는 비밀번호를 쓰지 않는다', async () => {
+    const id = await createMainRecord(withAccounts);
+    expect(id).toBe('page-1');
+
+    const rows = accountCreates();
+    expect(rows.map((r) => r.properties['이름'].title?.[0].text.content)).toEqual(['네이버', '홈페이지 관리자']);
+    const naver = rows[0].properties;
+    expect(naver['아이디'].rich_text?.[0].text.content).toBe('nv-id');
+    expect(naver['비밀번호'].rich_text?.[0].text.content).toBe('nv-pw');
+    expect(naver['거래처DB'].relation?.[0].id).toBe('page-1');
+    expect(rows[1].properties['URL'].url).toBe('https://example.com/admin');
+
+    const main = (mockCreate.mock.calls as [CreateArg][]).map(([a]) => a).find((a) => a.parent.database_id === 'main-db-id')!;
+    const body = JSON.stringify(main.children);
+    expect(body).toContain('네이버, 홈페이지 관리자');
+    expect(body).not.toContain('nv-pw');
+    expect(body).not.toContain('adm-pw');
+  });
+
+  it('재제출: 같은 거래처에 이름·아이디·비밀번호·URL이 같은 계정이 이미 있으면 다시 만들지 않는다', async () => {
+    mockDsQuery.mockResolvedValue({
+      results: [{ properties: {
+        '이름': { title: [{ plain_text: '네이버' }] },
+        '아이디': { rich_text: [{ plain_text: 'nv-id' }] },
+        '비밀번호': { rich_text: [{ plain_text: 'nv-pw' }] },
+        'URL': { url: null },
+      } }],
+    });
+    await createMainRecord(withAccounts);
+    expect(accountCreates().map((r) => r.properties['이름'].title?.[0].text.content)).toEqual(['홈페이지 관리자']);
+  });
+
+  it('계정DB 저장이 실패해도 제출은 유지하고, 거래처 페이지에 경고를 남겨 직원이 알 수 있게 한다', async () => {
+    mockDsQuery.mockRejectedValue(new Error('object_not_found'));
+    const id = await createMainRecord(withAccounts);
+    expect(id).toBe('page-1');
+    const appended = JSON.stringify((mockBlocksAppend.mock.calls as [{ block_id: string; children: unknown[] }][]).map(([c]) => c));
+    expect(appended).toContain('page-1');
+    expect(appended).toContain('계정정보 저장 실패');
+    expect(appended).not.toContain('nv-pw');
+  }, 15000);
 });
 
 describe('createMainRecord — 쉼표 선택값·대표 원장 이름', () => {
