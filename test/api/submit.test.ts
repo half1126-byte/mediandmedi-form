@@ -6,40 +6,33 @@ function makeRequest(body: Record<string, unknown>): NextRequest {
   return new NextRequest('http://localhost:3000/api/submit', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ step2: { holidayClose: true, schedule: Object.fromEntries(['월','화','수','목','금','토','일'].map(day => [day, { enabled: true, start: '09:00', end: '18:00' }])) }, step3: { equipment: ['치과용 CT'], facilities: ['없음'], parking: { available: '불가' }, hasLabRoom: false, labRoomAnswered: true }, stepDesign: { avoidColor: '없음' }, step4: { brandTone: '신뢰감', brandColorTones: ['블루'], education: '테스트대 졸업', career: '테스트병원 근무' }, ...body }),
   });
 }
 
 describe('POST /api/submit', () => {
-  it('데모 모드에서 성공 응답', async () => {
-    const req = makeRequest({ pin: '1234', formData: {}, step1: { clinicName: '데모치과' } });
-    const res = await POST(req);
-    const json = await res.json();
-
-    expect(res.status).toBe(200);
-    expect(json.success).toBe(true);
-    expect(json.pageId).toMatch(/^demo-/);
-    expect(json.pin).toBe('1234');
-    expect(json.demo).toBe(true);
+  it.each([{ education: '', career: '경력' }, { education: '학력', career: '   ' }, { driveLink: 'https://example.com/profile' }])('학력·경력 누락 또는 링크만 입력하면 거부', async (step4) => {
+    const res = await POST(makeRequest({ step1: { clinicName: '테스트', phone: '02-1234-5678', address: '서울' }, step4 }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('학력과 경력은 필수입니다.');
   });
-
-  it('PIN이 응답에 포함됨', async () => {
-    const req = makeRequest({ pin: '5678', step1: { clinicName: '데모치과' } });
-    const res = await POST(req);
-    const json = await res.json();
-    expect(json.pin).toBe('5678');
+  it.each([undefined, '', '   '])('상세 주소 누락 시 거부 (%s)', async (address) => {
+    const res = await POST(makeRequest({ step1: { clinicName: '테스트치과', phone: '02-1234-5678', address } }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('상세 주소는 필수입니다.');
   });
-
-  it('매번 다른 pageId 생성', async () => {
-    const req1 = makeRequest({ pin: '1111', step1: { clinicName: '데모치과' } });
-    const res1 = await POST(req1);
-    const json1 = await res1.json();
-    // Date.now() 기반이라 약간의 딜레이 필요
-    await new Promise((r) => setTimeout(r, 10));
-    const req2 = makeRequest({ pin: '2222', step1: { clinicName: '데모치과' } });
-    const res2 = await POST(req2);
-    const json2 = await res2.json();
-    expect(json1.pageId).not.toBe(json2.pageId);
+  it.each([undefined, '', '   '])('대표전화 누락 시 거부 (%s)', async (phone) => {
+    const res = await POST(makeRequest({ step1: { clinicName: '테스트치과', phone } }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('대표전화는 필수입니다.');
+  });
+  it('노션 연결이 없으면 성공으로 처리하지 않는다', async () => {
+    const res = await POST(makeRequest({ pin: '1234', step1: { clinicName: '테스트치과', phone: '02-1234-5678', address: '서울' } }));
+    const json = await res.json();
+    expect(res.status).toBe(503);
+    expect(json.success).toBe(false);
+    expect(json.pageId).toBeUndefined();
+    expect(json.error).toContain('노션 연결 설정');
   });
 
   it('잘못된 JSON 시 500 에러', async () => {

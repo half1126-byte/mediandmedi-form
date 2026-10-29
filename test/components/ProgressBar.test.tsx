@@ -8,9 +8,9 @@ describe('ProgressBar', () => {
     expect(screen.getByText(/Step 3\/7/)).toBeInTheDocument();
   });
 
-  it('남은 시간 표시', () => {
+  it('남은 시간은 표시하지 않는다', () => {
     render(<ProgressBar currentStep={0} totalSteps={7} />);
-    expect(screen.getByText(/\d+분 남음/)).toBeInTheDocument();
+    expect(screen.queryByText(/\d+분 남음/)).not.toBeInTheDocument();
   });
 
   it('스텝 라벨 표시', () => {

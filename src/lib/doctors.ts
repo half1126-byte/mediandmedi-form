@@ -2,6 +2,10 @@ export interface Doctor {
   name: string;
   title: string;
   specialty: string;
+  education?: string;
+  career?: string;
+  associations?: string;
+  awards?: string;
 }
 
 /**
@@ -12,4 +16,12 @@ export function resolveDoctors(doctors: Doctor[] | undefined, doctorName: string
   return (doctors || []).map((d, i) =>
     i === 0 && !d.name?.trim() && doctorName?.trim() ? { ...d, name: doctorName.trim() } : d
   );
+}
+
+export function doctorProfilesComplete(doctors: Doctor[], count: number, legacy: { education?: string; career?: string }, doctorName?: string): boolean {
+  const filled = (value: unknown) => typeof value === 'string' && !!value.trim();
+  return Number.isInteger(count) && count >= 1 && count <= 20 && doctors.length === count && doctors.every((d, i) =>
+    d && filled(d.name || (i === 0 ? doctorName : '')) &&
+    filled(d.education ?? (i === 0 ? legacy.education : '')) &&
+    filled(d.career ?? (i === 0 ? legacy.career : '')));
 }

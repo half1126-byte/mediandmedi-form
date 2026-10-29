@@ -1,10 +1,21 @@
 'use client';
 
+import { marketingDirectionComplete, didInfoComplete } from '@/lib/marketing';
+import { webRequiredComplete, webDirectionsComplete, webScheduleComplete, webFeaturesComplete, webDomainComplete } from '@/lib/web-required';
+import { brandingComplete } from '@/lib/branding';
+import { operationsComplete } from '@/lib/operations';
+import { formatEquipment } from '@/lib/equipment';
+import { formatLunch, type LunchGroup } from '@/lib/lunch';
+
+import './form.css';
+import { SETUP_ACCOUNTS, setupAccountsComplete } from '@/lib/setup-accounts';
+
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import ProgressBar from '@/components/ProgressBar';
 import ChipSelector from '@/components/ChipSelector';
-import CategoryChipSelector from '@/components/CategoryChipSelector';
+import AccountGuide from '@/components/AccountGuide';
 import TimeSelector from '@/components/TimeSelector';
 import RegionCascade from '@/components/RegionCascade';
 import ContractProducts from '@/components/ContractProducts';
@@ -18,23 +29,22 @@ import {
   clearForm,
   type SavedFormData,
 } from '@/lib/autosave';
-import { resolveDoctors } from '@/lib/doctors';
+import { resolveDoctors, doctorProfilesComplete, type Doctor } from '@/lib/doctors';
 import { type UploadedFile } from '@/components/FileUpload';
 import { SERVICES as SERVICES_LIST } from '@/data/services';
 import {
   DENTAL_CATEGORIES,
   EQUIPMENT_LIST,
+  EQUIPMENT_EXAMPLES,
+  EQUIPMENT_PRODUCTS,
   FACILITY_LIST,
   MARKETING_CHANNELS,
   REFERRAL_SOURCES,
   REFERRAL_NEEDS_NAME,
-  BUDGET_RANGES,
   WEEKDAYS,
   IMPLANT_MATERIALS,
   ALIGNER_OPTIONS,
   PEDIATRIC_ORTHO_OPTIONS,
-  HOMEPAGE_FEATURES,
-  SSL_OPTIONS,
   CMS_OPTIONS,
   RENEWAL_OPTIONS,
   MAINTENANCE_OPTIONS,
@@ -43,10 +53,7 @@ import {
   COLOR_PREFERENCES,
   VIDEO_CHANNELS,
   VIDEO_ITEMS,
-  VIDEO_BGM,
-  HOMEPAGE_MENUS,
   FEEDBACK_CHANNELS,
-  PHOTO_TYPES,
 } from '@/data/dental';
 
 // ── 스텝 레지스트리 (단일 소스) — 인덱스 하드코딩 대신 여기서 모든 게 파생 ──
@@ -58,27 +65,138 @@ type StepId =
 interface StepDef {
   id: StepId;
   label: string;
-  timeMin: number;
   visible: (d: FormData) => boolean;
   validate?: (d: FormData) => boolean;
 }
 
 const STEP_REGISTRY: StepDef[] = [
-  { id: 'basic', label: '기본 정보', timeMin: 2, visible: () => true,
-    validate: (d) => !!d.step1.clinicName && !!d.step1.doctorName && !!d.step1.openDate && !!d.step1.region.city && !!d.step1.region.district },
-  { id: 'scope', label: '작업 범위', timeMin: 1, visible: () => true },
-  { id: 'contract', label: '계약 상품', timeMin: 2, visible: () => true },
-  { id: 'medical', label: '진료 정보', timeMin: 3, visible: () => true,
+  { id: 'basic', label: '기본 정보', visible: () => true,
+    validate: (d) => doctorProfilesComplete(d.step1.doctors, d.step1.doctorCount, d.step4, d.step1.doctorName) && !!d.step1.address.trim() && !!d.step1.phone.trim() && !!d.step1.clinicName && !!d.step1.doctorName && (!!d.step1.openDate || !!d.step1.openDatePending) && !!d.step1.region.city && !!d.step1.region.district },
+  { id: 'scope', label: '작업 범위', visible: () => true },
+  { id: 'contract', label: '계약 상품', visible: () => true },
+  { id: 'medical', label: '주력 진료·강점', visible: () => true,
     validate: (d) => d.step2.dentalSubjects.length > 0 || !!d.step2.customSubjects.trim() },
-  { id: 'facility', label: '시설/장비', timeMin: 2, visible: () => true },
-  { id: 'branding', label: '브랜딩 & 철학', timeMin: 2, visible: () => true },
-  { id: 'marketing', label: '마케팅 방향', timeMin: 2, visible: () => true },
-  { id: 'web', label: '홈페이지/웹', timeMin: 3, visible: (d) => !!d.scope?.web },
-  { id: 'design', label: '디자인/브랜딩', timeMin: 2, visible: (d) => !!d.scope?.logo || !!d.scope?.video },
-  { id: 'review', label: '최종 확인', timeMin: 1, visible: () => true },
+  { id: 'facility', label: '운영·시설', visible: () => true, validate: (d) => operationsComplete(d.step2, d.step3) },
+  { id: 'branding', label: '이미지·자료', visible: () => true, validate: (d) => brandingComplete(d.step4) },
+  { id: 'marketing', label: '마케팅 추가 질문', visible: (d) => d.scope.marketing || d.scope.viral, validate: (d) => marketingDirectionComplete(d.step5) && didInfoComplete(d.step5) && setupAccountsComplete(d.accounts) },
+  { id: 'web', label: '홈페이지/웹', visible: (d) => !!d.scope?.web, validate: (d) => webRequiredComplete(d.stepWeb) },
+  { id: 'design', label: '디자인/브랜딩', visible: (d) => !!d.scope?.logo || !!d.scope?.video },
+  { id: 'review', label: '최종 확인', visible: () => true },
 ];
 
-const DEFAULT_SCHEDULE: Record<string, { enabled: boolean; start: string; end: string }> = {};
+function missingRequiredFields(step: StepId, d: FormData): string[] {
+  const missing: string[] = [];
+  const need = (ok: unknown, name: string) => { if (!ok) missing.push(name); };
+  const filled = (v: string | undefined) => !!v?.trim();
+  if (step === 'basic') {
+    need(filled(d.step1.clinicName), '치과명'); need(filled(d.step1.phone), '대표전화');
+    need(d.step1.openDate || d.step1.openDatePending, '개원예정일 또는 미정');
+    need(d.step1.region.city, '시·도'); need(d.step1.region.district, '시·군·구'); need(filled(d.step1.address), '상세 주소');
+    need(d.step1.doctors.length === d.step1.doctorCount && d.step1.doctorCount >= 1 && d.step1.doctorCount <= 20 && Number.isInteger(d.step1.doctorCount), '의료진 인원');
+    d.step1.doctors.forEach((doctor, i) => {
+      const label = i === 0 ? '대표원장' : '의료진 ' + (i + 1);
+      need(filled(doctor.name || (i === 0 ? d.step1.doctorName : '')), label + ' 성함');
+      need(filled(doctor.education ?? (i === 0 ? d.step4.education : '')), label + ' 학력');
+      need(filled(doctor.career ?? (i === 0 ? d.step4.career : '')), label + ' 경력');
+    });
+    if (!d.step1.doctorName && !missing.includes('대표원장 성함')) missing.push('대표원장 성함');
+  }
+  if (step === 'medical') need(d.step2.dentalSubjects.length || filled(d.step2.customSubjects), '진료과목');
+  if (step === 'branding') {
+    need(filled(d.step4.brandTone) || filled(d.step4.mainKeywords), '병원 이미지');
+    need(d.step4.brandColorTones.some(v => filled(v)), '선호 색상');
+  }
+  if (step === 'marketing') {
+    need(marketingDirectionComplete({ ...d.step5, desiredChannels: ['확인'] }), '마케팅 목표 (최대 3개·기타 내용 포함)');
+    need(marketingDirectionComplete({ ...d.step5, marketingGoals: ['확인'] }), '희망 마케팅 채널 (기타 내용 포함)');
+    need(didInfoComplete(d.step5), '대기실 모니터(DID)');
+    for (const [key, label] of SETUP_ACCOUNTS) {
+      const a = d.accounts[key];
+      if (a.status === 'create') continue;
+      if (a.status !== 'provided') { missing.push(label + ' 계정 준비 여부'); continue; }
+      need(filled(a.id), label + ' 아이디'); need(filled(a.pw), label + ' 비밀번호');
+    }
+  }
+  if (step === 'web') {
+    const w = d.stepWeb;
+    need(filled(w.homepageDeadline), '홈페이지 희망 완료일');
+    need(['희망함', '희망하지 않음', '미정'].includes(w.maintenance), '유지보수');
+    need(CMS_OPTIONS.includes(w.cmsNeed), '홈페이지 직접 수정·관리 예정 여부');
+    need(RENEWAL_OPTIONS.includes(w.renewalType), '기존 홈페이지 유무');
+    need(FEEDBACK_CHANNELS.includes(w.feedbackChannel), '피드백 전달 방식');
+    need(filled(w.desiredDomain), '도메인'); need(['설치됨', '미설치', '모름'].includes(w.ssl), 'SSL 인증서 설치 여부');
+  }
+  if (step === 'facility') {
+    const validTime = (v: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+    const days = ['월', '화', '수', '목', '금', '토', '일', ...(!d.step2.holidayClose ? ['공휴일'] : [])];
+    need(days.some(day => d.step2.schedule[day]?.enabled), '진료 요일 (1개 이상)');
+    days.forEach(day => { const t = d.step2.schedule[day]; need(t && typeof t.enabled === 'boolean' && (!t.enabled || (validTime(t.start) && validTime(t.end) && t.start < t.end)), day + '요일 진료시간 (종료는 시작 이후)'); });
+    const validChoices = (v: string[]) => v.length > 0 && v.every(filled) && (!v.includes('없음') || v.length === 1);
+    need(validChoices(d.step3.equipment) && !d.step3.equipment.includes('없음'), '보유 장비');
+    need(validChoices(d.step3.facilities), '시설');
+    need(['가능', '불가', '발렛'].includes(d.step3.parking.available), '주차 가능 여부');
+    need(d.step3.labRoomAnswered === true && typeof d.step3.hasLabRoom === 'boolean', '기공소 보유 여부');
+  }
+  return missing;
+}
+
+async function focusMissingField(name: string) {
+  const root = document.querySelector('main');
+  if (!root) return;
+  const findLabel = (text: string, within: Element = root) => Array.from(within.querySelectorAll('label')).find(el => el.textContent?.replace(/\s*\*\s*$/, '').trim() === text)?.parentElement;
+  const aliases: Record<string, string> = {
+    '병원 이미지': '원하는 병원 이미지 (최대 3개)', '주차 가능 여부': '주차',
+    '홈페이지 희망 완료일': '원하는 오픈 목표 일정', '유지보수': '오픈 후 유지보수 계약 희망 여부',
+    'SSL 인증서 설치 여부': 'SSL 인증서(https) 설치 여부',
+    '마케팅 목표 (최대 3개·기타 내용 포함)': '마케팅 목표 (최대 3개)',
+    '희망 마케팅 채널 (기타 내용 포함)': '원하는 마케팅 채널',
+  };
+  let target: Element | null | undefined;
+  if (name === '시·도' || name === '시·군·구') target = root.querySelector(name === '시·도' ? '[aria-label="시/도"]' : '[aria-label="구/군"]');
+  else if (name === '개원예정일 또는 미정') target = root.querySelector('#basic-schedule-panel input[type="date"]');
+  else if (name === '의료진 인원') target = root.querySelector('[aria-label="의료진 수 증가"]');
+  else if (/^(대표원장|의료진 \d+) /.test(name)) {
+    const index = name.startsWith('대표원장') ? 0 : Number(name.match(/\d+/)?.[0]) - 1;
+    const panel = root.querySelector('#doctor-' + index + '-panel');
+    target = name.endsWith('성함') ? panel?.querySelector('input') : panel && findLabel(name.endsWith('학력') ? '학력' : '경력 / 전문의 자격', panel);
+  } else if (name === '진료과목') target = root.querySelector('[aria-controls="treatment-일반진료"]');
+  else if (name === '보유 장비') target = root.querySelector('#equipment-list-panel');
+  else if (name.startsWith('진료 요일')) target = root.querySelector('.clinic-hours');
+  else if (name.includes('요일 진료시간')) target = root.querySelector('[aria-label="' + name.split('요일')[0] + ' 진료 시작 시간"]');
+  else if (name === '대기실 모니터(DID)') target = root.querySelector('textarea[placeholder^="예: 데스크 왼쪽"]');
+  else {
+    const account = SETUP_ACCOUNTS.find(([,label]) => name.startsWith(label + ' '));
+    if (account) {
+      const group = root.querySelector('fieldset[aria-label="' + account[1] + ' *"]');
+      target = name.endsWith('비밀번호') ? group?.querySelector('input[placeholder="비밀번호"]') : name.endsWith('아이디') ? group?.querySelector('input[placeholder="아이디"]') : group;
+    } else target = findLabel(aliases[name] || name);
+  }
+  if (target instanceof HTMLSelectElement && target.disabled && name === '시·군·구') target = root.querySelector('[aria-label="시/도"]');
+  if (!target) return;
+  const ancestors: Element[] = [];
+  for (let el: Element | null = target; el && el !== root; el = el.parentElement) ancestors.unshift(el);
+  for (const el of ancestors) {
+    if (el instanceof HTMLDetailsElement) el.open = true;
+    if (el.hasAttribute('hidden') && el.id) {
+      const button = root.querySelector<HTMLButtonElement>('[aria-controls="' + el.id + '"]');
+      if (button?.getAttribute('aria-expanded') === 'false') {
+        button.click();
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      }
+    }
+  }
+  // The treatment category is itself the destination; open it without selecting a treatment.
+  if (target.matches('button[aria-controls^="treatment-"]') && target.getAttribute('aria-expanded') === 'false') {
+    (target as HTMLButtonElement).click();
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  }
+  const control = target.matches('input,textarea,select,button') ? target as HTMLElement : target.querySelector<HTMLElement>('input:not([disabled]),textarea,select:not([disabled]),button');
+  const destination = control || target as HTMLElement;
+  destination.focus({ preventScroll: true });
+  destination.scrollIntoView({ block: 'center', behavior: 'instant' });
+}
+
+const DEFAULT_SCHEDULE: Record<string, { enabled: boolean; start: string; end: string; night?: boolean }> = {};
 WEEKDAYS.forEach((day) => {
   DEFAULT_SCHEDULE[day] = {
     enabled: day !== '일',
@@ -100,10 +218,11 @@ interface FormData {
     clinicName: string;
     doctorName: string;
     openDate: string;
+    openDatePending?: boolean;
     region: { city: string; district: string; dong?: string };
     address: string;
     phone: string;
-    fax: string;
+    phonePending?: boolean;
     softOpenDate: string;
     interiorCompleteDate: string;
     photoDate: string;
@@ -112,7 +231,7 @@ interface FormData {
      * 의료진 명단. 첫 번째 항목은 메인 원장(doctorName 자동 반영).
      * doctorCount 변경 시 길이가 자동 동기화됨.
      */
-    doctors: { name: string; title: string; specialty: string }[];
+    doctors: Doctor[];
     careerImages: UploadedFile[];
   };
   step2: {
@@ -120,6 +239,7 @@ interface FormData {
     /** 진료과목 직접 입력 (목록에 없는 과목) */
     customSubjects: string;
     topSubjects: string[];
+    topSubjectsOther?: string;
     /** 임플란트 재료: 제조사 → 선택된 제품군 */
     implantMaterials: Record<string, string[]>;
     /** 투명교정 세부 옵션 (교정→투명교정 선택 시) */
@@ -128,21 +248,32 @@ interface FormData {
     alignerOther: string;
     /** 소아교정 세부 옵션 (교정→소아교정 선택 시) */
     pediatricOrthoOptions: string[];
-    schedule: Record<string, { enabled: boolean; start: string; end: string }>;
+    pediatricOrthoOther?: string;
+    implantOther?: string;
+    schedule: Record<string, { enabled: boolean; start: string; end: string; night?: boolean }>;
     holidays: string[];
     holidayClose: boolean;
+    lunchGroups?: LunchGroup[];
+    lunchMode?: 'same' | 'daily' | 'none';
+    lunchByDay?: Record<string, { start: string; end: string; none?: boolean }>;
     lunchTime: { start: string; end: string };
     nightWeekend: string;
   };
   step3: {
     chairs: number;
     equipment: string[];
+    equipmentModels?: Record<string, string>;
     /** 보유 장비 상세 (제조사·모델명) — 홈페이지 제작 시 활용 */
     equipmentDetail: string;
     facilities: string[];
     parking: { available: string; detail: string };
     hasLabRoom: boolean;
+    labRoomAnswered?: boolean;
     labEquipment: string[];
+    labLocation?: string;
+    labOperation?: string;
+    labTechnician?: string;
+    labFeatures?: string;
     blueprintFiles: UploadedFile[];
   };
   step4: {
@@ -189,6 +320,7 @@ interface FormData {
     benchmarkClinics: string;
     /** 자료 첨부 — 구글 드라이브/클라우드 공유 링크 (파일 직접 업로드 대체) */
     driveLink: string;
+    materialDelivery?: string;
     hasProfilePhoto: boolean;
     hasLogo: boolean;
     logoFiles: UploadedFile[];
@@ -207,7 +339,9 @@ interface FormData {
     previousMarketing: string;
     budgetRange: string;
     marketingGoals: string[];
+    marketingGoalsOther?: string;
     desiredChannels: string[];
+    desiredChannelsOther?: string;
     additionalRequest: string;
     openingEvent: string;
     /** DID 정보 (Step 6에서 이동) */
@@ -223,7 +357,7 @@ interface FormData {
     subway: string;
     bus: string;
     locationNote: string;
-    // 참고 사이트 — @deprecated 브랜딩 benchmarkClinics로 통합(입력칸 없음, 구버전 데이터 폴백용)
+    // 홈페이지 레퍼런스: 사이트 주소와 참고할 점
     referenceSites: string;
     // 온라인 채널 & 도메인
     instagramUrl: string;
@@ -260,7 +394,6 @@ interface FormData {
     videoReference: string;
     videoChannels: string[];
     videoItems: string[];
-    videoBgm: string;
   };
   step6: {
     services: { serviceId: string; quantity?: number }[];
@@ -271,14 +404,14 @@ interface FormData {
   };
   /** 플랫폼 계정정보 (마케팅·웹 세팅용) — 노션 계정DB에 플랫폼별로 저장, 거래처와 연결 */
   accounts: {
-    naver: { id: string; pw: string };
-    google: { id: string; pw: string };
-    kakao: { id: string; pw: string };
-    instagram: { id: string; pw: string };
-    youtube: { id: string; pw: string };
-    danggeun: { id: string; pw: string };
-    blog: { id: string; pw: string };
-    dentalAd: { id: string; pw: string };
+    naver: { id: string; pw: string; status?: 'provided' | 'create' };
+    google: { id: string; pw: string; status?: 'provided' | 'create' };
+    kakao: { id: string; pw: string; status?: 'provided' | 'create' };
+    instagram: { id: string; pw: string; status?: 'provided' | 'create' };
+    youtube: { id: string; pw: string; status?: 'provided' | 'create' };
+    danggeun: { id?: string; pw?: string; inviteUrl?: string; inviteCode?: string; status?: 'provided' | 'create' };
+    blog: { id: string; pw: string; status?: 'provided' | 'create' };
+    dentalAd: { id: string; pw: string; status?: 'provided' | 'create' };
     domain: { id: string; pw: string };
     hosting: { id: string; pw: string };
     ftp: { id: string; pw: string };
@@ -290,7 +423,7 @@ const INITIAL_DATA: FormData = {
   scope: { marketing: true, viral: false, web: false, logo: false, video: false },
   step1: {
     clinicName: '', doctorName: '', openDate: '',
-    region: { city: '', district: '' }, address: '', phone: '', fax: '',
+    region: { city: '', district: '' }, address: '', phone: '',
     softOpenDate: '', interiorCompleteDate: '', photoDate: '',
     doctorCount: 1,
     doctors: [{ name: '', title: '원장', specialty: '' }],
@@ -303,11 +436,12 @@ const INITIAL_DATA: FormData = {
     pediatricOrthoOptions: [],
     schedule: DEFAULT_SCHEDULE,
     holidays: [], holidayClose: true,
+    lunchMode: 'same',
     lunchTime: { start: '12:30', end: '13:30' }, nightWeekend: '',
   },
   step3: {
     chairs: 5, equipment: [], equipmentDetail: '', facilities: [],
-    parking: { available: '가능', detail: '' },
+    parking: { available: '', detail: '' },
     hasLabRoom: false, labEquipment: [], blueprintFiles: [],
   },
   step4: {
@@ -341,7 +475,7 @@ const INITIAL_DATA: FormData = {
   stepDesign: {
     logoType: '', logoNotation: '', englishSpelling: '', logoMotif: '',
     colorPreference: [], avoidColor: '',
-    videoMessage: '', videoReference: '', videoChannels: [], videoItems: [], videoBgm: '',
+    videoMessage: '', videoReference: '', videoChannels: [], videoItems: [],
   },
   step6: {
     services: [], isStarterPackage: false,
@@ -353,7 +487,7 @@ const INITIAL_DATA: FormData = {
     kakao: { id: '', pw: '' },
     instagram: { id: '', pw: '' },
     youtube: { id: '', pw: '' },
-    danggeun: { id: '', pw: '' },
+    danggeun: { inviteUrl: '', inviteCode: '' },
     blog: { id: '', pw: '' },
     dentalAd: { id: '', pw: '' },
     domain: { id: '', pw: '' },
@@ -461,8 +595,29 @@ export default function NewClinicPage() {
         };
       }
       // 원장님 모드(preset 링크) 복원 — 담당자 전용 단계가 다시 노출되지 않게 유지
-      const restoredDirector = !!(loaded as { directorMode?: boolean }).directorMode;
+      const selectedPreset = new URLSearchParams(window.location.search).get('preset');
+      const selectedScope = selectedPreset ? PRESET_SCOPE[selectedPreset] : undefined;
+      if (selectedScope) merged.scope = { ...selectedScope };
+      const restoredDirector = !!selectedScope || !!(loaded as { directorMode?: boolean }).directorMode;
       setDirectorMode(restoredDirector);
+      merged.step2.lunchMode = 'same';
+      if (merged.step3.parking.available === '발렛') {
+        merged.step3.parking = { ...merged.step3.parking, available: '가능', detail: ['발렛 가능', merged.step3.parking.detail].filter(Boolean).join(' / ') };
+      }
+      merged.step1.doctors = merged.step1.doctors.map((doctor, index) => {
+        const specialty = doctor.specialty?.trim();
+        if (!specialty) return doctor;
+        const career = doctor.career ?? (index === 0 ? merged.step4.career : '');
+        const combined = career.includes(specialty) ? career : [career, specialty].filter(Boolean).join('\n');
+        if (index === 0) merged.step4.career = combined;
+        return { ...doctor, career: combined, specialty: '' };
+      });
+      // 이전 참고 사이트를 웹 레퍼런스로 통합하고 중복 복원을 방지한다.
+      merged.stepWeb.referenceSites = [...new Set([
+        merged.stepWeb.referenceSites, merged.step4.benchmarkClinics, saved.step5?.benchmarkClinics,
+      ].filter((value): value is string => typeof value === 'string' && !!value.trim()).map((value) => value.trim()))].join('\n');
+      merged.step4.benchmarkClinics = '';
+      delete (merged.step5 as unknown as Record<string, unknown>).benchmarkClinics;
       setData(merged);
       // 복원 위치: currentStepId 우선, 없으면 구버전 인덱스(currentStep)를 활성 스텝에 매핑
       // (directorMode면 scope·contract 단계는 제외해 activeSteps와 일치시킴)
@@ -545,6 +700,19 @@ export default function NewClinicPage() {
   };
 
   const handleSubmit = async () => {
+    if (data.scope.web && !webRequiredComplete(data.stepWeb)) { setStepId('web'); setConfirmed(false); return; }
+    if (!brandingComplete(data.step4)) { setStepId('branding'); setConfirmed(false); return; }
+    if (!operationsComplete(data.step2, data.step3)) { setStepId('facility'); setConfirmed(false); return; }
+    if ((data.scope.marketing || data.scope.viral) && (!marketingDirectionComplete(data.step5) || !didInfoComplete(data.step5) || !setupAccountsComplete(data.accounts))) {
+      setStepId('marketing');
+      setConfirmed(false);
+      return;
+    }
+    if (!data.step1.phone.trim() || !data.step1.address.trim() || !doctorProfilesComplete(data.step1.doctors, data.step1.doctorCount, data.step4, data.step1.doctorName)) {
+      setStepId('basic');
+      setConfirmed(false);
+      return;
+    }
     if (submitting) return; // 진행 중 중복 호출(재시도 버튼 연타 등) 방지
     setSubmitting(true);
     setSubmitStep(0);
@@ -564,10 +732,11 @@ export default function NewClinicPage() {
       });
 
       setSubmitStep(1);
-      if (!response.ok) throw new Error('제출 실패');
-
       const result = await response.json();
+      if (!response.ok || !result.success || result.demo || !result.pageId) throw new Error(result.error || '노션에 저장되지 않았습니다. 연결 설정을 확인해 주세요.');
       const pageId = result.pageId;
+      if (result.warning) localStorage.setItem(`mediandmedi-warning-${pageId}`, result.warning);
+      else localStorage.removeItem(`mediandmedi-warning-${pageId}`);
 
       // 요약 페이지용 데이터를 localStorage에 저장
       localStorage.setItem(`mediandmedi-submitted-${pageId}`, JSON.stringify(data));
@@ -603,7 +772,7 @@ export default function NewClinicPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
+    <div className="new-clinic-form [overflow-anchor:none] min-h-screen bg-[#F8FAFC] flex flex-col">
       <LoadingOverlay
         show={submitting}
         steps={['치과 정보를 저장하고 있습니다...', '팀별 업무를 생성하고 있습니다...', '완료!']}
@@ -612,8 +781,8 @@ export default function NewClinicPage() {
 
       {/* 상단 헤더 */}
       <header className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between px-6 py-3">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center justify-between px-5 py-1">
             <button
               onClick={() => stepIndex === 0 ? router.push('/') : prevStep()}
               className="w-10 h-10 flex items-center justify-center min-w-[44px] min-h-[44px]"
@@ -622,37 +791,43 @@ export default function NewClinicPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h2 className="text-base font-semibold text-[#374151]">신규개원</h2>
+            <h2 className="text-base font-semibold text-[#374151]">신규개원 · 치과용</h2>
             <div className="w-10" />
           </div>
           <ProgressBar
             currentStep={stepIndex}
             totalSteps={totalSteps}
             stepLabels={activeSteps.map((s) => s.label)}
-            stepTimes={activeSteps.map((s) => s.timeMin)}
           />
         </div>
       </header>
 
       {/* 폼 콘텐츠 */}
-      <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-6 pb-28">
-        <div key={stepId} className="animate-fade-slide-in">
-          {current.id === 'basic' && <Step1 data={data.step1} onChange={(u) => updateStep('step1', u)} />}
+      <main className="flex-1 max-w-3xl mx-auto w-full px-5 py-5 pb-52">
+        <div key={stepId}>
+          {current.id === 'basic' && <Step1 data={data.step1} profile={data.step4} onProfileChange={(u) => updateStep('step4', u)} onChange={(u) => updateStep('step1', u)} />}
           {current.id === 'scope' && <StepScope data={data.scope} onChange={(u) => updateStep('scope', u)} />}
-          {current.id === 'medical' && <Step2 data={data.step2} onChange={(u) => updateStep('step2', u)} />}
-          {current.id === 'facility' && <Step3 data={data.step3} onChange={(u) => updateStep('step3', u)} />}
-          {current.id === 'branding' && <Step4 data={data.step4} onChange={(u) => updateStep('step4', u)} />}
+          {current.id === 'medical' && <div className="space-y-[14px]"><Step2 data={data.step2} onChange={(u) => updateStep('step2', u)} /><ClinicStrengths data={data.step4} onChange={(u) => updateStep('step4', u)} /></div>}
+          {current.id === 'facility' && <OperationsStep schedule={data.step2} facilities={data.step3} onScheduleChange={(u) => updateStep('step2', u)} onFacilitiesChange={(u) => updateStep('step3', u)} />}
+          {current.id === 'branding' && <Step4 data={data.step4} web={data.stepWeb} design={data.stepDesign} onChange={(u) => updateStep('step4', u)} onWebChange={(u) => updateStep('stepWeb', u)} onDesignChange={(u) => updateStep('stepDesign', u)} />}
           {current.id === 'marketing' && <Step5 data={data.step5} accounts={data.accounts} scope={data.scope} onChange={(u) => updateStep('step5', u)} onAccountsChange={(u) => updateStep('accounts', u)} />}
           {current.id === 'web' && <StepWeb data={data.stepWeb} accounts={data.accounts} scope={data.scope} onChange={(u) => updateStep('stepWeb', u)} onAccountsChange={(u) => updateStep('accounts', u)} />}
-          {current.id === 'design' && <StepDesign data={data.stepDesign} onChange={(u) => updateStep('stepDesign', u)} />}
+          {current.id === 'design' && <StepDesign scope={data.scope} data={data.stepDesign} onChange={(u) => updateStep('stepDesign', u)} />}
           {current.id === 'contract' && <Step6 data={data.step6} scope={data.scope} onChange={(u) => updateStep('step6', u)} />}
-          {current.id === 'review' && <Step7 data={data} onGoToStep={goToStepById} confirmed={confirmed} setConfirmed={setConfirmed} directorMode={directorMode} />}
+          {current.id === 'review' && <Step7 onRequestChange={(v) => updateStep('step5', { additionalRequest: v })} data={data} onGoToStep={goToStepById} confirmed={confirmed} setConfirmed={setConfirmed} directorMode={directorMode} />}
         </div>
       </main>
 
       {/* 하단 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex gap-3">
+        {!isReview && current.validate && !current.validate(data) && (
+          <div className="max-w-3xl mx-auto px-5 pt-3">
+            <p role="status" aria-live="polite" className="text-xs text-red-600 max-h-24 overflow-y-auto break-words">
+              필수 항목 중 {missingRequiredFields(current.id, data).map((name, index) => <span key={name}>{index > 0 && ' · '}<button type="button" onClick={() => void focusMissingField(name)} className="inline text-left underline underline-offset-2 font-medium focus-visible:outline-2 focus-visible:outline-red-600">{name}</button></span>)}을(를) 입력하거나 선택해 주세요.
+            </p>
+          </div>
+        )}
+        <div className="max-w-3xl mx-auto px-5 py-3 flex gap-3">
           {stepIndex > 0 && !isReview && (
             <button
               onClick={prevStep}
@@ -684,19 +859,8 @@ export default function NewClinicPage() {
             </button>
           )}
         </div>
-        {!isReview && current.validate && !current.validate(data) && (
-          <div className="max-w-4xl mx-auto px-6 pb-3 -mt-1">
-            <p className="text-xs text-[#9CA3AF] text-center">
-              {current.id === 'basic'
-                ? '치과명·원장님 성함·개원예정일·지역을 입력하면 다음으로 넘어갈 수 있어요.'
-                : current.id === 'medical'
-                ? '진료과목을 1개 이상 선택하거나, 목록에 없으면 직접 입력하면 다음으로 넘어갈 수 있어요.'
-                : '필수 항목을 입력하면 다음으로 넘어갈 수 있어요.'}
-            </p>
-          </div>
-        )}
         {submitError && (
-          <div className="max-w-4xl mx-auto px-6 pb-4">
+          <div className="max-w-3xl mx-auto px-6 pb-4">
             <div className="bg-red-50 text-[#DC2626] text-sm p-3 rounded-lg flex items-center justify-between">
               <span>{submitError}</span>
               <button
@@ -736,7 +900,7 @@ function TextInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full h-12 px-4 rounded-lg border border-[#D1D5DB] text-base text-[#374151]
+      className="w-full h-11 px-3 rounded-lg bg-white border border-[#D1D5DB] text-base text-[#374151]
                  placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]"
     />
   );
@@ -760,10 +924,16 @@ function TextArea({
 }
 
 // 계정정보 한 줄 입력 (아이디/비밀번호) — 내부 공유용이라 비밀번호도 type="text"로 노출
+function AccountStatusButtons({ status, onChange }: { status?: 'provided' | 'create'; onChange: (value: 'provided' | 'create') => void }) {
+ return <div className="grid grid-cols-2 gap-2">{([['provided', '계정정보 입력'], ['create', '아직 준비하지 못했어요']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={status === value} onClick={() => onChange(value)} className={`min-h-11 rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${status === value ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-300 text-gray-600 hover:border-blue-400'}`}>{label}</button>)}</div>;
+}
+
 function AccountField({
-  label, id, pw, onIdChange, onPwChange,
+  label, id, pw, onIdChange, onPwChange, hideLabel = false, compactLabel = false,
 }: {
   label: string;
+  hideLabel?: boolean;
+  compactLabel?: boolean;
   id: string;
   pw: string;
   onIdChange: (v: string) => void;
@@ -771,7 +941,7 @@ function AccountField({
 }) {
   return (
     <div>
-      <FieldLabel>{label}</FieldLabel>
+      <div className={hideLabel ? 'sr-only' : undefined}>{compactLabel ? <p className="mb-2 text-xs text-gray-500">{label}</p> : <FieldLabel>{label}</FieldLabel>}</div>
       <div className="flex gap-2">
         <TextInput value={id} onChange={onIdChange} placeholder="아이디" />
         <TextInput value={pw} onChange={onPwChange} placeholder="비밀번호" />
@@ -781,58 +951,94 @@ function AccountField({
 }
 
 // Step 1: 기본 정보
-function Step1({
-  data, onChange,
-}: {
-  data: FormData['step1'];
-  onChange: (u: Partial<FormData['step1']>) => void;
+function BasicInfoSection({ id, title, number, open, complete, summary, onOpen, children, required = false }: {
+  id: string; title: string; number: number; open: boolean; complete: boolean; required?: boolean;
+  summary: string; onOpen: () => void; children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-6">
+    <section className={`rounded-xl border bg-white overflow-hidden ${open ? 'border-blue-300' : 'border-gray-200'}`}>
+      <h3>
+        <button id={`basic-${id}-heading`} type="button" aria-expanded={open} aria-controls={`basic-${id}-panel`} onClick={(event) => {
+          const heading = event.currentTarget;
+          const previousTop = heading.getBoundingClientRect().top;
+          flushSync(onOpen);
+          const offset = heading.getBoundingClientRect().top - previousTop;
+          if (Math.abs(offset) > 1) window.scrollBy({ top: offset, behavior: 'instant' });
+        }} className="flex items-center gap-3 w-full min-h-[72px] p-4 text-left focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-[-2px]">
+          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${open ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{number}</span>
+          <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-[#374151]">{title}{required && <span className="ml-1 text-[#DC2626]" aria-label="필수">*</span>}</span>{!open && <span className="block mt-1 text-xs text-gray-500 truncate">{summary}</span>}</span>
+          {!open && complete && <span className="text-xs text-blue-600 shrink-0">입력됨</span>}
+          <svg aria-hidden="true" className={`h-4 w-4 shrink-0 text-gray-400 ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m6 9 6 6 6-6" /></svg>
+        </button>
+      </h3>
+      <div id={`basic-${id}-panel`} role="region" aria-labelledby={`basic-${id}-heading`} hidden={!open}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-[14px] px-4 pb-4">{children}</div>
+      </div>
+    </section>
+  );
+}
+
+function Step1({
+  data, onChange, profile, onProfileChange,
+}: {
+  data: FormData['step1'];
+  profile: FormData['step4'];
+  onProfileChange: (u: Partial<FormData['step4']>) => void;
+  onChange: (u: Partial<FormData['step1']>) => void;
+}) {
+  const [activeDoctor, setActiveDoctor] = useState<number | null>(0);
+  const hospitalComplete = !!(data.clinicName.trim() && data.phone.trim() && data.region.city && data.region.district && data.address.trim());
+  const scheduleComplete = !!(data.openDate || data.openDatePending);
+  const [section, setSection] = useState<'hospital' | 'schedule' | 'doctors'>(() => !hospitalComplete ? 'hospital' : !scheduleComplete ? 'schedule' : 'doctors');
+  const openSection = (next: 'hospital' | 'schedule' | 'doctors') => {
+    setSection(next);
+    requestAnimationFrame(() => document.getElementById(`basic-${next}-heading`)?.focus({ preventScroll: false }));
+  };
+  return (
+    <div className="space-y-[14px]">
+      <BasicInfoSection required id="hospital" title="병원정보" number={1} open={section === 'hospital'} complete={hospitalComplete} summary={[data.clinicName, data.region.city, data.region.district].filter(Boolean).join(' · ') || '치과명, 연락처와 주소'} onOpen={() => openSection('hospital')}>
       <div>
         <FieldLabel required>치과명</FieldLabel>
         <TextInput value={data.clinicName} onChange={(v) => onChange({ clinicName: v })} placeholder="예: OO치과의원" />
       </div>
       <div>
-        <FieldLabel required>원장님 성함</FieldLabel>
-        <TextInput value={data.doctorName} onChange={(v) => onChange({ doctorName: v })} placeholder="예: 홍길동" />
+        <FieldLabel required>대표전화</FieldLabel>
+        <TextInput type="tel" value={data.phone} onChange={(v) => onChange({ phone: v, phonePending: false })} placeholder="예: 02-1234-5678" />
       </div>
-      <div>
-        <FieldLabel required>개원예정일</FieldLabel>
-        <TextInput type="date" value={data.openDate} onChange={(v) => onChange({ openDate: v })} />
-      </div>
-      <div>
+      <div className="sm:col-span-2">
         <FieldLabel required>지역</FieldLabel>
-        <RegionCascade value={data.region} onChange={(v) => onChange({ region: v })} />
+        <RegionCascade inline value={data.region} onChange={(v) => onChange({ region: v })} />
       </div>
-      <div>
-        <FieldLabel>상세 주소</FieldLabel>
+      <div className="sm:col-span-2">
+        <FieldLabel required>상세 주소</FieldLabel>
         <TextInput value={data.address} onChange={(v) => onChange({ address: v })} placeholder="예: OO빌딩 3층" />
       </div>
+        <button type="button" disabled={!hospitalComplete} onClick={() => openSection('schedule')} className="sm:col-span-2 h-11 rounded-lg bg-[#2563EB] text-white text-sm font-medium disabled:opacity-40">개원일정 입력</button>
+      </BasicInfoSection>
+      <BasicInfoSection required id="schedule" title="개원일정" number={2} open={section === 'schedule'} complete={scheduleComplete} summary={data.openDatePending ? '개원 일정 미정' : data.openDate ? `개원 ${data.openDate}` : '개원, 가오픈, 인테리어와 촬영 일정'} onOpen={() => openSection('schedule')}>
       <div>
-        <FieldLabel>대표전화</FieldLabel>
-        <TextInput value={data.phone} onChange={(v) => onChange({ phone: v })} placeholder="예: 02-1234-5678" />
+        <div className="flex items-center justify-between mb-1"><span className="text-sm font-medium text-[#374151]">개원예정일 <span className="text-red-500">*</span></span><label className="inline-flex min-h-8 items-center gap-1.5 text-xs text-gray-500"><input type="checkbox" checked={!!data.openDatePending} onChange={(e) => onChange({ openDatePending: e.target.checked, openDate: e.target.checked ? '' : data.openDate })} aria-label="개원 일정 미정" />미정</label></div>
+        {data.openDatePending ? <div className="h-11 flex items-center px-3 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-400">추후 확인</div> : <TextInput type="date" value={data.openDate} onChange={(v) => onChange({ openDate: v })} />}
       </div>
       <div>
-        <FieldLabel>팩스번호</FieldLabel>
-        <TextInput value={data.fax} onChange={(v) => onChange({ fax: v })} placeholder="예: 02-1234-5679" />
-      </div>
-      <div>
-        <FieldLabel>가오픈 예정일</FieldLabel>
+        <div className="flex min-h-8 items-center mb-1"><span className="text-sm font-medium text-[#374151]">가오픈 예정일</span></div>
         <TextInput type="date" value={data.softOpenDate} onChange={(v) => onChange({ softOpenDate: v })} />
       </div>
       <div>
-        <FieldLabel>인테리어 완료 예정일</FieldLabel>
+        <div className="flex min-h-8 items-center mb-1"><span className="text-sm font-medium text-[#374151]">인테리어 완료 예정일</span></div>
         <TextInput type="date" value={data.interiorCompleteDate} onChange={(v) => onChange({ interiorCompleteDate: v })} />
       </div>
       <div>
-        <FieldLabel>사진 촬영 가능 날짜</FieldLabel>
+        <div className="flex min-h-8 items-center mb-1"><span className="text-sm font-medium text-[#374151]">사진 촬영 가능 날짜</span></div>
         <TextInput type="date" value={data.photoDate} onChange={(v) => onChange({ photoDate: v })} />
       </div>
-      <div>
-        <FieldLabel required>총 의료진 수</FieldLabel>
-        <p className="text-xs text-[#6B7280] mb-3">원장 포함 전체 의료진 인원. 인원에 맞춰 아래 입력 칸이 자동으로 생성됩니다.</p>
-        <div className="flex items-center gap-4">
+        <button type="button" disabled={!scheduleComplete} onClick={() => openSection('doctors')} className="sm:col-span-2 h-11 rounded-lg bg-[#2563EB] text-white text-sm font-medium disabled:opacity-40">의료진 입력</button>
+      </BasicInfoSection>
+      <BasicInfoSection required id="doctors" title="의료진" number={3} open={section === 'doctors'} complete={doctorProfilesComplete(data.doctors, data.doctorCount, profile, data.doctorName)} summary={data.doctorName ? `${data.doctorName} 원장 · 총 ${data.doctorCount || 1}명` : '대표원장과 함께하는 의료진'} onOpen={() => openSection('doctors')}>
+        <p className="sm:col-span-2 mb-[14px] text-xs text-gray-500">대표원장을 포함한 인원수를 조정하면, 인원수에 맞춰 의료진 입력란이 추가됩니다.</p>
+      <div className="sm:col-span-2 flex items-center justify-between ">
+        <span className="text-sm font-semibold text-[#374151]">총 인원 <span className="font-normal text-xs text-gray-500">대표원장 포함</span></span>
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => {
@@ -840,11 +1046,12 @@ function Step1({
               const next = Math.max(1, cur - 1);
               const doctors = (data.doctors || []).slice(0, next);
               onChange({ doctorCount: next, doctors });
+              setActiveDoctor((current) => current === null ? null : Math.min(current, next - 1));
             }}
             aria-label="의료진 수 감소"
-            className="w-10 h-10 rounded-full border border-[#D1D5DB] text-[#374151] text-xl font-light flex items-center justify-center hover:border-[#2563EB] hover:text-[#2563EB] transition-colors"
+            className="w-7 h-7 rounded-[99px] border border-[#D1D5DB] text-[#374151] text-base font-normal flex items-center justify-center hover:border-[#2563EB] hover:text-[#2563EB] transition-colors"
           >−</button>
-          <span className="text-2xl font-bold text-[#2563EB] w-16 text-center">
+          <span className="text-sm font-semibold text-[#374151] w-8 text-center">
             {data.doctorCount || 1}명
           </span>
           <button
@@ -861,24 +1068,31 @@ function Step1({
                 });
               }
               onChange({ doctorCount: next, doctors });
+              if (next > cur) setActiveDoctor(next - 1);
             }}
             aria-label="의료진 수 증가"
-            className="w-10 h-10 rounded-full border border-[#D1D5DB] text-[#374151] text-xl font-light flex items-center justify-center hover:border-[#2563EB] hover:text-[#2563EB] transition-colors"
+            className="w-7 h-7 rounded-[99px] border border-[#D1D5DB] text-[#374151] text-base font-normal flex items-center justify-center hover:border-[#2563EB] hover:text-[#2563EB] transition-colors"
           >+</button>
         </div>
       </div>
 
-      <div>
-        <FieldLabel>의료진 명단</FieldLabel>
-        <p className="text-xs text-[#6B7280] mb-3">{data.doctorCount || 1}명의 의료진 정보를 입력해 주세요. 첫 번째는 대표 원장입니다.</p>
-        <div className="space-y-3">
+      <div className="sm:col-span-2 -mt-2">
+        <div className="space-y-[14px]">
           {Array.from({ length: data.doctorCount || 1 }).map((_, idx) => {
-            const doc = (data.doctors && data.doctors[idx]) || {
+            const doc: Doctor = (data.doctors && data.doctors[idx]) || {
               name: idx === 0 ? data.doctorName : '',
               title: idx === 0 ? '원장' : '봉직의',
               specialty: '',
             };
             const isMain = idx === 0;
+            const expanded = activeDoctor === idx;
+            const name = doc.name || (isMain ? data.doctorName : '');
+            const missingFields = [
+              !name.trim() && '성함',
+              !(doc.education ?? (isMain ? profile.education : '')).trim() && '학력',
+              !(doc.career ?? (isMain ? profile.career : '')).trim() && '경력',
+            ].filter(Boolean);
+            const complete = missingFields.length === 0;
             const updateDoctor = (patch: Partial<typeof doc>) => {
               const doctors = [...(data.doctors || [])];
               while (doctors.length <= idx) {
@@ -895,28 +1109,30 @@ function Step1({
             return (
               <div
                 key={idx}
-                className={`rounded-xl p-4 space-y-2 border ${
-                  isMain
-                    ? 'bg-[#EFF6FF] border-[#2563EB]'
-                    : 'bg-[#F8FAFC] border-[#E5E7EB]'
-                }`}
+                className={`rounded-lg border overflow-hidden ${expanded ? 'border-blue-200' : 'border-gray-200'}`}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-xs font-bold ${isMain ? 'text-[#2563EB]' : 'text-[#6B7280]'}`}>
-                    {isMain ? '👑 대표 원장' : `의료진 ${idx + 1}`}
-                  </span>
-                </div>
-                <div className="flex gap-2">
+                <button type="button" id={`doctor-${idx}-heading`} aria-expanded={expanded} aria-controls={`doctor-${idx}-panel`} onClick={() => setActiveDoctor(expanded ? null : idx)} className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-[-2px]">
+                  <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-gray-700 truncate">{name || (isMain ? '대표원장' : `의료진 ${idx + 1}`)}</span><span className="text-xs text-gray-500">{isMain ? '대표원장' : doc.title || '의료진'} · <span className={complete ? 'font-medium text-green-700' : ''}>{complete ? '입력 완료' : `${missingFields.join('·')} 입력 필요`}</span></span></span>
+                  <svg aria-hidden="true" className={`h-4 w-4 shrink-0 text-gray-400 ${expanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m6 9 6 6 6-6" /></svg>
+                </button>
+                <div id={`doctor-${idx}-panel`} aria-labelledby={`doctor-${idx}-heading`} hidden={!expanded}>
+                <div className="px-3 pb-3 pt-1 space-y-[14px]">
+                <div className="grid grid-cols-[minmax(0,1fr)_104px] sm:grid-cols-2 gap-3">
+                  <div className="min-w-0">
+                    <FieldLabel required>{isMain ? '대표원장 성함' : '성함'}</FieldLabel>
                   <input
-                    placeholder="성함"
+                    required aria-label={isMain ? "대표원장 성함" : `의료진 ${idx + 1} 성함`} placeholder={isMain ? "대표원장 성함 (필수)" : "성함"}
                     value={doc.name || (isMain ? data.doctorName : '')}
                     onChange={(e) => updateDoctor({ name: e.target.value })}
-                    className="flex-1 h-10 px-3 rounded-lg border border-[#D1D5DB] bg-white text-sm focus:outline-none focus:border-[#2563EB]"
+                    className="w-full min-w-0 h-11 px-3 rounded-lg border border-[#D1D5DB] bg-white text-sm focus:outline-none focus:border-[#2563EB]"
                   />
+                  </div>
+                    <div className="min-w-0"><FieldLabel>직함</FieldLabel>
                   <select
                     value={doc.title}
                     onChange={(e) => updateDoctor({ title: e.target.value })}
-                    className="w-28 h-10 px-2 rounded-lg border border-[#D1D5DB] bg-white text-sm focus:outline-none focus:border-[#2563EB]"
+                  aria-label={`의료진 ${idx + 1} 직함`}
+                    className="w-full h-11 px-2 rounded-lg border border-[#D1D5DB] bg-white text-sm focus:outline-none focus:border-[#2563EB]"
                   >
                     <option>원장</option>
                     <option>공동원장</option>
@@ -924,98 +1140,109 @@ function Step1({
                     <option>봉직의</option>
                     <option>페이닥터</option>
                   </select>
+                    </div>
                 </div>
-                <input
-                  placeholder="전문의 분야 (예: 보철과 전문의, 또는 비워두기)"
-                  value={doc.specialty}
-                  onChange={(e) => updateDoctor({ specialty: e.target.value })}
-                  className="w-full h-10 px-3 rounded-lg border border-[#D1D5DB] bg-white text-sm focus:outline-none focus:border-[#2563EB]"
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {([['education', '학력'], ['career', '경력 / 전문의 자격']] as const).map(([key, label]) => (
+                    <div key={key}><FieldLabel required>{label}</FieldLabel><TextArea value={doc[key] ?? (isMain ? profile[key] : '')} onChange={(v) => { updateDoctor({ [key]: v }); if (isMain) onProfileChange({ [key]: v }); }} placeholder={key === 'education' ? '예: OO대학교 치과대학 졸업, OO대학교 대학원 치의학 석사' : '예: OO치과병원 수련, OO과 전문의, 전) OO치과 부원장'} rows={2} /></div>
+                  ))}
+                </div>
+                <details className="group rounded-lg border border-gray-200">
+                  <summary className="cursor-pointer p-3 text-sm font-medium text-gray-700">
+                    추가 약력 (선택)
+                    <span className="mt-1 block line-clamp-2 text-xs font-normal text-gray-500 group-open:hidden">
+                      {[
+                        (doc.awards ?? (isMain ? profile.awards : '')).trim(),
+                        (doc.associations ?? (isMain ? profile.associations : '')).trim(),
+                      ].filter(Boolean).join(' · ') || '수상·논문·방송 출연 이력, 학회·협회 활동'}
+                    </span>
+                  </summary>
+                  <div className="space-y-[14px] px-3 pb-3">
+                <div>
+                  <FieldLabel>수상 / 논문 / 방송 출연 이력 (선택)</FieldLabel>
+                  <TextArea value={doc.awards ?? (isMain ? profile.awards : '')}
+                    onChange={(v) => { updateDoctor({ awards: v }); if (isMain) onProfileChange({ awards: v }); }}
+                    placeholder="예: OO학회 우수논문상 수상, OO학술지 논문 게재, OO방송 건강 프로그램 출연"
+                    rows={2} />
+                </div>
+                <div>
+                  <FieldLabel>학회 / 협회 활동 (선택)</FieldLabel>
+                  <TextArea value={doc.associations ?? (isMain ? profile.associations : '')}
+                    onChange={(v) => { updateDoctor({ associations: v }); if (isMain) onProfileChange({ associations: v }); }}
+                    placeholder="예: OO학회 정회원, OO협회 이사, OO학회 학술대회 발표"
+                    rows={2} />
+                </div>
+                  </div>
+                </details>
+
+                </div>
+                </div>
               </div>
             );
           })}
         </div>
       </div>
 
+
+      </BasicInfoSection>
     </div>
   );
 }
 
 // Step 2: 진료 정보
 function Step2({
-  data, onChange,
+  data, onChange, section = 'medical',
 }: {
+  section?: 'medical' | 'operations';
   data: FormData['step2'];
   onChange: (u: Partial<FormData['step2']>) => void;
 }) {
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const implantMaterialsSummary = Object.entries(data.implantMaterials || {})
+    .map(([brand, products]) => {
+      if (brand === '기타' && data.implantOther?.trim()) return `기타 (${data.implantOther.trim()})`;
+      return products.length ? `${brand} (${products.join(' · ')})` : brand;
+    }).join(', ');
   return (
-    <div className="space-y-6">
+    <div className="space-y-[14px]">
+      {section === 'medical' && <>
       <div>
-        <FieldLabel required>진료과목</FieldLabel>
+        <FieldLabel required>진행하는 진료</FieldLabel>
         <p className="text-xs text-[#6B7280] mb-3">해당하는 진료과목을 모두 선택해 주세요</p>
-        <CategoryChipSelector
-          categories={DENTAL_CATEGORIES}
-          selected={data.dentalSubjects}
-          onChange={(v) => onChange({ dentalSubjects: v })}
-        />
-        <div className="mt-3">
-          <p className="text-xs text-[#6B7280] mb-2">목록에 없는 진료과목은 직접 입력해 주세요 (쉼표로 구분)</p>
-          <TextInput
-            value={data.customSubjects}
-            onChange={(v) => onChange({ customSubjects: v })}
-            placeholder="예: 코골이 치료, 안면 보톡스"
-          />
-        </div>
-      </div>
-      {data.dentalSubjects.length > 0 && (
-        <div>
-          <FieldLabel>주력진료 TOP 3</FieldLabel>
-          <p className="text-xs text-[#6B7280] mb-3">주력으로 마케팅하실 과목을 최대 3개까지 선택해 주세요</p>
-          <ChipSelector
-            options={data.dentalSubjects}
-            selected={data.topSubjects}
-            onChange={(v) => onChange({ topSubjects: v })}
-            max={3}
-          />
-        </div>
-      )}
-      {/* 투명교정 선택 시 서브옵션 노출 */}
-      {data.dentalSubjects.includes('투명교정') && (
-        <div>
-          <FieldLabel>투명교정 — 사용 브랜드(재료)</FieldLabel>
-          <p className="text-xs text-[#6B7280] mb-3">사용하시는 브랜드를 선택하거나, 기타를 골라 직접 입력해 주세요</p>
-          <ChipSelector
-            options={ALIGNER_OPTIONS}
-            selected={data.alignerOptions || []}
-            onChange={(v) => onChange({ alignerOptions: v })}
-          />
-          {(data.alignerOptions || []).includes('기타') && (
-            <div className="mt-2">
-              <TextInput
-                value={data.alignerOther}
-                onChange={(v) => onChange({ alignerOther: v })}
-                placeholder="사용하시는 투명교정 브랜드를 직접 입력해 주세요"
+        <div className="space-y-[14px]">
+          {Object.entries(DENTAL_CATEGORIES).map(([category, subjects]) => (
+            <section key={category} className={`rounded-xl border bg-white overflow-hidden ${expandedCategory === category ? 'border-blue-300' : 'border-gray-200'}`} aria-label={`${category} 세부 항목`}>
+              <button type="button" aria-label={category} aria-expanded={expandedCategory === category} aria-controls={`treatment-${category}`} onClick={() => setExpandedCategory(expandedCategory === category ? null : category)} className="flex items-center gap-3 w-full p-4 text-left hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-[-2px]">
+                <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-gray-700">{category}<span className="ml-2 text-xs font-normal text-blue-600">{subjects.filter((item) => data.dentalSubjects.includes(item)).length > 0 ? `${subjects.filter((item) => data.dentalSubjects.includes(item)).length}개 선택` : ''}</span></span>
+                  {expandedCategory !== category && <span className="mt-1 block text-xs text-gray-500 break-words">{subjects.filter((item) => data.dentalSubjects.includes(item)).join(' · ') || '선택한 진료 없음'}</span>}
+                  {expandedCategory !== category && category === '임플란트' && implantMaterialsSummary && (
+                    <span className="mt-1 block text-xs text-gray-500 break-words">재료: {implantMaterialsSummary}</span>
+                  )}
+                  {expandedCategory !== category && category === '교정' && data.dentalSubjects.includes('투명교정') && data.alignerOptions.length > 0 && (
+                    <span className="mt-1 block text-xs text-gray-500 break-words">
+                      투명교정: {data.alignerOptions.map((item) => item === '기타' && data.alignerOther?.trim() ? `기타 (${data.alignerOther.trim()})` : item).join(' · ')}
+                    </span>
+                  )}
+                  {expandedCategory !== category && category === '교정' && data.dentalSubjects.includes('소아교정') && (data.pediatricOrthoOptions || []).length > 0 && (
+                    <span className="mt-1 block text-xs text-gray-500 break-words">
+                      소아교정: {data.pediatricOrthoOptions.map((item) => item === '기타' && data.pediatricOrthoOther?.trim() ? `기타 (${data.pediatricOrthoOther.trim()})` : item).join(' · ')}
+                    </span>
+                  )}
+                </span>
+                <svg aria-hidden="true" className={`h-4 w-4 shrink-0 text-gray-400 ${expandedCategory === category ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m6 9 6 6 6-6" /></svg>
+              </button>
+              <div id={`treatment-${category}`} hidden={expandedCategory !== category}>
+              <div className="px-4 pb-4 space-y-[14px]">
+              <ChipSelector
+                options={subjects}
+                selected={data.dentalSubjects}
+                onChange={(v) => onChange({ dentalSubjects: v })}
               />
-            </div>
-          )}
-        </div>
-      )}
-      {/* 소아교정 선택 시 서브옵션 노출 */}
-      {data.dentalSubjects.includes('소아교정') && (
+              {category === '임플란트' && <>
+      {/* 임플란트 분야를 펼치면 재료도 함께 표시 */}
+      {(
         <div>
-          <FieldLabel>소아교정 — 사용 장치</FieldLabel>
-          <p className="text-xs text-[#6B7280] mb-3">사용하시는 장치를 모두 선택해 주세요</p>
-          <ChipSelector
-            options={PEDIATRIC_ORTHO_OPTIONS}
-            selected={data.pediatricOrthoOptions || []}
-            onChange={(v) => onChange({ pediatricOrthoOptions: v })}
-          />
-        </div>
-      )}
-      {/* 임플란트 진료과목 선택 시 재료 UI 노출 */}
-      {DENTAL_CATEGORIES['임플란트'].some((s) => data.dentalSubjects.includes(s)) && (
-        <div>
-          <FieldLabel>임플란트 재료 (사용 제조사·제품군)</FieldLabel>
+          <FieldLabel>임플란트(재료)</FieldLabel>
           <p className="text-xs text-[#6B7280] mb-3">사용하시는 제조사를 선택하면 하위 제품군이 나타납니다. 여러 개 선택 가능.</p>
           <div className="space-y-2">
             {Object.entries(IMPLANT_MATERIALS).map(([brand, products]) => {
@@ -1056,6 +1283,11 @@ function Step2({
                       {brand}
                     </span>
                   </button>
+                  {isSelected && brand === '기타' && (
+                    <div className="px-4 pb-3">
+                      <TextInput value={data.implantOther || ''} onChange={(v) => onChange({ implantOther: v })} placeholder="기타 임플란트 제조사·제품군" />
+                    </div>
+                  )}
                   {isSelected && products.length > 0 && (
                     <div className="px-4 pb-3 pt-1 pl-11 flex flex-wrap gap-2">
                       {products.map((p) => {
@@ -1090,61 +1322,151 @@ function Step2({
           </div>
         </div>
       )}
-      <div>
-        <FieldLabel>진료시간</FieldLabel>
-        <TimeSelector
-          schedule={data.schedule}
-          onChange={(v) => onChange({ schedule: v })}
-        />
-      </div>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => onChange({ holidayClose: !data.holidayClose })}
-          className={`w-12 h-7 rounded-full transition-all flex-shrink-0 ${
-            data.holidayClose ? 'bg-[#2563EB]' : 'bg-[#D1D5DB]'
-          }`}
-        >
-          <div
-            className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform mx-1 ${
-              data.holidayClose ? 'translate-x-5' : ''
-            }`}
+              </>}
+              {category === '교정' && <>
+      {/* 투명교정 선택 시 서브옵션 노출 */}
+      {data.dentalSubjects.includes('투명교정') && (
+        <div>
+          <FieldLabel>투명교정 — 사용 브랜드(재료)</FieldLabel>
+          <p className="text-xs text-[#6B7280] mb-3">사용하시는 브랜드를 선택하거나, 기타를 골라 직접 입력해 주세요</p>
+          <ChipSelector
+            options={ALIGNER_OPTIONS}
+            selected={data.alignerOptions || []}
+            onChange={(v) => onChange({ alignerOptions: v })}
           />
-        </button>
-        <span className="text-sm text-[#374151]">공휴일 휴진</span>
-      </div>
-      <div>
-        <FieldLabel>점심시간</FieldLabel>
-        <div className="flex items-center gap-2">
-          <select
-            value={data.lunchTime.start}
-            onChange={(e) => onChange({ lunchTime: { ...data.lunchTime, start: e.target.value } })}
-            className="flex-1 h-12 px-4 rounded-lg border border-[#D1D5DB] text-base"
-          >
-            {['12:00', '12:30', '13:00'].map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-          <span className="text-[#9CA3AF]">~</span>
-          <select
-            value={data.lunchTime.end}
-            onChange={(e) => onChange({ lunchTime: { ...data.lunchTime, end: e.target.value } })}
-            className="flex-1 h-12 px-4 rounded-lg border border-[#D1D5DB] text-base"
-          >
-            {['13:00', '13:30', '14:00', '14:30'].map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
+          {(data.alignerOptions || []).includes('기타') && (
+            <div className="mt-2">
+              <TextInput
+                value={data.alignerOther}
+                onChange={(v) => onChange({ alignerOther: v })}
+                placeholder="사용하시는 투명교정 브랜드를 직접 입력해 주세요"
+              />
+            </div>
+          )}
+        </div>
+      )}
+      {/* 소아교정 선택 시 서브옵션 노출 */}
+      {data.dentalSubjects.includes('소아교정') && (
+        <div>
+          <FieldLabel>소아교정 — 사용 장치</FieldLabel>
+          <p className="text-xs text-[#6B7280] mb-3">사용하시는 장치를 모두 선택해 주세요</p>
+          <ChipSelector
+            options={PEDIATRIC_ORTHO_OPTIONS}
+            selected={data.pediatricOrthoOptions || []}
+            onChange={(v) => onChange({ pediatricOrthoOptions: v })}
+          />
+          {data.pediatricOrthoOptions.includes('기타') && <TextInput value={data.pediatricOrthoOther || ''} onChange={(v) => onChange({ pediatricOrthoOther: v })} placeholder="기타 소아교정 장치" />}
+        </div>
+      )}
+              </>}
+              </div>
+              </div>
+            </section>
+          ))}
+        </div>
+        {data.dentalSubjects.some((item) => !Object.values(DENTAL_CATEGORIES).flat().includes(item)) && <div className="mt-3"><FieldLabel>이전에 선택한 기타 진료</FieldLabel><ChipSelector options={data.dentalSubjects.filter((item) => !Object.values(DENTAL_CATEGORIES).flat().includes(item))} selected={data.dentalSubjects} onChange={(v) => onChange({ dentalSubjects: v })} /></div>}
+        <div className="mt-3 rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs text-[#6B7280] mb-2">목록에 없는 진료과목은 직접 입력해 주세요 (쉼표로 구분)</p>
+          <TextInput
+            value={data.customSubjects}
+            onChange={(v) => onChange({ customSubjects: v })}
+            placeholder="예: 코골이 치료, 안면 보톡스"
+          />
         </div>
       </div>
-      <div>
-        <FieldLabel>야간/주말 진료 특이사항</FieldLabel>
-        <TextInput
+      {section === 'medical' && (
+        <div role="group" aria-label="주력 진료" className="rounded-xl border border-gray-200 bg-white p-4">
+          <FieldLabel>주력 진료를 선택해 주세요(최대 3개)</FieldLabel>
+          <p className="text-xs text-[#6B7280] mb-3">아직 정하지 않으셨다면 비워두셔도 됩니다.</p>
+          <ChipSelector
+            options={[...Object.keys(DENTAL_CATEGORIES), ...data.topSubjects.filter((item) => !(item in DENTAL_CATEGORIES))]}
+            selected={data.topSubjects}
+            onChange={(v) => onChange({ topSubjects: v })}
+            max={3}
+          />
+          {data.topSubjects.includes('기타') && (
+            <div className="mt-3">
+              <TextInput value={data.topSubjectsOther || ''} onChange={(v) => onChange({ topSubjectsOther: v })} placeholder="그 외 알리고 싶은 진료를 입력해 주세요" />
+            </div>
+          )}
+        </div>
+      )}
+      </>}
+      {section === 'operations' && <>
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <p className="mb-2 text-xs text-gray-500">요일을 누르면 진료·휴진을 바꿀 수 있어요.</p>
+        <div className="clinic-hours"><TimeSelector showNight includeHoliday
+          schedule={{ ...data.schedule, '공휴일': { ...(data.schedule['공휴일'] || { start: '09:00', end: '13:00' }), enabled: !data.holidayClose } }}
+          onChange={(v) => onChange({ schedule: v, holidayClose: !v['공휴일'].enabled })}
+        /></div>
+      </div>
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <FieldLabel>점심시간</FieldLabel>
+        <LunchTimeInputs label="공통 점심시간" value={data.lunchTime} onChange={(value) => onChange({ lunchTime: value, lunchMode: 'same' })} />
+      </div>
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <FieldLabel>진료시간 특이사항</FieldLabel>
+        <TextArea
           value={data.nightWeekend}
           onChange={(v) => onChange({ nightWeekend: v })}
-          placeholder="예: 수요일 야간진료 21시까지"
+          placeholder="예: 금요일 격주진료, 월·수·금 점심시간 12:00~13:00 / 화·목 점심시간 13:00~14:00"
+          rows={2}
         />
       </div>
+      </>}
+    </div>
+  );
+}
+
+function LunchTimeInputs({ label, value, onChange }: {
+  label: string; value: { start: string; end: string }; onChange: (value: { start: string; end: string }) => void;
+}) {
+  return <div className="flex min-w-0 items-center gap-2">
+    {(['start', 'end'] as const).map((key, index) => <div key={key} className="flex min-w-0 flex-1 items-center gap-2">
+      {index === 1 && <span className="text-gray-400">~</span>}
+      <select aria-label={`${label} ${key === 'start' ? '시작' : '종료'}`} value={value[key]} onChange={(e) => onChange({ ...value, [key]: e.target.value })}
+        className="h-10 w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3">
+        {Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`).map((time) => <option key={time} value={time}>{time}</option>)}
+      </select>
+    </div>)}
+  </div>;
+}
+
+function OperationsStep({ schedule, facilities, onScheduleChange, onFacilitiesChange }: {
+  schedule: FormData['step2'];
+  facilities: FormData['step3'];
+  onScheduleChange: (u: Partial<FormData['step2']>) => void;
+  onFacilitiesChange: (u: Partial<FormData['step3']>) => void;
+}) {
+  const [active, setActive] = useState('hours');
+  const timeGroups = new Map<string, string[]>();
+  Object.entries(schedule.schedule).forEach(([day, time]) => {
+    const hours = time.enabled ? `${time.start}–${time.end}${time.night ? " (야간)" : ""}` : '휴진';
+    timeGroups.set(hours, [...(timeGroups.get(hours) || []), day]);
+  });
+  const hoursSummary = [...timeGroups].map(([hours, days]) => `${days.join('·')} ${hours}`).join(' / ');
+  const facilitiesSummary = [
+    `체어 ${facilities.chairs}대`,
+    formatEquipment(facilities.equipment, facilities.equipmentModels),
+    ...facilities.facilities,
+    `주차 ${facilities.parking.available}`,
+    facilities.hasLabRoom ? '기공소 보유' : '',
+  ].filter(Boolean).join(' · ');
+  return (
+    <div className="space-y-[14px]">
+      <BasicInfoSection required id="operation-hours" title="진료시간" number={1} open={active === 'hours'} complete={false}
+        summary={`${hoursSummary} / 점심 ${formatLunch({ ...schedule, lunchMode: 'same' })}`} onOpen={() => setActive(active === 'hours' ? '' : 'hours')}>
+        <div className="sm:col-span-2 operations-form">
+          <Step2 section="operations" data={schedule} onChange={onScheduleChange} />
+          <button type="button" onClick={() => setActive('facilities')} className="mt-[14px] w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white">시설·장비 입력</button>
+        </div>
+      </BasicInfoSection>
+      <BasicInfoSection required id="operation-facilities" title="시설·장비" number={2} open={active === 'facilities'} complete={false}
+        summary={facilitiesSummary} onOpen={() => setActive(active === 'facilities' ? '' : 'facilities')}>
+        <div className="sm:col-span-2 operations-form">
+          <Step3 data={facilities} onChange={onFacilitiesChange} />
+        </div>
+      </BasicInfoSection>
     </div>
   );
 }
@@ -1156,32 +1478,77 @@ function Step3({
   data: FormData['step3'];
   onChange: (u: Partial<FormData['step3']>) => void;
 }) {
+  const [equipmentOpen, setEquipmentOpen] = useState(true);
+  const [activeEquipment, setActiveEquipment] = useState<string | null>(() => data.equipment[0] || null);
+  const [showOtherLabEquipment, setShowOtherLabEquipment] = useState(false);
+  const [otherLabEquipment, setOtherLabEquipment] = useState('');
+  const addLabEquipment = () => {
+    const additions = otherLabEquipment.split(/[,，\n]/).map((name) => name.trim()).filter(Boolean);
+    if (!additions.length) return;
+    onChange({ labEquipment: [...new Set([...data.labEquipment, ...additions])] });
+    setOtherLabEquipment('');
+  };
   return (
-    <div className="space-y-6">
-      <div>
-        <FieldLabel>체어 수</FieldLabel>
-        <div className="flex items-center gap-4">
-          <input
-            type="range"
-            min={1}
-            max={30}
-            value={data.chairs}
-            onChange={(e) => onChange({ chairs: parseInt(e.target.value) })}
-            className="flex-1 accent-[#2563EB]"
-          />
-          <span className="text-lg font-semibold text-[#2563EB] w-12 text-center">
-            {data.chairs}대
-          </span>
+    <div className="space-y-[14px]">
+      <div className="flex w-full items-center justify-between gap-4">
+        <span className="shrink-0 text-sm font-semibold text-gray-700">체어 수</span>
+        <div className="flex items-center gap-2">
+          <button type="button" aria-label="체어 수 감소" disabled={data.chairs <= 1}
+            onClick={() => onChange({ chairs: Math.max(1, data.chairs - 1) })}
+            className="flex h-9 w-9 items-center justify-center rounded-[99px] border border-gray-300 text-lg text-gray-700 disabled:opacity-40">−</button>
+          <span aria-live="polite" className="min-w-10 text-center text-sm font-semibold text-gray-700">{data.chairs}대</span>
+          <button type="button" aria-label="체어 수 증가" disabled={data.chairs >= 30}
+            onClick={() => onChange({ chairs: Math.min(30, data.chairs + 1) })}
+            className="flex h-9 w-9 items-center justify-center rounded-[99px] border border-gray-300 text-lg text-gray-700 disabled:opacity-40">+</button>
         </div>
       </div>
-      <div>
-        <FieldLabel>보유 장비</FieldLabel>
+      <section className={`overflow-hidden rounded-xl border bg-white ${equipmentOpen ? 'border-blue-300' : 'border-gray-200'}`}>
+        <h3><button type="button" id="equipment-list-heading" aria-expanded={equipmentOpen} aria-controls="equipment-list-panel"
+          onClick={() => setEquipmentOpen((open) => !open)} className="flex w-full items-center gap-3 p-3 text-left focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-[-2px]">
+          <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-gray-700">보유 장비 <span className="text-red-600">*</span></span>
+            {!equipmentOpen && <span className="mt-1 block line-clamp-2 break-words text-xs text-gray-500">{formatEquipment(data.equipment, data.equipmentModels) || '선택한 장비 없음'}</span>}
+          </span>
+          <svg aria-hidden="true" className={`h-4 w-4 shrink-0 text-gray-400 ${equipmentOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m6 9 6 6 6-6" /></svg>
+        </button></h3>
+        <div id="equipment-list-panel" role="region" aria-labelledby="equipment-list-heading" hidden={!equipmentOpen} className="px-3 pb-3">
         <ChipSelector
-          options={EQUIPMENT_LIST}
-          selected={data.equipment}
-          onChange={(v) => onChange({ equipment: v })}
+          options={[...EQUIPMENT_LIST.filter((name) => name !== '기타 장비'), ...data.equipment.filter((name) => name !== '없음' && name !== '기타 장비' && !EQUIPMENT_LIST.includes(name)), '기타 장비']}
+          selected={data.equipment.filter((name) => name !== '없음')}
+          onChange={(v) => {
+            const added = v.find((name) => !data.equipment.includes(name));
+            const selected = v.filter((name) => name !== '없음');
+            onChange({ equipment: selected });
+            if (added) setActiveEquipment(added);
+            else if (activeEquipment && !v.includes(activeEquipment)) setActiveEquipment(null);
+          }}
         />
-        <div className="mt-3">
+        {data.equipment.some((name) => name !== '없음') && <div className="mt-[14px] space-y-[14px]">
+          <p className="text-xs text-gray-500">제품명을 선택하거나 직접 입력해 주세요. 여러 제품을 보유한 경우 복수 선택하거나 쉼표로 구분해 적어 주세요.</p>
+          {data.equipment.filter((name) => name !== '없음').map((name, index) => <section key={name} className={`overflow-hidden rounded-lg border ${activeEquipment === name ? 'border-blue-300' : 'border-gray-200'}`}>
+            <button type="button" id={`equipment-heading-${index}`} aria-expanded={activeEquipment === name} aria-controls={`equipment-panel-${index}`}
+              onClick={() => setActiveEquipment(activeEquipment === name ? null : name)}
+              className="flex w-full items-center gap-3 p-3 text-left focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-[-2px]">
+              <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-gray-700">{name === '기타 장비' ? '기타 장비명·제품명' : `${name} 제품명`}</span>
+                {activeEquipment !== name && data.equipmentModels?.[name]?.trim() && <span className="mt-1 block truncate text-xs text-gray-500">{data.equipmentModels[name].trim()}</span>}
+              </span>
+              <svg aria-hidden="true" className={`h-4 w-4 shrink-0 text-gray-400 ${activeEquipment === name ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m6 9 6 6 6-6" /></svg>
+            </button>
+            <div id={`equipment-panel-${index}`} role="region" aria-labelledby={`equipment-heading-${index}`} hidden={activeEquipment !== name} className="px-3 pb-3">
+            {EQUIPMENT_PRODUCTS[name] && <div className="mb-3">
+              <ChipSelector options={EQUIPMENT_PRODUCTS[name]}
+                selected={(data.equipmentModels?.[name] || '').split(',').map((value) => value.trim()).filter(Boolean)}
+                onChange={(values) => onChange({ equipmentModels: { ...data.equipmentModels, [name]: values.join(', ') } })} />
+            </div>}
+            <label htmlFor={`equipment-model-${index}`} className="sr-only">{name === '기타 장비' ? '기타 장비명·제품명' : `${name} 제품명·모델명`}</label>
+            <input id={`equipment-model-${index}`} value={data.equipmentModels?.[name] || ''}
+              onChange={(e) => onChange({ equipmentModels: { ...data.equipmentModels, [name]: e.target.value } })}
+              placeholder={name === '기타 장비' ? '예: 장비명 / 제조사 / 모델명' : EQUIPMENT_EXAMPLES[name] ? `예: ${EQUIPMENT_EXAMPLES[name]}` : '제조사 또는 모델명을 적어 주세요'}
+              className="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-base focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600" />
+            </div>
+          </section>)}
+        </div>}
+        {data.equipmentDetail && <details className="mt-3">
+          <summary className="cursor-pointer text-sm text-gray-600">이전에 입력한 장비 상세</summary>
           <p className="text-xs text-[#6B7280] mb-2">장비 제조사·모델명을 적어 주세요 (홈페이지 장비 소개에 사용)</p>
           <TextArea
             value={data.equipmentDetail}
@@ -1189,292 +1556,317 @@ function Step3({
             placeholder="예: 바텍 그린스마트 CT, 메디트 i700 구강스캐너, 오스템 디지털 X선"
             rows={2}
           />
+        </details>}
         </div>
-      </div>
-      <div>
-        <FieldLabel>시설</FieldLabel>
+      </section>
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <FieldLabel required>시설</FieldLabel>
         <ChipSelector
-          options={FACILITY_LIST}
+          options={[...FACILITY_LIST, '없음']}
           selected={data.facilities}
-          onChange={(v) => onChange({ facilities: v })}
+          onChange={(v) => onChange({ facilities: v.includes('없음') && !data.facilities.includes('없음') ? ['없음'] : v.filter((name) => name !== '없음') })}
         />
       </div>
-      <div>
-        <FieldLabel>주차</FieldLabel>
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <FieldLabel required>주차</FieldLabel>
         <ChipSelector
-          options={['가능', '불가', '발렛']}
+          options={['가능', '불가']}
           selected={[data.parking.available]}
-          onChange={(v) => onChange({ parking: { ...data.parking, available: v[0] || '가능' } })}
+          onChange={(v) => onChange({ parking: { ...data.parking, available: v[0] || '' } })}
           multiple={false}
         />
-        <div className="mt-2">
+        {data.parking.available === '가능' && <div className="mt-2">
           <p className="text-xs text-[#6B7280] mb-2">주차 상세 정보를 적어 주세요 (대수·위치·요금·제휴 등)</p>
           <TextInput
             value={data.parking.detail}
             onChange={(v) => onChange({ parking: { ...data.parking, detail: v } })}
             placeholder="예: 건물 지하 1~3층 20대, 2시간 무료, 발렛 별도 1,000원"
           />
-        </div>
+        </div>}
       </div>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => onChange({ hasLabRoom: !data.hasLabRoom })}
-          className={`w-12 h-7 rounded-full transition-all flex-shrink-0 ${
-            data.hasLabRoom ? 'bg-[#2563EB]' : 'bg-[#D1D5DB]'
-          }`}
-        >
-          <div
-            className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform mx-1 ${
-              data.hasLabRoom ? 'translate-x-5' : ''
-            }`}
-          />
-        </button>
-        <span className="text-sm text-[#374151]">기공소 보유</span>
-      </div>
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <FieldLabel required>기공소 보유 여부</FieldLabel>
+        <ChipSelector options={['보유', '미보유']} selected={data.labRoomAnswered ? [data.hasLabRoom ? '보유' : '미보유'] : []}
+          multiple={false} onChange={(v) => onChange({ hasLabRoom: v[0] === '보유', labRoomAnswered: v.length > 0 })} />
       {data.hasLabRoom && (
-        <div>
-          <FieldLabel>기공소 장비</FieldLabel>
+        <div className="mt-[14px]">
+          <div className="space-y-[14px] mb-[14px]">
+            <div><FieldLabel>기공소 위치 (선택)</FieldLabel>
+              <ChipSelector options={["병원 내부","같은 건물 내 별도 공간","외부 별도 공간","기타"]} selected={data.labLocation ? [data.labLocation] : []} multiple={false} onChange={(v) => onChange({ labLocation: v[0] || '' })} />
+            </div>
+            <div><FieldLabel>운영 형태 (선택)</FieldLabel>
+              <ChipSelector options={["병원 직접 운영","별도 사업자로 운영","협력 기공소","기타·모름"]} selected={data.labOperation ? [data.labOperation] : []} multiple={false} onChange={(v) => onChange({ labOperation: v[0] || '' })} />
+            </div>
+            <div><FieldLabel>상주 기공사 여부 (선택)</FieldLabel>
+              <ChipSelector options={["상주","비상주"]} selected={data.labTechnician ? [data.labTechnician] : []} multiple={false} onChange={(v) => onChange({ labTechnician: v[0] || '' })} />
+            </div>
+            <div><FieldLabel>기공소 특징 (선택)</FieldLabel>
+              <TextArea value={data.labFeatures || ''} onChange={(v) => onChange({ labFeatures: v })} placeholder="예: 전담 기공사, 원내 보철 제작, 빠른 수정·수리, 위치·운영 방식에 대한 추가 설명" rows={2} />
+            </div>
+          </div>
+          <FieldLabel>기공소 장비 (복수 선택 가능)</FieldLabel>
+          <div className="flex flex-wrap items-center gap-2 [&>div]:contents">
           <ChipSelector
-            options={['밀링머신', '포세린퍼니스', '신터링기', '모델스캐너']}
+            options={[...new Set(['밀링머신', '포세린퍼니스', '신터링기', '모델스캐너', ...data.labEquipment])]}
             selected={data.labEquipment}
             onChange={(v) => onChange({ labEquipment: v })}
           />
+          <button type="button" aria-expanded={showOtherLabEquipment} onClick={() => setShowOtherLabEquipment(!showOtherLabEquipment)} className="min-h-11 rounded-full border border-[#D1D5DB] px-4 text-sm font-medium text-[#374151]">기타 직접 추가</button>
+          </div>
+          {showOtherLabEquipment && (
+            <div className="mt-3 space-y-2">
+              <label htmlFor="other-lab-equipment" className="text-sm font-medium text-[#374151]">기타 기공소 장비명</label>
+              <div className="flex gap-2">
+                <input id="other-lab-equipment" value={otherLabEquipment} onChange={(event) => setOtherLabEquipment(event.target.value)} onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); addLabEquipment(); }
+                }} placeholder="예: 3D 프린터, 집진기" className="min-w-0 flex-1 rounded-lg border border-[#D1D5DB] px-3 py-2 text-sm" />
+                <button type="button" disabled={!otherLabEquipment.trim()} onClick={addLabEquipment} className="min-h-11 rounded-lg bg-[#2563EB] px-4 text-sm font-medium text-white disabled:opacity-40">추가</button>
+              </div>
+              <p className="text-xs text-gray-500">쉼표로 구분해 여러 장비를 한 번에 추가할 수 있어요. 추가한 장비를 다시 누르면 선택이 해제됩니다.</p>
+            </div>
+          )}
         </div>
+      )}
+      </div>
+    </div>
+  );
+}
+
+function ClinicStrengths({
+  data,
+  onChange,
+}: {
+  data: FormData['step4'];
+  onChange: (u: Partial<FormData['step4']>) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const strengths = [data.clinicPromo, data.doctorPromo, data.treatmentPromo];
+  const patientOptions = ['소아·청소년', '20~30대', '40~50대', '60대 이상', '기타'];
+  const patientParts = data.locationTarget ? data.locationTarget.split(' · ') : [];
+  const knownPatients = patientParts.filter((item) => patientOptions.includes(item));
+  const otherPatient = patientParts.filter((item) => !patientOptions.includes(item)).join(' · ').replace(/^기타: /, '');
+  const selectedPatients = [...new Set([...knownPatients, ...(otherPatient ? ['기타'] : [])])];
+  const savePatients = (selected: string[], other: string) => onChange({
+    locationTarget: selected.map((item) => item === '기타' && other.trim() ? `기타: ${other}` : item).join(' · '),
+  });
+  const summary = [...strengths, data.philosophy].map((value) => value.trim()).filter(Boolean).join(' · ');
+  return (
+    <section className={`rounded-xl border bg-white overflow-hidden ${open ? 'border-blue-300' : 'border-gray-200'}`}>
+      <h3>
+        <button id="clinic-features-heading" type="button" aria-expanded={open} aria-controls="clinic-features-panel"
+          onClick={() => setOpen((value) => !value)}
+          className="flex w-full items-center gap-3 p-4 text-left focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-[-2px]">
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-gray-700">병원 특징·환자층 <span className="font-normal text-gray-500">(선택)</span></span>
+            {!open && <span className="mt-1 block text-xs text-gray-500">
+              {summary && <span className="block truncate">특징: {summary}</span>}
+              {data.locationTarget.trim() && <span className="block truncate">환자층: {data.locationTarget}</span>}
+              {!summary && !data.locationTarget.trim() && '입력한 내용 없음'}
+            </span>}
+          </span>
+          <svg aria-hidden="true" className={`h-4 w-4 shrink-0 text-gray-400 ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m6 9 6 6 6-6" /></svg>
+        </button>
+      </h3>
+      <div id="clinic-features-panel" role="region" aria-labelledby="clinic-features-heading" hidden={!open}>
+    <div className="space-y-[14px] px-4 pb-4">
+      <div>
+        <div className="space-y-[14px]">
+          <div><FieldLabel>병원의 강점 (선택)</FieldLabel>
+            <TextArea value={data.clinicPromo} onChange={(v) => onChange({ clinicPromo: v })} placeholder="예: 넓고 쾌적한 공간, 최신 장비, 프라이빗 진료실, 원내 기공소, 야간진료" rows={2} /></div>
+          <div><FieldLabel>의료진의 강점 (선택)</FieldLabel>
+            <p className="text-xs text-gray-500 mb-2">학력·경력 중 특히 강조하고 싶은 점을 적어 주세요.</p>
+            <TextArea value={data.doctorPromo} onChange={(v) => onChange({ doctorPromo: v })} placeholder="예: 서울대 출신, 복수 전문의 자격, 대학교수 경력" rows={2} /></div>
+          <div><FieldLabel>진료 철학 (선택)</FieldLabel>
+            <TextArea value={data.philosophy} onChange={(v) => onChange({ philosophy: v })} placeholder="예: 충분히 설명하는 진료, 자연치아 보존 우선, 환자와 함께 결정하는 치료" rows={2} /></div>
+          {data.treatmentPromo && <details><summary className="text-sm text-gray-500">이전에 입력한 추가 특징</summary>
+            <TextArea value={data.treatmentPromo} onChange={(v) => onChange({ treatmentPromo: v })} rows={2} />
+          </details>}
+        </div>
+      </div>
+      <div>
+        <FieldLabel>주로 알리고 싶은 환자층 (선택)</FieldLabel>
+        <p className="text-xs text-gray-500 mb-3">아직 정하지 않으셨다면 비워두셔도 됩니다.</p>
+        <ChipSelector options={patientOptions} selected={selectedPatients} onChange={(selected) => savePatients(selected, otherPatient)} />
+        {selectedPatients.includes('기타') && <div className="mt-3">
+          <TextInput value={otherPatient} onChange={(value) => savePatients(selectedPatients, value)} placeholder="그 외 알리고 싶은 환자층을 입력해 주세요" />
+        </div>}
+      </div>
+    </div>
+      </div>
+    </section>
+  );
+}
+
+function Step4({
+  data,
+  web,
+  design,
+  onChange,
+  onWebChange,
+  onDesignChange,
+}: {
+  data: FormData['step4'];
+  web: FormData['stepWeb'];
+  design: FormData['stepDesign'];
+  onChange: (u: Partial<FormData['step4']>) => void;
+  onWebChange: (u: Partial<FormData['stepWeb']>) => void;
+  onDesignChange: (u: Partial<FormData['stepDesign']>) => void;
+}) {
+  const [activeSection, setActiveSection] = useState<string | null>('image');
+  const materialsOpen = activeSection === 'materials';
+  const exclusive = (next: string[], previous: string[]) => next.includes('추천받고 싶음') && !previous.includes('추천받고 싶음') ? ['추천받고 싶음'] : next.filter((value) => value !== '추천받고 싶음');
+  const selectedMaterials = [...new Set([...web.photoTypes, ...(data.hasLogo ? ['로고'] : []), ...(data.hasProfilePhoto ? ['원장 프로필'] : [])])];
+  const delivery = data.materialDelivery === '추후 전달' ? '추후 전달' : data.driveLink || data.materialDelivery === '공유 링크' ? '공유 링크' : '추후 전달';
+  const images = [
+    ...new Set(
+      [data.brandTone, data.mainKeywords]
+        .filter(Boolean)
+        .join(', ')
+        .split(', ')
+        .filter(Boolean),
+    ),
+  ];
+  return (
+    <div className="space-y-[14px]">
+      <BasicInfoSection required id="brand-image" title="병원 이미지·색상" number={1} open={activeSection === 'image'} complete={brandingComplete(data)}
+        summary={[...images, data.designFocus, ...data.brandColorTones, data.brandColor].filter(Boolean).join(' · ') || '원하는 분위기와 색상을 선택해 주세요'}
+        onOpen={() => setActiveSection(activeSection === 'image' ? null : 'image')}>
+        <div className="sm:col-span-2 space-y-[14px]">
+          <div>
+            <FieldLabel required>원하는 병원 이미지 (최대 3개)</FieldLabel>
+            <ChipSelector options={[...new Set(['신뢰감', '친근함', '차분함', '전문성', '따뜻함', '프리미엄', '추천받고 싶음', '기타', ...images])]}
+              selected={images} onChange={(v) => { const next = exclusive(v, images); if (next.length <= 3) onChange({ brandTone: next.join(', '), mainKeywords: '' }); }} />
+            {(images.includes('기타') || !!data.designFocus) && !images.includes('추천받고 싶음') && <div className="mt-2"><TextInput value={data.designFocus} onChange={(v) => onChange({ designFocus: v })} placeholder="예: 편안한 동네 주치의 같은 이미지" /></div>}
+          </div>
+          <div>
+            <FieldLabel required>선호 색상</FieldLabel>
+            <div className="flex flex-wrap gap-2">
+              {COLOR_PREFERENCES.map((color) => {
+                const label = color.split('(')[0].replace('뉴트럴/베이지', '베이지').replace('모노톤', '무채색');
+                const selected = data.brandColorTones.includes(color);
+                const swatch = color.startsWith('블루') ? '#3b82f6' : color.startsWith('그린') ? '#22a06b' : color.startsWith('뉴트럴') ? '#d4bea2' : color.startsWith('모노톤') ? '#64748b' : '';
+                return <button type="button" key={color} aria-pressed={selected} onClick={() => onChange({ brandColorTones: exclusive(selected ? data.brandColorTones.filter((value) => value !== color) : [...data.brandColorTones, color], data.brandColorTones) })}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs ${selected ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-white text-gray-700'}`}>
+                  {swatch && <span aria-hidden="true" className="h-3 w-3 rounded-full border border-white/50" style={{ backgroundColor: swatch }} />}{label}
+                </button>;
+              })}
+            </div>
+            {data.brandColorTones.length > 0 && !data.brandColorTones.includes('추천받고 싶음') && <div className="mt-3"><FieldLabel>구체적인 색상 (선택)</FieldLabel><TextInput value={data.brandColor} onChange={(v) => onChange({ brandColor: v })} placeholder="예: 메인 네이비 #1E3A5F, 포인트 골드" /></div>}
+          </div>
+          <div>
+            <FieldLabel>피하고 싶은 색상</FieldLabel>
+            <TextInput value={design.avoidColor} onChange={(v) => onDesignChange({ avoidColor: v })} placeholder="예: 빨강, 지나치게 어두운 색상 (선택)" />
+          </div>
+        </div>
+      </BasicInfoSection>
+      <BasicInfoSection id="brand-reference" title="소개 문구" number={2} open={activeSection === 'reference'} complete={false}
+        summary={[data.oneLiner, data.slogan].filter(Boolean).join(' · ') || '정해둔 소개 문구나 슬로건이 있다면 입력해 주세요'}
+        onOpen={() => setActiveSection(activeSection === 'reference' ? null : 'reference')}>
+        <div className="sm:col-span-2 space-y-[14px]">
+          <div>
+            <FieldLabel>소개 문구·슬로건</FieldLabel>
+            <TextArea value={[data.oneLiner, data.slogan].filter(Boolean).join('\n')} onChange={(v) => onChange({ oneLiner: v, slogan: '' })} placeholder="예: 평생 가는 치과" rows={2} />
+          </div>
+        </div>
+      </BasicInfoSection>
+      <section className={`overflow-hidden rounded-xl border bg-white ${materialsOpen ? 'border-blue-300' : 'border-gray-200'}`}>
+        <h3><button type="button" id="materials-heading" aria-expanded={materialsOpen} aria-controls="materials-panel"
+          onClick={() => setActiveSection(materialsOpen ? null : 'materials')} className="flex w-full items-center gap-3 p-4 text-left focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-[-2px]">
+          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${materialsOpen ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>3</span>
+          <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-gray-700">보유 자료·전달 방법</span>
+            {!materialsOpen && <span className="mt-1 block line-clamp-2 text-xs text-gray-500">{selectedMaterials.join(' · ') || '선택한 자료 없음'} / {delivery}</span>}
+          </span>
+          <svg aria-hidden="true" className={`h-4 w-4 shrink-0 text-gray-400 ${materialsOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m6 9 6 6 6-6" /></svg>
+        </button></h3>
+        <div id="materials-panel" role="region" aria-labelledby="materials-heading" hidden={!materialsOpen}>
+        <div className="space-y-[14px] px-4 pb-4">
+      <div>
+        <FieldLabel>보유 자료</FieldLabel>
+        <ChipSelector
+          options={[
+            ...new Set([
+              '로고',
+              '원장 프로필',
+              '의료진 약력',
+              '진료 장면',
+              '병원 내부',
+              '병원 외부',
+              '장비',
+              '시술 전후',
+              ...web.photoTypes,
+            ]),
+          ]}
+          selected={[
+            ...new Set([
+              ...web.photoTypes,
+              ...(data.hasLogo ? ['로고'] : []),
+              ...(data.hasProfilePhoto ? ['원장 프로필'] : []),
+            ]),
+          ]}
+          onChange={(v) => {
+            onWebChange({ photoTypes: v });
+            onChange({
+              hasLogo: v.includes('로고'),
+              hasProfilePhoto: v.includes('원장 프로필'),
+            });
+          }}
+        />
+      </div>
+      <div className="border-t border-gray-100 pt-4">
+        <FieldLabel>자료 전달 방식</FieldLabel>
+        <ChipSelector
+          options={['공유 링크', '추후 전달']}
+          selected={[delivery]}
+          multiple={false}
+          onChange={(v) => onChange({ materialDelivery: v[0] || '추후 전달' })}
+        />
+      </div>
+      {delivery === '공유 링크' && (
+        <div>
+          <FieldLabel>자료 공유 링크</FieldLabel>
+          <TextInput
+            value={data.driveLink}
+            onChange={(v) => onChange({ driveLink: v })}
+            placeholder="구글 드라이브·클라우드 공유 링크"
+          />
+          <p className="text-xs text-gray-500 mt-2">
+            담당자가 열람할 수 있도록 공유 권한을 설정해 주세요.
+          </p>
+        </div>
+      )}
+        <p className="text-xs text-gray-500">자료는 준비되는 대로 담당자에게 전달해 주세요.</p>
+        </div>
+        </div>
+      </section>
+      {[data.brandVision, data.photoDirection].some(
+        Boolean,
+      ) && (
+        <details className="space-y-[14px]">
+          <summary className="cursor-pointer text-sm">
+            이전에 입력한 추가 정보
+          </summary>
+          {(
+            [
+              ['brandVision', '브랜드 비전'],
+              ['photoDirection', '사진 방향'],
+            ] as const
+          ).map(([key, label]) =>
+            data[key] ? (
+              <div key={key}>
+                <FieldLabel>{label}</FieldLabel>
+                <TextArea
+                  value={data[key]}
+                  onChange={(v) => onChange({ [key]: v })}
+                />
+              </div>
+            ) : null,
+          )}
+        </details>
       )}
     </div>
   );
 }
 
-// Step 4: 브랜딩 & 철학
-function Step4({
-  data, onChange,
-}: {
-  data: FormData['step4'];
-  onChange: (u: Partial<FormData['step4']>) => void;
-}) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <FieldLabel>치과 한줄 소개</FieldLabel>
-        <TextArea
-          value={data.oneLiner}
-          onChange={(v) => onChange({ oneLiner: v })}
-          placeholder="예: 환자 한 명 한 명에게 충분한 시간을 드리는 치과"
-          rows={2}
-        />
-      </div>
-      <div>
-        <FieldLabel>슬로건 / 태그라인</FieldLabel>
-        <TextInput
-          value={data.slogan}
-          onChange={(v) => onChange({ slogan: v })}
-          placeholder="예: 평생 가는 치아, 평생 가는 치과 (브랜딩 인터뷰에서 도출)"
-        />
-      </div>
-
-      {/* 6가지 브랜딩 포인트 */}
-      <div>
-        <FieldLabel>의료진 홍보 포인트</FieldLabel>
-        <TextArea
-          value={data.doctorPromo}
-          onChange={(v) => onChange({ doctorPromo: v })}
-          placeholder="예: 연세대 출신 보철 전문의, 임상 10년+, OO학회 정회원"
-          rows={3}
-        />
-      </div>
-
-      {/* 원장 약력 (상세) — 옛 홈페이지/웹 스텝에서 브랜딩으로 이동 (항상 노출) */}
-      <div className="bg-[#F8FAFC] rounded-xl p-5 space-y-4 border border-[#E5E7EB]">
-        <div className="pb-3 border-b border-[#E5E7EB]">
-          <h3 className="text-base font-bold text-[#374151]">👩‍⚕️ 원장 약력 (상세)</h3>
-          <p className="text-xs text-[#6B7280] mt-1">홈페이지·블로그 의료진 소개에 사용됩니다</p>
-        </div>
-        <div>
-          <FieldLabel>학력</FieldLabel>
-          <TextArea value={data.education} onChange={(v) => onChange({ education: v })} placeholder="예: 서울대학교 치과대학 졸업" rows={2} />
-        </div>
-        <div>
-          <FieldLabel>전직 경력 (병원명·직위 전부)</FieldLabel>
-          <TextArea value={data.career} onChange={(v) => onChange({ career: v })} placeholder="예: 전) OO치과의원 원장 / 전) OO치과 총괄원장" rows={3} />
-        </div>
-        <div>
-          <FieldLabel>학회 / 협회 활동</FieldLabel>
-          <TextArea value={data.associations} onChange={(v) => onChange({ associations: v })} placeholder="예: 대한치과보철학회 정회원 / 대한구강악안면임플란트학회 회원" rows={2} />
-        </div>
-        <div>
-          <FieldLabel>수상 / 논문 / 방송 출연 이력</FieldLabel>
-          <TextArea value={data.awards} onChange={(v) => onChange({ awards: v })} placeholder="있으시면 작성해 주세요" rows={2} />
-        </div>
-      </div>
-
-      <div>
-        <FieldLabel>병원 홍보 포인트</FieldLabel>
-        <TextArea
-          value={data.clinicPromo}
-          onChange={(v) => onChange({ clinicPromo: v })}
-          placeholder="예: 디지털 장비 풀세트, 24시간 응급대응, 키즈룸 보유"
-          rows={3}
-        />
-      </div>
-      <div>
-        <FieldLabel>주요 진료 홍보 포인트</FieldLabel>
-        <TextArea
-          value={data.treatmentPromo}
-          onChange={(v) => onChange({ treatmentPromo: v })}
-          placeholder="예: 디지털 임플란트(가이드 수술), 투명교정(인비절라인 다이아몬드)"
-          rows={3}
-        />
-      </div>
-      <div>
-        <FieldLabel>진료 철학 포인트</FieldLabel>
-        <TextArea
-          value={data.philosophy}
-          onChange={(v) => onChange({ philosophy: v })}
-          placeholder="예: 과잉진료 없이 꼭 필요한 치료만, 투명한 설명과 합리적 비용"
-          rows={3}
-        />
-      </div>
-      <div>
-        <FieldLabel>브랜드 비전 / 목표</FieldLabel>
-        <TextArea
-          value={data.brandVision}
-          onChange={(v) => onChange({ brandVision: v })}
-          placeholder="예: 3~5년 내 지역에서 가장 신뢰받는 임플란트 치과로 자리매김 (브랜딩 인터뷰에서 도출)"
-          rows={2}
-        />
-      </div>
-      <div>
-        <FieldLabel>브랜드 톤앤매너 (성격·말투)</FieldLabel>
-        <TextInput
-          value={data.brandTone}
-          onChange={(v) => onChange({ brandTone: v })}
-          placeholder="예: 따뜻하고 친근한 / 믿음직한 전문가 톤 (브랜딩 인터뷰에서 도출)"
-        />
-      </div>
-      <div>
-        <FieldLabel>병원 입지 및 타겟</FieldLabel>
-        <TextArea
-          value={data.locationTarget}
-          onChange={(v) => onChange({ locationTarget: v })}
-          placeholder="예: 1번 출구 도보 3분, 직장가 + 아파트단지 인접, 30~50대 직장인 + 가족 환자"
-          rows={3}
-        />
-      </div>
-      <div>
-        <FieldLabel>인테리어 컨셉</FieldLabel>
-        <TextInput
-          value={data.interiorStyle}
-          onChange={(v) => onChange({ interiorStyle: v })}
-          placeholder="예: 모던, 따뜻한 우드톤, 아이 친화적"
-        />
-      </div>
-      <div>
-        <FieldLabel>브랜드 컬러</FieldLabel>
-        <p className="text-xs text-[#6B7280] mb-2">선호 계열을 고르고, 구체적인 색이 있으면 아래에 적어 주세요. (로고·CI 작업에도 그대로 사용됩니다)</p>
-        <ChipSelector
-          options={COLOR_PREFERENCES}
-          selected={data.brandColorTones}
-          onChange={(v) => onChange({ brandColorTones: v })}
-        />
-        <div className="mt-2">
-          <TextInput
-            value={data.brandColor}
-            onChange={(v) => onChange({ brandColor: v })}
-            placeholder="구체적 컬러 (예: 메인 네이비 #1E3A5F, 포인트 골드)"
-          />
-        </div>
-      </div>
-      <div>
-        <FieldLabel>벤치마킹 · 참고 사이트 (병원명 / URL)</FieldLabel>
-        <p className="text-xs text-[#6B7280] mb-2">마케팅·디자인·홈페이지 작업에 공통으로 참고합니다. 병원명·링크 섞어서 적어 주세요.</p>
-        <TextArea
-          value={data.benchmarkClinics}
-          onChange={(v) => onChange({ benchmarkClinics: v })}
-          placeholder="예: 트리움치과 / https://example-clinic.com - 홈페이지 디자인·콘텐츠 참고"
-        />
-      </div>
-
-      {/* 키워드 및 디자인 방향 — 옛 홈페이지/웹 스텝에서 브랜딩으로 이동 (항상 노출) */}
-      <div className="bg-[#F8FAFC] rounded-xl p-5 space-y-4 border border-[#E5E7EB]">
-        <div className="pb-3 border-b border-[#E5E7EB]">
-          <h3 className="text-base font-bold text-[#374151]">🎨 키워드 및 디자인 방향</h3>
-          <p className="text-xs text-[#6B7280] mt-1">디자인·홈페이지·콘텐츠 작업에 공통으로 활용됩니다</p>
-        </div>
-        <div>
-          <FieldLabel>병원 상징 메인 키워드 (우선순위 순)</FieldLabel>
-          <TextInput value={data.mainKeywords} onChange={(v) => onChange({ mainKeywords: v })} placeholder="예: 프리미엄, 신뢰, 자연스러움, 전문성" />
-        </div>
-        <div>
-          <FieldLabel>디자인 작업 시 중점 사항</FieldLabel>
-          <TextInput value={data.designFocus} onChange={(v) => onChange({ designFocus: v })} placeholder="예: 인물 위주 / 사진 위주 / 깔끔한 텍스트 중심" />
-        </div>
-        <div>
-          <FieldLabel>메인 페이지에서 가장 강조할 내용</FieldLabel>
-          <TextArea value={data.mainEmphasis} onChange={(v) => onChange({ mainEmphasis: v })} placeholder="메인 화면에 가장 부각되었으면 하는 내용" rows={2} />
-        </div>
-        <div>
-          <FieldLabel>병원 대표 사진 / 이미지 방향</FieldLabel>
-          <TextArea value={data.photoDirection} onChange={(v) => onChange({ photoDirection: v })} placeholder="예: 밝고 깔끔한 원장 프로필 + 인테리어 사진 보유 (사진 파일은 별도 전달)" rows={2} />
-        </div>
-      </div>
-
-      {/* 보유 여부 토글 */}
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => onChange({ hasProfilePhoto: !data.hasProfilePhoto })}
-          className={`w-12 h-7 rounded-full transition-all flex-shrink-0 ${
-            data.hasProfilePhoto ? 'bg-[#2563EB]' : 'bg-[#D1D5DB]'
-          }`}
-        >
-          <div
-            className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform mx-1 ${
-              data.hasProfilePhoto ? 'translate-x-5' : ''
-            }`}
-          />
-        </button>
-        <span className="text-sm text-[#374151]">프로필 사진 보유</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => onChange({ hasLogo: !data.hasLogo })}
-          className={`w-12 h-7 rounded-full transition-all flex-shrink-0 ${
-            data.hasLogo ? 'bg-[#2563EB]' : 'bg-[#D1D5DB]'
-          }`}
-        >
-          <div
-            className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform mx-1 ${
-              data.hasLogo ? 'translate-x-5' : ''
-            }`}
-          />
-        </button>
-        <span className="text-sm text-[#374151]">로고 파일 보유</span>
-      </div>
-
-      {/* 자료 첨부 — 구글 드라이브 링크 (파일 직접 업로드 대신) */}
-      <div className="bg-[#F8FAFC] rounded-xl p-5 space-y-3 border border-[#E5E7EB]">
-        <div>
-          <h3 className="text-base font-bold text-[#374151]">📎 자료 첨부 (구글 드라이브 링크)</h3>
-          <p className="text-xs text-[#6B7280] mt-1 leading-relaxed">
-            로고·면허증·전문의 자격증·사업자등록증·개설필증·간판/현수막·공사 현장 사진·의료진 약력·인테리어 도면 등
-            보유하신 자료를 <strong>원장님 구글 드라이브(또는 클라우드)에 한 폴더로 모아</strong> 그 <strong>공유 링크</strong>를 붙여넣어 주세요. (선택)
-          </p>
-        </div>
-        <TextInput
-          value={data.driveLink}
-          onChange={(v) => onChange({ driveLink: v })}
-          placeholder="예: https://drive.google.com/drive/folders/..."
-        />
-        <p className="text-[11px] text-[#9CA3AF] leading-relaxed">
-          공유 설정은 <strong>‘링크가 있는 모든 사용자 - 뷰어’</strong>로 해주시면 담당자가 열람할 수 있습니다.
-          (직접 파일을 올리는 게 아니라 원장님 드라이브 링크만 받으므로, 다른 거래처 자료가 노출되지 않습니다.)
-        </p>
-      </div>
-    </div>
-  );
-}
 
 // Step 5: 마케팅 방향
 function Step5({
@@ -1486,8 +1878,135 @@ function Step5({
   onChange: (u: Partial<FormData['step5']>) => void;
   onAccountsChange: (u: Partial<FormData['accounts']>) => void;
 }) {
-  return (
-    <div className="space-y-6">
+  const [active, setActive] = useState('direction');
+  return <div className="space-y-[14px]">
+    <BasicInfoSection required id="marketing-direction" title="마케팅 방향" number={1} open={active === 'direction'} complete={marketingDirectionComplete(data)} summary={[data.marketingGoals.map((goal) => goal === '기타' && data.marketingGoalsOther?.trim() ? `기타: ${data.marketingGoalsOther.trim()}` : goal).join(' · ')].filter(Boolean).join(' / ') || '목표·희망 채널'} onOpen={() => setActive(active === 'direction' ? '' : 'direction')}>
+      <div className="sm:col-span-2 space-y-[14px]">
+      <div>
+        <FieldLabel required>마케팅 목표 (최대 3개)</FieldLabel>
+        <ChipSelector
+          options={[
+            '신규 환자 유입', '브랜드 인지도', '지역 1등', '온라인 리뷰 관리',
+            '특정 진료 홍보', '개원 초기 안착', '재방문율 향상', '젊은 환자층 확보', '기타',
+          ]}
+          selected={data.marketingGoals}
+          onChange={(v) => onChange({ marketingGoals: v })}
+          max={3}
+        />
+        {data.marketingGoals.includes('기타') && <div className="mt-3"><TextInput value={data.marketingGoalsOther || ''} onChange={(v) => onChange({ marketingGoalsOther: v })} placeholder="원하는 마케팅 목표를 직접 입력해 주세요" /></div>}
+      </div>
+      <div>
+        <FieldLabel required>원하는 마케팅 채널</FieldLabel>
+        <ChipSelector
+          options={[...MARKETING_CHANNELS, '기타']}
+          selected={data.desiredChannels}
+          onChange={(v) => onChange({ desiredChannels: v })}
+        />
+        {data.desiredChannels.includes('기타') && <div className="mt-3"><TextInput value={data.desiredChannelsOther || ''} onChange={(v) => onChange({ desiredChannelsOther: v })} placeholder="원하는 채널을 직접 입력해 주세요 (예: 병원 앱, 지역 매체)" /></div>}
+      </div>
+      </div>
+    </BasicInfoSection>
+    <BasicInfoSection required id="marketing-events" title="이벤트·대기실" number={2} open={active === 'events'} complete={didInfoComplete(data)} summary={[data.openingEvent && '개원 이벤트', data.reviewGift && '리뷰 선물', data.channelGift && '채널 선물', data.didInfo && '대기실 모니터'].filter(Boolean).join(' · ') || '대기실 모니터(DID) 정보를 입력해 주세요 (필수)'} onOpen={() => setActive(active === 'events' ? '' : 'events')}>
+      <div className="sm:col-span-2 space-y-[14px]">
+<details className="space-y-[14px]"><summary className="cursor-pointer text-sm">대기실 모니터 (DID) <span className="text-red-600">*</span></summary>
+      <div>
+        <p className="text-xs text-[#6B7280] mb-2">설치 위치, 가로/세로 방향, 보유 대수를 적어 주세요. 설치하지 않았다면 ‘미설치’를 입력해 주세요.</p>
+        <TextArea
+          value={data.didInfo}
+          onChange={(v) => onChange({ didInfo: v })}
+          placeholder="예: 데스크 왼쪽 1대 가로(교정 영상), 진료실 입구 오른쪽 1대 세로 / 미설치"
+        />
+      </div>
+</details>
+      <div>
+        <details className="space-y-[14px] border-t border-gray-100 pt-3">
+        <summary className="cursor-pointer text-sm">개원 이벤트 계획</summary>
+        <TextArea
+          value={data.openingEvent}
+          onChange={(v) => onChange({ openingEvent: v })}
+          rows={2}
+          placeholder="예: 첫 방문 기념 선물"
+        />
+        </details>
+      </div>
+
+<details className="space-y-[14px] border-t border-gray-100 pt-3"><summary className="cursor-pointer text-sm">네이버 리뷰 선물</summary>
+      <div>
+        <p className="text-xs text-[#6B7280] mb-2">리뷰 작성 시 환자에게 드릴 선물을 정하셨다면 적어 주세요</p>
+        <TextInput
+          value={data.reviewGift}
+          onChange={(v) => onChange({ reviewGift: v })}
+          placeholder="예: 음료 1잔 쿠폰, 5,000원 상품권, 스케일링 50% 할인"
+        />
+      </div>
+</details>
+<details className="space-y-[14px] border-t border-gray-100 pt-3"><summary className="cursor-pointer text-sm">카카오톡 채널 선물</summary>
+      <div>
+        <p className="text-xs text-[#6B7280] mb-2">카카오톡 채널 추가 시 환자에게 드릴 선물</p>
+        <TextInput
+          value={data.channelGift}
+          onChange={(v) => onChange({ channelGift: v })}
+          placeholder="예: 칫솔 1세트, 가글 1병, 다음 방문 할인 쿠폰"
+        />
+      </div>
+</details>
+
+      </div>
+    </BasicInfoSection>
+    <BasicInfoSection required id="marketing-accounts" title="추가 계정정보" number={3} open={active === 'accounts'} complete={setupAccountsComplete(accounts)} summary={setupAccountsComplete(accounts) ? '초기 세팅 필수 계정 입력 완료' : '네이버·구글·카카오·대한치과협회 의료광고심의 계정 상태를 선택해 주세요 (필수)'} onOpen={() => setActive(active === 'accounts' ? '' : 'accounts')}>
+      <div className="sm:col-span-2">
+    <div className="space-y-[14px] mb-[14px]">
+
+      <p className="text-xs text-gray-900">계정이 없다면 ‘아직 준비하지 못했어요’를 선택해 주세요.</p>
+      <AccountGuide channel="common" />
+      {SETUP_ACCOUNTS.map(([key, label]) => (
+        <details key={key} className="account-channel border-b border-gray-100 py-2">
+          <summary className="cursor-pointer text-sm py-2">{label} <span className="text-red-500">*</span></summary>
+          <fieldset aria-label={`${label} *`} className="space-y-[14px] pt-2">
+          <AccountGuide channel={key} />
+          <div className="grid grid-cols-2 gap-2">
+            {([['provided', '계정정보 입력'], ['create', '아직 준비하지 못했어요']] as const).map(([value, text]) => (
+              <button key={value} type="button" aria-pressed={accounts[key].status === value}
+                onClick={() => onAccountsChange({ [key]: value === 'create' ? { id: '', pw: '', status: value } : { ...accounts[key], status: value } })}
+                className={`min-h-11 rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${accounts[key].status === value ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-300 text-gray-600 hover:border-blue-400'}`}>
+                {text}
+              </button>
+            ))}
+          </div>
+          {accounts[key].status === 'provided' && <AccountField compactLabel label={`${label} 아이디·비밀번호 (필수)`} id={accounts[key].id} pw={accounts[key].pw} onIdChange={(v) => onAccountsChange({ [key]: { ...accounts[key], id: v } })} onPwChange={(v) => onAccountsChange({ [key]: { ...accounts[key], pw: v } })} />}
+          </fieldset>
+        </details>
+      ))}
+    </div>
+
+      {scope.marketing && <>
+
+
+
+
+<details className="account-channel border-b border-gray-100 py-2"><summary className="cursor-pointer text-sm py-2">인스타그램</summary><div className="pt-2"><div className="space-y-[14px]"><AccountStatusButtons status={accounts.instagram.status || ((accounts.instagram.id || accounts.instagram.pw) ? 'provided' : undefined)} onChange={(value) => onAccountsChange({ instagram: value === 'create' ? { id: '', pw: '', status: value } : { ...accounts.instagram, status: value } })} />{(accounts.instagram.status || ((accounts.instagram.id || accounts.instagram.pw) ? 'provided' : undefined)) === 'provided' && <><AccountField hideLabel label="인스타그램" id={accounts.instagram.id} pw={accounts.instagram.pw}
+            onIdChange={(v) => onAccountsChange({ instagram: { ...accounts.instagram, id: v } })}
+            onPwChange={(v) => onAccountsChange({ instagram: { ...accounts.instagram, pw: v } })}
+          /></>}</div></div></details>
+<details className="account-channel border-b border-gray-100 py-2"><summary className="cursor-pointer text-sm py-2">유튜브</summary><div className="pt-2"><div className="space-y-[14px]"><AccountStatusButtons status={accounts.youtube.status || ((accounts.youtube.id || accounts.youtube.pw) ? 'provided' : undefined)} onChange={(value) => onAccountsChange({ youtube: value === 'create' ? { id: '', pw: '', status: value } : { ...accounts.youtube, status: value } })} />{(accounts.youtube.status || ((accounts.youtube.id || accounts.youtube.pw) ? 'provided' : undefined)) === 'provided' && <><AccountField hideLabel label="유튜브" id={accounts.youtube.id} pw={accounts.youtube.pw}
+            onIdChange={(v) => onAccountsChange({ youtube: { ...accounts.youtube, id: v } })}
+            onPwChange={(v) => onAccountsChange({ youtube: { ...accounts.youtube, pw: v } })}
+          /></>}</div></div></details>
+<details className="account-channel border-b border-gray-100 py-2"><summary className="cursor-pointer text-sm py-2">당근</summary><div className="pt-2 space-y-[14px]"><div className="space-y-[14px]"><AccountStatusButtons status={accounts.danggeun.status || ((accounts.danggeun.inviteUrl || accounts.danggeun.inviteCode) ? 'provided' : undefined)} onChange={(value) => onAccountsChange({ danggeun: value === 'create' ? { inviteUrl: '', inviteCode: '', status: value } : { ...accounts.danggeun, status: value } })} />{(accounts.danggeun.status || ((accounts.danggeun.inviteUrl || accounts.danggeun.inviteCode) ? 'provided' : undefined)) === 'provided' && <>
+            <AccountGuide channel="danggeun" />
+            <p className="text-sm text-gray-900">병원 소유 비즈프로필의 운영자 초대 링크와 6자리 초대 코드를 입력해 주세요. 계정 비밀번호가 아닙니다.</p>
+            <div><FieldLabel>운영자 초대 링크 (선택)</FieldLabel><TextInput value={accounts.danggeun.inviteUrl || ''} onChange={(v) => onAccountsChange({ danggeun: { ...accounts.danggeun, inviteUrl: v, inviteCode: accounts.danggeun.inviteCode || '' } })} placeholder="당근 운영자 초대 링크" /></div>
+            <div><FieldLabel>초대 코드 (선택)</FieldLabel><TextInput value={accounts.danggeun.inviteCode || ''} onChange={(v) => onAccountsChange({ danggeun: { ...accounts.danggeun, inviteUrl: accounts.danggeun.inviteUrl || '', inviteCode: v } })} placeholder="6자리 초대 코드" /></div>
+          </>}</div></div></details>
+<details className="account-channel border-b border-gray-100 py-2"><summary className="cursor-pointer text-sm py-2">운영 블로그</summary><div className="pt-2"><div className="space-y-[14px]"><AccountStatusButtons status={accounts.blog.status || ((accounts.blog.id || accounts.blog.pw) ? 'provided' : undefined)} onChange={(value) => onAccountsChange({ blog: value === 'create' ? { id: '', pw: '', status: value } : { ...accounts.blog, status: value } })} />{(accounts.blog.status || ((accounts.blog.id || accounts.blog.pw) ? 'provided' : undefined)) === 'provided' && <><AccountField hideLabel label="운영 블로그" id={accounts.blog.id} pw={accounts.blog.pw}
+            onIdChange={(v) => onAccountsChange({ blog: { ...accounts.blog, id: v } })}
+            onPwChange={(v) => onAccountsChange({ blog: { ...accounts.blog, pw: v } })}
+          /></>}</div></div></details>
+      </>}
+      </div>
+    </BasicInfoSection>
+    <BasicInfoSection id="marketing-experience" title="기존 경험·소개 경로" number={4} open={active === 'experience'} complete={false} summary={data.referralSource.join(' · ') || '이전 마케팅 경험과 알게 된 경로 (선택)'} onOpen={() => setActive(active === 'experience' ? '' : 'experience')}>
+      <div className="sm:col-span-2 space-y-[14px]">
       <div>
         <FieldLabel>우리를 어떻게 알게 되셨나요?</FieldLabel>
         <ChipSelector
@@ -1511,135 +2030,13 @@ function Step5({
         <TextArea
           value={data.previousMarketing}
           onChange={(v) => onChange({ previousMarketing: v })}
-          placeholder="예: 네이버 블로그 대행 6개월, 인스타 광고 진행 경험 있음"
+          rows={2}
+          placeholder="예: 블로그 대행 6개월"
         />
       </div>
-      <div>
-        <FieldLabel>예산 범위</FieldLabel>
-        <ChipSelector
-          options={BUDGET_RANGES}
-          selected={data.budgetRange ? [data.budgetRange] : []}
-          onChange={(v) => onChange({ budgetRange: v[0] || '' })}
-          multiple={false}
-        />
       </div>
-      <div>
-        <FieldLabel>마케팅 목표 (최대 3개)</FieldLabel>
-        <ChipSelector
-          options={[
-            '신규 환자 유입', '브랜드 인지도', '지역 1등', '온라인 리뷰 관리',
-            '특정 진료 홍보', '개원 초기 안착', '재방문율 향상', '젊은 환자층 확보',
-          ]}
-          selected={data.marketingGoals}
-          onChange={(v) => onChange({ marketingGoals: v })}
-          max={3}
-        />
-      </div>
-      <div>
-        <FieldLabel>원하는 마케팅 채널</FieldLabel>
-        <ChipSelector
-          options={MARKETING_CHANNELS}
-          selected={data.desiredChannels}
-          onChange={(v) => onChange({ desiredChannels: v })}
-        />
-      </div>
-      <div>
-        <FieldLabel>개원 이벤트 계획</FieldLabel>
-        <TextArea
-          value={data.openingEvent}
-          onChange={(v) => onChange({ openingEvent: v })}
-          placeholder="예: 불소도포 무료, 교정 정밀진단비 할인, 첫 방문 기념 선물"
-        />
-      </div>
-      <div>
-        <FieldLabel>DID 정보</FieldLabel>
-        <p className="text-xs text-[#6B7280] mb-2">설치 위치, 가로/세로 방향, 보유 대수 등을 자유롭게 적어 주세요</p>
-        <TextArea
-          value={data.didInfo}
-          onChange={(v) => onChange({ didInfo: v })}
-          placeholder="예: 데스크 왼쪽 1대 가로(교정 영상), 진료실 입구 오른쪽 1대 세로 / 미설치"
-        />
-      </div>
-      <div>
-        <FieldLabel>네이버 리뷰 증정선물</FieldLabel>
-        <p className="text-xs text-[#6B7280] mb-2">리뷰 작성 시 환자에게 드릴 선물을 정하셨다면 적어 주세요</p>
-        <TextInput
-          value={data.reviewGift}
-          onChange={(v) => onChange({ reviewGift: v })}
-          placeholder="예: 음료 1잔 쿠폰, 5,000원 상품권, 스케일링 50% 할인"
-        />
-      </div>
-      <div>
-        <FieldLabel>카톡 채널 추가 증정선물</FieldLabel>
-        <p className="text-xs text-[#6B7280] mb-2">카카오톡 채널 추가 시 환자에게 드릴 선물</p>
-        <TextInput
-          value={data.channelGift}
-          onChange={(v) => onChange({ channelGift: v })}
-          placeholder="예: 칫솔 1세트, 가글 1병, 다음 방문 할인 쿠폰"
-        />
-      </div>
-      <div>
-        <FieldLabel>추가 요청사항</FieldLabel>
-        <TextArea
-          value={data.additionalRequest}
-          onChange={(v) => onChange({ additionalRequest: v })}
-          placeholder="기타 요청사항이 있으시면 자유롭게 적어 주세요"
-        />
-      </div>
-
-      {/* 마케팅 계정정보 (세팅용) — 작업 범위에 마케팅이 포함될 때만 노출 */}
-      {scope.marketing && (
-        <div className="bg-[#F8FAFC] rounded-xl p-5 space-y-4 border border-[#E5E7EB]">
-          <div className="pb-3 border-b border-[#E5E7EB]">
-            <h3 className="text-base font-bold text-[#374151]">🔐 계정정보 (세팅용)</h3>
-            <p className="text-xs text-[#6B7280] mt-1 leading-relaxed">
-              마케팅 세팅(네이버 플레이스·검색광고 등)을 위해 필요합니다. 내부 공유용으로 저장됩니다.
-            </p>
-          </div>
-          <AccountField
-            label="네이버" id={accounts.naver.id} pw={accounts.naver.pw}
-            onIdChange={(v) => onAccountsChange({ naver: { ...accounts.naver, id: v } })}
-            onPwChange={(v) => onAccountsChange({ naver: { ...accounts.naver, pw: v } })}
-          />
-          <AccountField
-            label="구글" id={accounts.google.id} pw={accounts.google.pw}
-            onIdChange={(v) => onAccountsChange({ google: { ...accounts.google, id: v } })}
-            onPwChange={(v) => onAccountsChange({ google: { ...accounts.google, pw: v } })}
-          />
-          <AccountField
-            label="카카오" id={accounts.kakao.id} pw={accounts.kakao.pw}
-            onIdChange={(v) => onAccountsChange({ kakao: { ...accounts.kakao, id: v } })}
-            onPwChange={(v) => onAccountsChange({ kakao: { ...accounts.kakao, pw: v } })}
-          />
-          <AccountField
-            label="인스타그램" id={accounts.instagram.id} pw={accounts.instagram.pw}
-            onIdChange={(v) => onAccountsChange({ instagram: { ...accounts.instagram, id: v } })}
-            onPwChange={(v) => onAccountsChange({ instagram: { ...accounts.instagram, pw: v } })}
-          />
-          <AccountField
-            label="유튜브" id={accounts.youtube.id} pw={accounts.youtube.pw}
-            onIdChange={(v) => onAccountsChange({ youtube: { ...accounts.youtube, id: v } })}
-            onPwChange={(v) => onAccountsChange({ youtube: { ...accounts.youtube, pw: v } })}
-          />
-          <AccountField
-            label="당근" id={accounts.danggeun.id} pw={accounts.danggeun.pw}
-            onIdChange={(v) => onAccountsChange({ danggeun: { ...accounts.danggeun, id: v } })}
-            onPwChange={(v) => onAccountsChange({ danggeun: { ...accounts.danggeun, pw: v } })}
-          />
-          <AccountField
-            label="운영 블로그" id={accounts.blog.id} pw={accounts.blog.pw}
-            onIdChange={(v) => onAccountsChange({ blog: { ...accounts.blog, id: v } })}
-            onPwChange={(v) => onAccountsChange({ blog: { ...accounts.blog, pw: v } })}
-          />
-          <AccountField
-            label="대한치과협회 의료광고심의" id={accounts.dentalAd.id} pw={accounts.dentalAd.pw}
-            onIdChange={(v) => onAccountsChange({ dentalAd: { ...accounts.dentalAd, id: v } })}
-            onPwChange={(v) => onAccountsChange({ dentalAd: { ...accounts.dentalAd, pw: v } })}
-          />
-        </div>
-      )}
-    </div>
-  );
+    </BasicInfoSection>
+  </div>;
 }
 
 // Step 6: 계약 상품
@@ -1659,7 +2056,7 @@ function Step6({
   if (teams.has('디자인팀') && !scope.logo && !scope.video) scopeMismatch.push('로고·CI / 브랜드 영상');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-[14px]">
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
         <svg className="w-5 h-5 text-[#2563EB] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1722,29 +2119,6 @@ function Step6({
 }
 
 // Step Web: 홈페이지/웹
-function WebSubhead({ children, hint }: { children: React.ReactNode; hint?: string }) {
-  return (
-    <div className="pb-3 border-b border-[#E5E7EB]">
-      <h3 className="text-base font-bold text-[#374151]">{children}</h3>
-      {hint && <p className="text-xs text-[#6B7280] mt-1">{hint}</p>}
-    </div>
-  );
-}
-
-// 홈페이지/웹 스텝의 소섹션을 카드로 묶어 시각적 경계를 부여 (기존 '첨부 자료' 박스 패턴과 일관)
-function WebSection({
-  title, hint, children,
-}: {
-  title: React.ReactNode; hint?: string; children: React.ReactNode;
-}) {
-  return (
-    <section className="bg-[#F8FAFC] rounded-xl p-5 space-y-4 border border-[#E5E7EB]">
-      <WebSubhead hint={hint}>{title}</WebSubhead>
-      {children}
-    </section>
-  );
-}
-
 function StepWeb({
   data, accounts, scope, onChange, onAccountsChange,
 }: {
@@ -1754,19 +2128,60 @@ function StepWeb({
   onChange: (u: Partial<FormData['stepWeb']>) => void;
   onAccountsChange: (u: Partial<FormData['accounts']>) => void;
 }) {
+  const [activeWebSection, setActiveWebSection] = useState<string | null>('schedule');
   return (
-    <div className="space-y-6">
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-        <svg className="w-5 h-5 text-[#2563EB] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <p className="text-sm text-[#2563EB]">
-          홈페이지 제작을 진행하는 경우 작성해 주세요. <strong>해당 없으면 비워두셔도 됩니다.</strong>
-        </p>
+    <div className="space-y-[14px]">
+      <p className="text-xs text-gray-500">필수 항목을 입력해 주세요. 나머지 항목은 정해진 내용만 작성하셔도 됩니다.</p>
+
+      {/* 일정/유지보수 */}
+      <BasicInfoSection required id="web-schedule" title="일정·유지보수" number={1} open={activeWebSection === 'schedule'} complete={webScheduleComplete(data)} summary={[data.homepageDeadline, data.maintenance].filter(Boolean).join(' · ') || '희망 오픈 일정과 유지보수'} onOpen={() => setActiveWebSection(activeWebSection === 'schedule' ? null : 'schedule')}>
+        <div className="sm:col-span-2 space-y-[14px]">
+        <div>
+          <FieldLabel required>원하는 오픈 목표 일정</FieldLabel>
+          <TextInput value={data.homepageDeadline} onChange={(v) => onChange({ homepageDeadline: v })} placeholder="예: 2026년 8월 말 오픈 희망" />
+        </div>
+        <div>
+          <FieldLabel required>오픈 후 유지보수 계약 희망 여부</FieldLabel>
+          <ChipSelector options={MAINTENANCE_OPTIONS} selected={data.maintenance ? [data.maintenance] : []} onChange={(v) => onChange({ maintenance: v[0] || '' })} multiple={false} />
+        </div>
       </div>
+      </BasicInfoSection>
+
+      {/* 기능 요구사항 */}
+      <BasicInfoSection required id="web-features" title="관리 방식" number={2} open={activeWebSection === 'features'} complete={webFeaturesComplete(data) && webDomainComplete(data)} summary={[data.cmsNeed, data.renewalType, data.feedbackChannel, data.desiredDomain, data.ssl && `SSL ${data.ssl}`].filter(Boolean).join(' · ') || '홈페이지 관리 방식'} onOpen={() => setActiveWebSection(activeWebSection === 'features' ? null : 'features')}>
+        <div className="sm:col-span-2 space-y-[14px]">
+    <div>
+          <FieldLabel required>홈페이지 직접 수정·관리 예정 여부</FieldLabel>
+          <ChipSelector options={CMS_OPTIONS} selected={data.cmsNeed ? [data.cmsNeed] : []} onChange={(v) => onChange({ cmsNeed: v[0] || '' })} multiple={false} />
+        </div>
+        <div>
+          <FieldLabel required>기존 홈페이지 유무</FieldLabel>
+          <ChipSelector options={RENEWAL_OPTIONS} selected={data.renewalType ? [data.renewalType] : []} onChange={(v) => onChange({ renewalType: v[0] || '' })} multiple={false} />
+          {data.renewalType === '기존 홈페이지 있음(리뉴얼)' && (
+            <div className="mt-2">
+              <TextInput value={data.oldSiteUrl} onChange={(v) => onChange({ oldSiteUrl: v })} placeholder="기존 홈페이지 URL (예: https://기존홈페이지.com)" />
+            </div>
+          )}
+        </div>
+        <div>
+          <FieldLabel required>피드백 전달 방식</FieldLabel>
+          <ChipSelector options={FEEDBACK_CHANNELS} selected={data.feedbackChannel ? [data.feedbackChannel] : []} onChange={(v) => onChange({ feedbackChannel: v[0] || '' })} multiple={false} />
+        </div>
+        <div>
+          <FieldLabel required>도메인</FieldLabel>
+          <TextInput value={data.desiredDomain} onChange={(v) => onChange({ desiredDomain: v })} placeholder="예: clinic.co.kr" />
+        </div>
+        <div>
+          <FieldLabel required>SSL 인증서(https) 설치 여부</FieldLabel>
+          <ChipSelector options={['설치됨', '미설치', '모름']} selected={data.ssl ? [data.ssl] : []} onChange={(v) => onChange({ ssl: v[0] || '' })} multiple={false} />
+        </div>
+      </div>
+      </BasicInfoSection>
 
       {/* 오시는 길 */}
-      <WebSection title="📍 오시는 길" hint="홈페이지·블로그 '오시는 길'에 그대로 노출됩니다">
+      <BasicInfoSection id="web-directions" title="오시는 길" number={3} open={activeWebSection === 'directions'} complete={webDirectionsComplete(data)} summary={[data.subway, data.bus, data.locationNote].filter(Boolean).join(' · ') || '교통편과 위치 안내'} onOpen={() => setActiveWebSection(activeWebSection === 'directions' ? null : 'directions')}>
+        <div className="sm:col-span-2 space-y-[14px]">
+        <p className="text-xs text-gray-500">홈페이지·블로그 '오시는 길'에 사용됩니다. 알고 있는 교통편이나 특이사항이 있다면 입력해 주세요. (선택)</p>
         <div>
           <FieldLabel>지하철 노선</FieldLabel>
           <TextInput value={data.subway} onChange={(v) => onChange({ subway: v })} placeholder="예: 압구정로데오역 5번 출구 도보 5분" />
@@ -1779,10 +2194,15 @@ function StepWeb({
           <FieldLabel>위치 특이사항 / 어필 사항</FieldLabel>
           <TextInput value={data.locationNote} onChange={(v) => onChange({ locationNote: v })} placeholder="예: 건물 내 엘리베이터 바로 앞, 랜드마크 인근" />
         </div>
-      </WebSection>
+      </div>
+      </BasicInfoSection>
+
+      {/* 페이지 구성 & 검수 (웹퍼블팀) */}
+
 
       {/* 온라인 채널 & 도메인 */}
-      <WebSection title="📱 온라인 채널 & 도메인">
+      <BasicInfoSection id="web-channels" title="온라인 채널" number={4} open={activeWebSection === 'channels'} complete={false} summary={[data.instagramUrl && '인스타그램', data.blogUrl && '블로그', data.youtubeUrl && '유튜브', data.kakaoChannel && '카카오톡', data.naverBooking && '네이버 예약'].filter(Boolean).join(' · ') || '운영 중인 온라인 채널 (선택)'} onOpen={() => setActiveWebSection(activeWebSection === 'channels' ? null : 'channels')}>
+        <div className="sm:col-span-2 space-y-[14px]">
         <div>
           <FieldLabel>인스타그램 URL</FieldLabel>
           <TextInput value={data.instagramUrl} onChange={(v) => onChange({ instagramUrl: v })} placeholder="https://www.instagram.com/..." />
@@ -1803,81 +2223,15 @@ function StepWeb({
           <FieldLabel>네이버 예약 URL</FieldLabel>
           <TextInput value={data.naverBooking} onChange={(v) => onChange({ naverBooking: v })} placeholder="https://booking.naver.com/..." />
         </div>
-        <div>
-          <FieldLabel>원하는 도메인 주소 (1~3순위)</FieldLabel>
-          <TextArea value={data.desiredDomain} onChange={(v) => onChange({ desiredDomain: v })} placeholder="예: 1순위 ooclinic.com / 2순위 ooclinic.co.kr" rows={2} />
-        </div>
-        <div>
-          <FieldLabel>SSL 인증서(https) 설치 여부</FieldLabel>
-          <ChipSelector options={SSL_OPTIONS} selected={data.ssl ? [data.ssl] : []} onChange={(v) => onChange({ ssl: v[0] || '' })} multiple={false} />
-        </div>
-      </WebSection>
-
-      {/* 기능 요구사항 */}
-      <WebSection title="⚙️ 기능 요구사항">
-        <div>
-          <FieldLabel>필요한 기능</FieldLabel>
-          <ChipSelector options={HOMEPAGE_FEATURES} selected={data.features} onChange={(v) => onChange({ features: v })} />
-        </div>
-        <div>
-          <FieldLabel>홈페이지 직접 수정·관리 예정 여부</FieldLabel>
-          <ChipSelector options={CMS_OPTIONS} selected={data.cmsNeed ? [data.cmsNeed] : []} onChange={(v) => onChange({ cmsNeed: v[0] || '' })} multiple={false} />
-        </div>
-        <div>
-          <FieldLabel>기존 홈페이지 유무</FieldLabel>
-          <ChipSelector options={RENEWAL_OPTIONS} selected={data.renewalType ? [data.renewalType] : []} onChange={(v) => onChange({ renewalType: v[0] || '' })} multiple={false} />
-          {data.renewalType === '기존 홈페이지 있음(리뉴얼)' && (
-            <div className="mt-2">
-              <TextInput value={data.oldSiteUrl} onChange={(v) => onChange({ oldSiteUrl: v })} placeholder="기존 홈페이지 URL (예: https://기존홈페이지.com)" />
-            </div>
-          )}
-        </div>
-      </WebSection>
-
-      {/* 일정/유지보수 */}
-      <WebSection title="📅 일정 / 유지보수">
-        <div>
-          <FieldLabel>원하는 오픈 목표 일정</FieldLabel>
-          <TextInput value={data.homepageDeadline} onChange={(v) => onChange({ homepageDeadline: v })} placeholder="예: 2026년 8월 말 오픈 희망" />
-        </div>
-        <div>
-          <FieldLabel>오픈 후 유지보수 계약 희망 여부</FieldLabel>
-          <ChipSelector options={MAINTENANCE_OPTIONS} selected={data.maintenance ? [data.maintenance] : []} onChange={(v) => onChange({ maintenance: v[0] || '' })} multiple={false} />
-        </div>
-      </WebSection>
-
-      {/* 페이지 구성 & 검수 (웹퍼블팀) */}
-      <WebSection title="🗂️ 페이지 구성 & 검수">
-        <div>
-          <FieldLabel>원하는 메뉴 구성</FieldLabel>
-          <ChipSelector options={HOMEPAGE_MENUS} selected={data.menuStructure} onChange={(v) => onChange({ menuStructure: v })} />
-        </div>
-        <div>
-          <FieldLabel>꼭 들어갔으면 하는 페이지</FieldLabel>
-          <TextArea value={data.mustHavePages} onChange={(v) => onChange({ mustHavePages: v })} placeholder="메뉴 외 특별히 필요한 페이지 (예: 임플란트 특화 랜딩, 비급여 안내)" rows={2} />
-        </div>
-        <div>
-          <FieldLabel>제공 가능한 사진 종류</FieldLabel>
-          <ChipSelector options={PHOTO_TYPES} selected={data.photoTypes} onChange={(v) => onChange({ photoTypes: v })} />
-        </div>
-        <div>
-          <FieldLabel>내부 검수 담당자</FieldLabel>
-          <TextInput value={data.reviewer} onChange={(v) => onChange({ reviewer: v })} placeholder="시안 확인·피드백 담당 (이름 / 연락처)" />
-        </div>
-        <div>
-          <FieldLabel>피드백 전달 방식</FieldLabel>
-          <ChipSelector options={FEEDBACK_CHANNELS} selected={data.feedbackChannel ? [data.feedbackChannel] : []} onChange={(v) => onChange({ feedbackChannel: v[0] || '' })} multiple={false} />
-        </div>
-      </WebSection>
+      </div>
+      </BasicInfoSection>
 
       {/* 웹 계정정보 (세팅용) — 작업 범위에 홈페이지 제작이 포함될 때만 노출 */}
       {scope.web && (
-        <WebSection title="🔐 계정정보 (세팅용)" hint="웹 세팅(도메인·호스팅·관리자 등)을 위해 필요합니다. 내부 공유용으로 저장됩니다.">
-          <AccountField
-            label="도메인" id={accounts.domain.id} pw={accounts.domain.pw}
-            onIdChange={(v) => onAccountsChange({ domain: { ...accounts.domain, id: v } })}
-            onPwChange={(v) => onAccountsChange({ domain: { ...accounts.domain, pw: v } })}
-          />
+        <BasicInfoSection id="web-accounts" title="웹 계정정보" number={5} open={activeWebSection === 'accounts'} complete={false} summary={([['hosting', '호스팅'], ['ftp', 'FTP'], ['admin', '관리자']] as const).filter(([key]) => accounts[key].id || accounts[key].pw).map(([, label]) => label + ' 입력됨').join(' · ') || '보유한 호스팅·관리자 계정 입력'} onOpen={() => setActiveWebSection(activeWebSection === 'accounts' ? null : 'accounts')}>
+        <div className="sm:col-span-2 space-y-[14px]">
+        <p className="text-xs text-gray-900">보유한 계정이 있다면 입력해 주세요.</p>
+          <details className="account-guide mb-[14px]"><summary className="cursor-pointer font-semibold text-blue-900">웹 계정 준비 가이드 보기</summary><p className="mt-3 text-sm text-gray-900">기존 홈페이지가 있다면 기존 제작업체에 호스팅·FTP·관리자 계정과 관리자 페이지 주소를 확인해 주세요. 보유한 정보만 입력하시면 됩니다. 신규 제작으로 계정이 아직 없다면 비워두셔도 됩니다.</p></details>
           <AccountField
             label="호스팅" id={accounts.hosting.id} pw={accounts.hosting.pw}
             onIdChange={(v) => onAccountsChange({ hosting: { ...accounts.hosting, id: v } })}
@@ -1901,8 +2255,16 @@ function StepWeb({
               placeholder="예: https://example.com/admin"
             />
           </div>
-        </WebSection>
+        </div>
+      </BasicInfoSection>
       )}
+      <BasicInfoSection id="web-references" title="홈페이지 레퍼런스" number={6} open={activeWebSection === 'references'} complete={!!data.referenceSites.trim()} summary={data.referenceSites || '참고할 사이트 주소와 마음에 드는 점 (선택)'} onOpen={() => setActiveWebSection(activeWebSection === 'references' ? null : 'references')}>
+        <div className="sm:col-span-2">
+          <FieldLabel>참고 사이트 주소·마음에 드는 점</FieldLabel>
+          <TextArea value={data.referenceSites} onChange={(v) => onChange({ referenceSites: v })} placeholder="예: https://example.com — 메인 화면 구성과 색감이 마음에 들어요." rows={4} />
+          <p className="mt-2 text-xs text-gray-500">여러 사이트를 줄바꿈으로 입력할 수 있어요. 디자인, 메뉴 구성, 기능 등 참고하고 싶은 점을 함께 적어 주세요.</p>
+        </div>
+      </BasicInfoSection>
     </div>
   );
 }
@@ -1929,7 +2291,7 @@ function StepScope({
     onChange(next);
   };
   return (
-    <div className="space-y-6">
+    <div className="space-y-[14px]">
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
         <svg className="w-5 h-5 text-[#2563EB] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1947,7 +2309,7 @@ function StepScope({
           selected={selected}
           onChange={handle}
         />
-        <div className="mt-4 space-y-1.5 text-xs text-[#6B7280]">
+        <div className="mt-[14px] space-y-1.5 text-xs text-[#6B7280]">
           <p>· <strong>마케팅</strong> — 네이버 블로그·플레이스, 검색광고 등 온라인 홍보</p>
           <p>· <strong>바이럴</strong> — 카페·당근·SNS 입소문, 후기 관리</p>
           <p>· <strong>홈페이지 제작</strong> — 병원 홈페이지 신규 제작·리뉴얼</p>
@@ -1961,23 +2323,26 @@ function StepScope({
 
 // Step Design: 디자인/브랜딩 (로고·CI·브랜드 영상 핵심)
 function StepDesign({
-  data, onChange,
+  data, scope, onChange,
 }: {
+  scope: FormData['scope'];
   data: FormData['stepDesign'];
   onChange: (u: Partial<FormData['stepDesign']>) => void;
 }) {
+  const [activeDesignSection, setActiveDesignSection] = useState<string | null>(scope.logo ? 'logo' : 'video');
   return (
-    <div className="space-y-6">
+    <div className="space-y-[14px]">
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
         <svg className="w-5 h-5 text-[#2563EB] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <p className="text-sm text-[#2563EB]">
-          로고·CI·브랜드 영상 제작 시 작성해 주세요. <strong>세부 진행(시안 수·수정 횟수 등)은 디자인 설문지에서 따로 받습니다.</strong>
+          로고·CI 또는 브랜드 영상 제작을 신청하신 경우 작성해 주세요. 해당하지 않으면 다음 단계로 넘어가 주세요.
         </p>
       </div>
 
-      <WebSection title="🎨 로고 & 컬러">
+      {scope.logo && <BasicInfoSection id="design-logo" title="로고" number={1} open={activeDesignSection === 'logo'} complete={false} summary={[data.logoType, data.logoNotation, data.englishSpelling, data.logoMotif].filter(Boolean).join(' · ') || '로고 타입과 표기, 원하는 시각 요소 (선택)'} onOpen={() => setActiveDesignSection(activeDesignSection === 'logo' ? null : 'logo')}>
+        <div className="sm:col-span-2 space-y-[14px]">
         <div>
           <FieldLabel>로고 타입</FieldLabel>
           <ChipSelector options={LOGO_TYPES} selected={data.logoType ? [data.logoType] : []} onChange={(v) => onChange({ logoType: v[0] || '' })} multiple={false} />
@@ -1994,14 +2359,15 @@ function StepDesign({
           <FieldLabel>로고 모티브 / 시각 요소</FieldLabel>
           <TextInput value={data.logoMotif} onChange={(v) => onChange({ logoMotif: v })} placeholder="예: 이니셜 + 자연 모티브 / '치아는 직접 안 들어갔으면'" />
         </div>
-        <p className="text-xs text-[#6B7280]">컬러는 ‘브랜딩 &amp; 철학’ 단계의 <strong>브랜드 컬러</strong>에서 받은 값을 그대로 사용합니다. (중복 입력 안 함)</p>
         <div>
           <FieldLabel>피하고 싶은 컬러</FieldLabel>
-          <TextInput value={data.avoidColor} onChange={(v) => onChange({ avoidColor: v })} placeholder="예: 빨강은 위협적이라 싫음" />
+          <TextInput value={data.avoidColor} onChange={(v) => onChange({ avoidColor: v })} placeholder="예: 빨강, 지나치게 어두운 색상 (선택)" />
         </div>
-      </WebSection>
+      </div>
+      </BasicInfoSection>}
 
-      <WebSection title="🎬 브랜드 영상">
+      {scope.video && <BasicInfoSection id="design-video" title="브랜드 영상" number={scope.logo ? 2 : 1} open={activeDesignSection === 'video'} complete={false} summary={[data.videoMessage, ...data.videoChannels, ...data.videoItems].filter(Boolean).join(' · ') || '영상 메시지와 레퍼런스, 제작 항목 (선택)'} onOpen={() => setActiveDesignSection(activeDesignSection === 'video' ? null : 'video')}>
+        <div className="sm:col-span-2 space-y-[14px]">
         <div>
           <FieldLabel>영상 핵심 메시지</FieldLabel>
           <TextInput value={data.videoMessage} onChange={(v) => onChange({ videoMessage: v })} placeholder="예: 따뜻한 진료 분위기 + 최신 장비 전문성" />
@@ -2018,11 +2384,8 @@ function StepDesign({
           <FieldLabel>제작 항목</FieldLabel>
           <ChipSelector options={VIDEO_ITEMS} selected={data.videoItems} onChange={(v) => onChange({ videoItems: v })} />
         </div>
-        <div>
-          <FieldLabel>BGM</FieldLabel>
-          <ChipSelector options={VIDEO_BGM} selected={data.videoBgm ? [data.videoBgm] : []} onChange={(v) => onChange({ videoBgm: v[0] || '' })} multiple={false} />
-        </div>
-      </WebSection>
+      </div>
+      </BasicInfoSection>}
     </div>
   );
 }
@@ -2044,7 +2407,7 @@ function SummarySection({
           수정
         </button>
       </div>
-      <div className="text-sm text-[#6B7280] space-y-1">{children}</div>
+      {stepId === 'basic' || stepId === 'medical' ? <div className="text-sm text-[#6B7280] space-y-1">{children}</div> : <details><summary className="cursor-pointer text-xs text-gray-500">작성 내용 펼쳐보기</summary><div className="mt-2 text-sm text-[#6B7280] space-y-1">{children}</div></details>}
     </div>
   );
 }
@@ -2060,45 +2423,45 @@ function SummaryItem({ label, value }: { label: string; value: string | undefine
 }
 
 function Step7({
-  data, onGoToStep, confirmed, setConfirmed, directorMode,
+  data, onGoToStep, confirmed, setConfirmed, directorMode, onRequestChange,
 }: {
   data: FormData;
   onGoToStep: (id: StepId) => void;
   confirmed: boolean;
   setConfirmed: (v: boolean) => void;
   directorMode: boolean;
+  onRequestChange: (v: string) => void;
 }) {
   const { step1, step2, step3, step4, step5, stepWeb, stepDesign, step6 } = data;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-[14px]">
       <h2 className="text-lg font-bold text-[#374151] mb-2">최종 확인</h2>
 
       {/* 강조 경고 박스 */}
       <div className="bg-[#FEF3C7] border-l-4 border-[#D97706] rounded-r-lg p-4">
         <p className="text-sm font-semibold text-[#92400E] mb-1">⚠️ 제출 전 마지막 확인</p>
         <p className="text-xs text-[#92400E] leading-relaxed">
-          이대로 제출하면 노션 거래처 DB에 영구 기록되며, 다른 폼(계약변경·진료일정)이
-          이 거래처와 연결될 때 <strong>여기 입력한 치과명을 정확히 따라야</strong> 매칭됩니다.
-          오타·공백·괄호 흔들림은 나중에 일일이 수동으로 고쳐야 하니, 지금 한 번 더 봐주세요.
+          제출 후에는 직접 수정할 수 없습니다. 입력 내용을 한 번 더 확인해 주세요.
         </p>
       </div>
 
-      <p className="text-sm text-[#6B7280] mb-4">
+      <p className="text-sm text-[#6B7280] mb-[14px]">
         각 섹션의 [수정] 버튼으로 해당 단계로 돌아갈 수 있습니다.
       </p>
 
+      <div className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900"><strong>미정·추후 보완</strong><p className="mt-1">{[step1.openDatePending && '개원 일정', step2.topSubjects.length === 0 && '주력 진료', (!step4.materialDelivery || step4.materialDelivery === '추후 전달') && !step4.driveLink && '보유 자료'].filter(Boolean).join(' · ') || '추가로 표시할 항목이 없습니다.'}</p></div>
       <SummarySection title="기본 정보" stepId="basic" onGoToStep={onGoToStep}>
         <SummaryItem label="치과명" value={step1.clinicName} />
         <SummaryItem label="원장명" value={step1.doctorName} />
-        <SummaryItem label="개원예정일" value={step1.openDate} />
+        <SummaryItem label="개원예정일" value={step1.openDatePending ? "미정 · 추후 확인" : step1.openDate} />
         <SummaryItem label="지역" value={[step1.region.city, step1.region.district, step1.region.dong].filter(Boolean).join(' ')} />
         <SummaryItem label="주소" value={step1.address} />
         <SummaryItem label="대표전화" value={step1.phone} />
-        <SummaryItem label="팩스번호" value={step1.fax} />
         <SummaryItem label="가오픈예정일" value={step1.softOpenDate} />
         <SummaryItem label="인테리어완료일" value={step1.interiorCompleteDate} />
         <SummaryItem label="촬영가능일" value={step1.photoDate} />
+        {step1.doctors.map((doctor, i) => <SummaryItem key={i} label={`${doctor.name || (i === 0 ? step1.doctorName : `의료진 ${i + 1}`)} 약력`} value={(['education', 'career', 'associations', 'awards'] as const).map((key) => doctor[key] ?? (i === 0 ? step4[key] : '')).filter(Boolean).join(' / ')} />)}
         <SummaryItem label="총 의료진" value={step1.doctorCount ? `${step1.doctorCount}명` : undefined} />
         {step1.doctors && step1.doctors.length > 0 && (
           <SummaryItem
@@ -2111,12 +2474,17 @@ function Step7({
         )}
       </SummarySection>
 
-      <SummarySection title="진료 정보" stepId="medical" onGoToStep={onGoToStep}>
+      <SummarySection title="주력 진료·강점" stepId="medical" onGoToStep={onGoToStep}>
         <SummaryItem label="진료과목" value={step2.dentalSubjects.join(', ')} />
         {step2.customSubjects && (
           <SummaryItem label="직접 입력 과목" value={step2.customSubjects} />
         )}
-        <SummaryItem label="주력진료" value={step2.topSubjects.join(', ')} />
+        <SummaryItem label="주력진료" value={step2.topSubjects.map((item) => item === '기타' && step2.topSubjectsOther?.trim() ? `기타 (${step2.topSubjectsOther.trim()})` : item).join(', ')} />
+        <SummaryItem label="병원의 강점" value={step4.clinicPromo} />
+        <SummaryItem label="의료진의 강점" value={step4.doctorPromo} />
+        <SummaryItem label="이전에 입력한 추가 특징" value={step4.treatmentPromo} />
+        <SummaryItem label="진료 철학" value={step4.philosophy} />
+        <SummaryItem label="환자층" value={step4.locationTarget} />
         {step2.alignerOptions && step2.alignerOptions.length > 0 && (
           <SummaryItem label="투명교정 브랜드" value={[...step2.alignerOptions, step2.alignerOther].filter(Boolean).join(', ')} />
         )}
@@ -2131,61 +2499,63 @@ function Step7({
               .join(', ')}
           />
         )}
+        <SummaryItem label="기타 임플란트" value={step2.implantOther} />
+        <SummaryItem label="기타 소아교정" value={step2.pediatricOrthoOther} />
+      </SummarySection>
+      <SummarySection title="진료 운영" stepId="facility" onGoToStep={onGoToStep}>
         <SummaryItem label="공휴일" value={step2.holidayClose ? '휴진' : '진료'} />
-        <SummaryItem label="점심시간" value={`${step2.lunchTime.start} ~ ${step2.lunchTime.end}`} />
+        <SummaryItem label="진료시간" value={Object.entries(step2.schedule).map(([day, time]) => `${day}: ${time.enabled ? `${time.start}~${time.end}${time.night ? " (야간)" : ""}` : '휴진'}`).join(' / ')} />
+        <SummaryItem label="점심시간" value={formatLunch({ ...step2, lunchMode: 'same' })} />
       </SummarySection>
 
       <SummarySection title="시설/장비" stepId="facility" onGoToStep={onGoToStep}>
         <SummaryItem label="체어 수" value={`${step3.chairs}대`} />
-        <SummaryItem label="장비" value={step3.equipment.join(', ')} />
+        <SummaryItem label="장비" value={formatEquipment(step3.equipment, step3.equipmentModels)} />
         {step3.equipmentDetail && (
           <SummaryItem label="장비 상세" value={step3.equipmentDetail} />
         )}
         <SummaryItem label="시설" value={step3.facilities.join(', ')} />
         <SummaryItem label="주차" value={step3.parking.detail ? `${step3.parking.available} (${step3.parking.detail})` : step3.parking.available} />
         <SummaryItem label="기공소" value={step3.hasLabRoom ? `보유${step3.labEquipment.length > 0 ? ` (${step3.labEquipment.join(', ')})` : ''}` : '미보유'} />
+        {step3.hasLabRoom && <SummaryItem label="기공소 위치" value={step3.labLocation || ''} />}
+        {step3.hasLabRoom && <SummaryItem label="기공소 운영 형태" value={step3.labOperation || ''} />}
+        {step3.hasLabRoom && <SummaryItem label="상주 기공사 여부" value={step3.labTechnician || ''} />}
+        {step3.hasLabRoom && <SummaryItem label="기공소 특징" value={step3.labFeatures || ''} />}
       </SummarySection>
 
-      <SummarySection title="브랜딩 & 철학" stepId="branding" onGoToStep={onGoToStep}>
+      <SummarySection title="이미지·자료" stepId="branding" onGoToStep={onGoToStep}>
         <SummaryItem label="한줄소개" value={step4.oneLiner} />
         <SummaryItem label="슬로건" value={step4.slogan} />
         <SummaryItem label="브랜드 비전" value={step4.brandVision} />
         <SummaryItem label="브랜드 톤" value={step4.brandTone} />
-        <SummaryItem label="의료진 포인트" value={step4.doctorPromo} />
-        <SummaryItem label="병원 포인트" value={step4.clinicPromo} />
-        <SummaryItem label="주요 진료 포인트" value={step4.treatmentPromo} />
-        <SummaryItem label="진료 철학" value={step4.philosophy} />
-        <SummaryItem label="입지·타겟" value={step4.locationTarget} />
-        <SummaryItem label="인테리어 컨셉" value={step4.interiorStyle} />
         <SummaryItem label="컬러 계열" value={(step4.brandColorTones || []).join(', ')} />
         <SummaryItem label="브랜드 컬러" value={step4.brandColor} />
-        <SummaryItem label="원장 약력" value={[step4.education, step4.career, step4.associations, step4.awards].filter(Boolean).join(' / ')} />
         <SummaryItem label="메인 키워드" value={step4.mainKeywords} />
         <SummaryItem label="디자인 중점" value={step4.designFocus} />
-        <SummaryItem label="메인 강조" value={step4.mainEmphasis} />
         <SummaryItem label="사진 방향" value={step4.photoDirection} />
-        <SummaryItem label="벤치마킹·참고 사이트" value={step4.benchmarkClinics} />
+        <SummaryItem label="보유 자료" value={stepWeb.photoTypes.join(', ')} />
+        <SummaryItem label="자료 전달" value={step4.materialDelivery || (step4.driveLink ? '공유 링크' : '추후 전달')} />
+        <SummaryItem label="피하는 컬러" value={stepDesign.avoidColor} />
         <SummaryItem label="자료 첨부(드라이브)" value={step4.driveLink} />
       </SummarySection>
 
-      <SummarySection title="마케팅 방향" stepId="marketing" onGoToStep={onGoToStep}>
+      {(data.scope.marketing || data.scope.viral) && <SummarySection title="마케팅 방향" stepId="marketing" onGoToStep={onGoToStep}>
         <SummaryItem label="유입경로" value={step5.referralSource.join(', ')} />
         <SummaryItem label="소개해 주신 분" value={step5.referralName} />
-        <SummaryItem label="예산" value={step5.budgetRange} />
-        <SummaryItem label="목표" value={step5.marketingGoals.join(', ')} />
-        <SummaryItem label="채널" value={step5.desiredChannels.join(', ')} />
+        <SummaryItem label="목표" value={step5.marketingGoals.map((goal) => goal === '기타' && step5.marketingGoalsOther?.trim() ? `기타: ${step5.marketingGoalsOther.trim()}` : goal).join(', ')} />
+        <SummaryItem label="채널" value={step5.desiredChannels.map((channel) => channel === '기타' && step5.desiredChannelsOther?.trim() ? `기타: ${step5.desiredChannelsOther.trim()}` : channel).join(', ')} />
         <SummaryItem label="개원이벤트" value={step5.openingEvent} />
         <SummaryItem label="DID 정보" value={step5.didInfo} />
         <SummaryItem label="리뷰 증정선물" value={step5.reviewGift} />
         <SummaryItem label="채널 증정선물" value={step5.channelGift} />
-      </SummarySection>
+      </SummarySection>}
 
       {data.scope.web && (
         <SummarySection title="홈페이지/웹" stepId="web" onGoToStep={onGoToStep}>
           <SummaryItem label="오시는 길" value={[stepWeb.subway, stepWeb.bus, stepWeb.locationNote].filter(Boolean).join(' / ')} />
+          <SummaryItem label="홈페이지 레퍼런스" value={stepWeb.referenceSites} />
           <SummaryItem label="도메인" value={stepWeb.desiredDomain} />
-          <SummaryItem label="SSL" value={stepWeb.ssl} />
-          <SummaryItem label="필요 기능" value={(stepWeb.features || []).join(', ')} />
+          <SummaryItem label="SSL 인증서(https) 설치 여부" value={stepWeb.ssl} />
           <SummaryItem label="리뉴얼" value={stepWeb.renewalType} />
           <SummaryItem label="오픈 일정" value={stepWeb.homepageDeadline} />
         </SummarySection>
@@ -2197,11 +2567,9 @@ function Step7({
           <SummaryItem label="로고 표기" value={stepDesign.logoNotation} />
           <SummaryItem label="영문 표기" value={stepDesign.englishSpelling} />
           <SummaryItem label="로고 모티브" value={stepDesign.logoMotif} />
-          <SummaryItem label="피하는 컬러" value={stepDesign.avoidColor} />
           <SummaryItem label="영상 메시지" value={stepDesign.videoMessage} />
           <SummaryItem label="영상 채널" value={(stepDesign.videoChannels || []).join(', ')} />
           <SummaryItem label="영상 항목" value={(stepDesign.videoItems || []).join(', ')} />
-          <SummaryItem label="BGM" value={stepDesign.videoBgm} />
         </SummarySection>
       )}
 
@@ -2220,6 +2588,10 @@ function Step7({
         </SummarySection>
       )}
 
+      {(data.scope.marketing || data.scope.viral) && <SummarySection title="초기 세팅 필수 계정" stepId="marketing" onGoToStep={onGoToStep}>{SETUP_ACCOUNTS.map(([key, label]) => <SummaryItem key={key} label={label} value={data.accounts[key].status === 'create' ? '아직 준비하지 못했어요' : data.accounts[key].status === 'provided' && data.accounts[key].id.trim() && data.accounts[key].pw.trim() ? '계정정보 입력 완료' : '입력 필요'} />)}</SummarySection>}
+      {data.scope.marketing && <SummarySection title="추가 채널 계정 (선택)" stepId="marketing" onGoToStep={onGoToStep}>{([['instagram', '인스타그램'], ['youtube', '유튜브'], ['danggeun', '당근'], ['blog', '운영 블로그']] as const).map(([key, label]) => <SummaryItem key={key} label={label} value={data.accounts[key].status === 'create' ? '아직 준비하지 못했어요' : data.accounts[key].status === 'provided' ? '계정정보 입력 선택' : '미선택'} />)}</SummarySection>}
+
+      <div><FieldLabel>추가 요청사항</FieldLabel><TextArea value={data.step5.additionalRequest} onChange={onRequestChange} placeholder="추가로 전달할 내용이 있으면 적어 주세요." /></div>
       {/* 확인 게이트: 체크해야 제출 활성화 */}
       <label className="flex items-start gap-3 bg-white rounded-xl border-2 border-[#2563EB] p-4 cursor-pointer hover:bg-[#EFF6FF] transition-colors">
         <input
@@ -2231,7 +2603,7 @@ function Step7({
         <div className="text-sm">
           <span className="font-semibold text-[#374151]">위 내용을 모두 확인했습니다.</span>
           <p className="text-xs text-[#6B7280] mt-1 leading-relaxed">
-            치과명·원장명·전화번호·주소가 정확한지, 오타나 공백 흔들림이 없는지 한 번 더 봐주세요.
+            치과명·원장명·전화번호·주소가 정확한지 한 번 더 확인해 주세요.
           </p>
         </div>
       </label>

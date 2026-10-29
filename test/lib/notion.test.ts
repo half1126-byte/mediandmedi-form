@@ -228,7 +228,7 @@ describe('createMainRecord', () => {
     expect(arg.properties['월 계약금']).toBeUndefined();
     expect(arg.properties['거래처명']).toBeDefined(); // 존재하는 속성은 유지
     const bodyText = JSON.stringify(arg.children);
-    expect(bodyText).toContain('진료시간: 월 09:00~18:00'); // 본문 블록에는 항상 유지
+    expect(bodyText).toContain('진료시간:\\n월 09:00~18:00'); // 본문 블록에는 항상 유지
     expect(bodyText).toContain('월 계약금: 100만원');
   });
 
@@ -408,6 +408,17 @@ describe('createMainRecord — 계정정보를 계정DB에 저장 (수원세브�
     mockBlocksAppend.mockResolvedValue({});
   });
 
+  it('당근 초대 정보는 URL과 비고에 저장하고 예전 비밀번호는 제외한다', async () => {
+    await createMainRecord({ ...sampleFormData, accounts: { danggeun: { id: 'old-id', pw: 'old-secret', inviteUrl: 'https://example.com/invite', inviteCode: '012345' } } });
+    const rows = accountCreates();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].properties['URL'].url).toBe('https://example.com/invite');
+    expect(rows[0].properties['비고'].rich_text?.[0].text.content).toContain('운영자 초대 코드: 012345');
+    expect(rows[0].properties['아이디'].rich_text).toEqual([]);
+    expect(rows[0].properties['비밀번호'].rich_text).toEqual([]);
+    expect(JSON.stringify(mockCreate.mock.calls)).not.toContain('old-secret');
+  });
+
   it('입력된 플랫폼만 계정DB에 1행씩 저장하고 거래처와 연결, 거래처 본문에는 비밀번호를 쓰지 않는다', async () => {
     const id = await createMainRecord(withAccounts);
     expect(id).toBe('page-1');
@@ -422,7 +433,7 @@ describe('createMainRecord — 계정정보를 계정DB에 저장 (수원세브�
 
     const main = (mockCreate.mock.calls as [CreateArg][]).map(([a]) => a).find((a) => a.parent.database_id === 'main-db-id')!;
     const body = JSON.stringify(main.children);
-    expect(body).toContain('네이버, 홈페이지 관리자');
+    expect(body).toContain('계정DB에 저장: 네이버, 홈페이지 관리자');
     expect(body).not.toContain('nv-pw');
     expect(body).not.toContain('adm-pw');
   });
@@ -467,7 +478,7 @@ describe('createMainRecord — 쉼표 선택값·대표 원장 이름', () => {
     };
     await createMainRecord(data);
     const arg = mockCreate.mock.calls[0][0] as { properties: Record<string, { select?: { name: string }; multi_select?: { name: string }[] }> };
-    expect(arg.properties['예산범위'].select?.name).toBe('1000만원 이상');
+    expect(arg.properties['예산범위']).toBeUndefined();
     expect(arg.properties['시설'].multi_select?.map((o) => o.name)).toEqual(['수술실', '상담실VIP']);
   });
 
@@ -483,9 +494,10 @@ describe('createMainRecord — 쉼표 선택값·대표 원장 이름', () => {
     await createMainRecord(data);
     const arg = mockCreate.mock.calls[0][0] as { properties: NotionProps; children: unknown[] };
     const staff = arg.properties['의료진'].rich_text?.[0].text.content;
-    expect(staff).toBe('김행복(원장·보철과), 이부원(봉직의)');
+    expect(staff).toBe('김행복(원장), 이부원(봉직의)');
     const body = JSON.stringify(arg.children);
-    expect(body).toContain('김행복 · 원장 · 보철과');
+    expect(body).toContain('김행복 · 원장');
+    expect(body).toContain('경력 / 전문의 자격: 보철과');
     expect(body).not.toContain('미입력');
   });
 });
@@ -508,9 +520,9 @@ describe('createMainRecord — 신규 필드 매핑 (디자인/브랜딩·홈페
   }
 
   const e2ePayload = {
-    scope: { marketing: true, viral: false, web: true, logo: true, video: false },
+    scope: { marketing: true, viral: false, web: true, logo: true, video: true },
     step1: { clinicName: 'E2E_테스트치과', doctorName: '테스트원장', openDate: '2026-12-01', region: { city: '서울특별시', district: '강남구' }, doctors: [{ name: '테스트원장', title: '원장', specialty: '보철과' }] },
-    step2: { dentalSubjects: ['일반 임플란트', '투명교정'], customSubjects: '코골이 치료', topSubjects: ['일반 임플란트'], implantMaterials: { 오스템: ['SA'] }, alignerOptions: ['인비절라인', '기타'], alignerOther: '클리어라인', schedule: {}, holidays: [], holidayClose: true, lunchTime: { start: '12:30', end: '13:30' } },
+    step2: { dentalSubjects: ['일반 임플란트', '투명교정'], customSubjects: '코골이 치료', topSubjects: ['일반 임플란트'], implantMaterials: { 오스템: ['SA'] }, alignerOptions: ['인비절라인', '기타'], alignerOther: '클리어라인', schedule: { 일: { enabled: false, start: '09:00', end: '18:00' } }, holidays: [], holidayClose: true, lunchTime: { start: '12:30', end: '13:30' } },
     step3: { chairs: 5, equipment: ['CT(CBCT)'], equipmentDetail: '바텍 그린스마트 CT', facilities: ['수술실'], parking: { available: '가능', detail: '지하 20대' } },
     step4: { oneLiner: 'E2E 한줄', slogan: 'E2E 슬로건', brandVision: 'E2E 비전', brandTone: '따뜻·전문', brandColorTones: ['블루(신뢰·전문)'], brandColor: '네이비', benchmarkClinics: '트리움치과 / example.com', hasProfilePhoto: false },
     step5: { referralSource: ['지인 소개'], budgetRange: '300만원 ~ 500만원', marketingGoals: ['신규 환자 유입'], desiredChannels: ['네이버 블로그'] },
@@ -518,6 +530,38 @@ describe('createMainRecord — 신규 필드 매핑 (디자인/브랜딩·홈페
     stepDesign: { logoType: '심볼+워드마크 결합형', logoNotation: '한글+영문 병기', englishSpelling: 'E2E Dental', logoMotif: '이니셜', avoidColor: '빨강', videoMessage: '따뜻한 진료', videoChannels: ['홈페이지(16:9)'], videoItems: ['드론(외부/주변)', '의료진 1분 인트로'], videoBgm: '라이선스 음원' },
     step6: { services: [], isStarterPackage: false, specialNotes: 'E2E 테스트' },
   };
+
+  it.each([true, false])('기공소 상세는 보유일 때만 저장한다: %s', async (hasLabRoom) => {
+    mockCreate.mockResolvedValue({ id: 'lab-test' });
+    await createMainRecord({ ...e2ePayload, step3: { ...e2ePayload.step3, hasLabRoom,
+      labLocation: '병원 내부', labOperation: '별도 사업자로 운영', labTechnician: '상주', labFeatures: '원내 보철 제작',
+    } });
+    const body = bodyText(mockCreate.mock.calls[0][0].children);
+    for (const text of ['기공소 위치: 병원 내부', '운영 형태: 별도 사업자로 운영', '상주 기공사 여부: 상주', '기공소 특징: 원내 보철 제작']) {
+      expect(body.includes(text)).toBe(hasLabRoom);
+    }
+  });
+
+  it('계약 미입력과 의료진 중복, 의료심의 안내를 실제 폼에 맞게 저장한다', async () => {
+    mockCreate.mockResolvedValue({ id: 'page-regression' });
+    await createMainRecord({ ...e2ePayload,
+      step1: { ...e2ePayload.step1, doctors: [{ name: '원장', title: '원장', education: '고유학력', career: '고유경력' }] },
+      step4: { ...e2ePayload.step4, education: '고유학력', career: '고유경력', clinicPromo: '넓은 공간', doctorPromo: '교수 경력', philosophy: '자연치아 보존' },
+      step6: {}, accounts: { dentalAd: { status: 'create' } },
+    });
+    const arg = mockCreate.mock.calls[0][0];
+    const body = bodyText(arg.children);
+    expect(body.split('학력: 고유학력')).toHaveLength(2);
+    expect(body).not.toContain('의료진 약력');
+    expect(body).toContain('병원의 강점: 넓은 공간');
+    expect(body).toContain('의료진의 강점: 교수 경력');
+    expect(body).toContain('진료 철학: 자연치아 보존');
+    expect(body).not.toContain('병원 강점 1:');
+    expect(arg.children.some((b: any) => b.heading_2?.rich_text?.[0]?.text?.content === '계약')).toBe(false);
+    expect(body).toContain('대한치과협회 의료광고심의: 아직 준비하지 못했어요');
+    expect(arg.properties['거래시작일']).toBeUndefined();
+    expect(arg.properties['계약 서비스']).toBeUndefined();
+  });
 
   it('제출 시 거래처명 properties + 신규 섹션 본문이 노션 API 페이로드에 포함된다', async () => {
     mockCreate.mockResolvedValue({ id: 'page-e2e' });
@@ -530,50 +574,72 @@ describe('createMainRecord — 신규 필드 매핑 (디자인/브랜딩·홈페
     };
 
     // 핵심 properties
+    expect(arg.properties['상태']).toEqual({ status: { name: '계약중' } });
     expect(arg.properties['거래처명'].title?.[0].text.content).toBe('E2E_테스트치과');
 
     // 계약 서비스(팀): 작업 범위(scope) → 팀 매핑이 속성에 반영 (스키마 무변경, 노션 표 필터용)
-    const teams = (arg.properties['계약 서비스'].multi_select || []).map((t) => t.name);
-    expect(teams).toEqual(expect.arrayContaining(['마케팅팀', '웹팀', '디자인팀']));
-    expect(teams).not.toContain('바이럴팀');
+    expect(arg.properties['계약 서비스']).toBeUndefined();
+    expect(arg.properties['거래시작일']).toBeUndefined();
 
     const body = bodyText(arg.children);
 
     // 진료 — 공휴일 휴진 여부 (이전엔 노션에 누락되던 필드)
     expect(body).toContain('공휴일: 휴진');
+    expect(body).toContain('휴진 요일: 일');
 
     // 진료 — 직접 입력 과목 + 투명교정 직접 입력
     expect(body).toContain('직접 입력 과목: 코골이 치료');
-    expect(body).toContain('투명교정: 인비절라인, 기타, 클리어라인');
+    expect(body).toContain('투명교정: 인비절라인, 기타 (클리어라인)');
 
     // 시설·장비 — 장비 상세 직접 입력
-    expect(body).toContain('장비 상세: 바텍 그린스마트 CT');
+    expect(body).not.toContain('장비 상세: 바텍 그린스마트 CT');
 
     // 브랜딩 신규 필드
-    expect(body).toContain('슬로건: E2E 슬로건');
+    expect(body).toContain('E2E 슬로건');
 
     // 벤치마킹·참고 사이트 — 마케팅 → 브랜딩으로 이동
-    expect(body).toContain('벤치마킹·참고 사이트: 트리움치과 / example.com');
+    expect(body).toContain('홈페이지 레퍼런스: 트리움치과 / example.com');
     expect(body).toContain('브랜드 비전: E2E 비전');
-    expect(body).toContain('브랜드 톤앤매너: 따뜻·전문');
+    expect(body).toContain('원하는 병원 이미지: 따뜻·전문');
 
     // 컬러는 Step4(브랜딩)에 통합 — 디자인의 옛 colorPreference 대신 브랜드 컬러 계열로
-    expect(body).toContain('브랜드 컬러 계열: 블루(신뢰·전문)');
+    expect(body).toContain('선호 색상: 블루(신뢰·전문)');
     expect(body).not.toContain('선호 컬러:');
 
     // 홈페이지/웹 섹션 + 웹퍼블 신규 항목
     expect(body).toContain('홈페이지/웹');
     expect(body).toContain('도메인: e2etest.com');
-    expect(body).toContain('SSL: 있음(보유 중)');
-    expect(body).toContain('원하는 메뉴: 병원 소개, 의료진 소개');
-    expect(body).toContain('제공 사진 종류: 원장 프로필, 시술 전후');
-    expect(body).toContain('내부 검수 담당자: 실장 김OO');
+    expect(body).toContain('SSL 인증서(https) 설치 여부: 있음(보유 중)');
+    expect(body).not.toContain('원하는 메뉴:');
+    expect(body).not.toContain('필요 기능:');
+    expect(body).not.toContain('꼭 들어갈 페이지:');
+    expect(body).toContain('보유 자료: 원장 프로필, 시술 전후');
+    expect(body).not.toContain('내부 검수 담당자:');
+    expect(body).not.toContain('영상 BGM:');
+    expect(body).not.toContain('예산:');
+    expect(arg.properties['예산범위']).toBeUndefined();
 
     // 디자인/브랜딩 섹션
     expect(body).toContain('디자인/브랜딩');
     expect(body).toContain('로고 타입: 심볼+워드마크 결합형');
-    expect(body).toContain('영상 제작 항목: 드론(외부/주변), 의료진 1분 인트로');
-    expect(body).toContain('영상 BGM: 라이선스 음원');
+    expect(body).toContain('제작 항목: 드론(외부/주변), 의료진 1분 인트로');
+    expect(body).not.toContain('영상 BGM: 라이선스 음원');
+  });
+
+  it('폼 단계 순서와 자료 통합을 유지한다', async () => {
+    mockCreate.mockResolvedValue({ id: 'page-order' });
+    await createMainRecord(e2ePayload);
+    const body = bodyText(mockCreate.mock.calls[0][0].children);
+    const labels = ['의료진', '주력 진료·강점', '진료시간', '시설·장비', '이미지·자료', '마케팅 추가 질문', '홈페이지/웹', '디자인/브랜딩'];
+    let previous = -1;
+    for (const label of labels) {
+      const position = body.indexOf(label);
+      expect(position, label).toBeGreaterThan(previous);
+      previous = position;
+    }
+    expect(body).toContain('소개 문구·슬로건: E2E 한줄, E2E 슬로건');
+    expect(body).not.toContain('프로필 사진 보유');
+    expect(body).not.toContain('CMS:');
   });
 
   it('신규 스텝 데이터가 없으면 해당 섹션 헤딩이 본문에 없다 (구버전 호환)', async () => {

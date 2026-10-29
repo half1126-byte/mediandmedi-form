@@ -1,4 +1,5 @@
 'use client';
+import { formatEquipment } from '@/lib/equipment';
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -15,6 +16,7 @@ function SummaryContent() {
   const [error, setError] = useState<string | null>(null);
   const [pageId, setPageId] = useState('');
   const [showPin, setShowPin] = useState(false);
+  const [submissionWarning, setSubmissionWarning] = useState('');
 
   useEffect(() => {
     const id = searchParams.get('id') || '';
@@ -44,6 +46,7 @@ function SummaryContent() {
   }, [searchParams]);
 
   const loadData = (id: string) => {
+    setSubmissionWarning(localStorage.getItem(`mediandmedi-warning-${id}`) || '');
     try {
       const stored = localStorage.getItem(`mediandmedi-submitted-${id}`);
       if (stored) {
@@ -132,16 +135,18 @@ function SummaryContent() {
   const stepDesign = (formData?.stepDesign || {}) as Record<string, unknown>;
   const scope = (formData?.scope || {}) as Record<string, boolean>;
   const step6 = (formData?.step6 || {}) as Record<string, unknown>;
-  const accounts = (formData?.accounts || {}) as Record<string, { id?: string; pw?: string; url?: string }>;
+  const accounts = (formData?.accounts || {}) as Record<string, { id?: string; pw?: string; url?: string; inviteUrl?: string; inviteCode?: string; status?: string }>;
   const ACCOUNT_LABELS: [string, string][] = [
     ['naver', '네이버'], ['google', '구글'], ['kakao', '카카오'],
     ['instagram', '인스타그램'], ['youtube', '유튜브'], ['danggeun', '당근'],
     ['blog', '운영 블로그'], ['dentalAd', '의료광고심의'],
-    ['domain', '도메인'], ['hosting', '호스팅'], ['ftp', 'FTP'], ['admin', '관리자'],
+    ['hosting', '호스팅'], ['ftp', 'FTP'], ['admin', '관리자'],
   ];
   const filledAccounts = ACCOUNT_LABELS
     .map(([key, label]) => {
       const a = accounts[key] || {};
+      if (a.status === 'create') return { label, value: '아직 준비하지 못했어요' };
+      if (key === 'danggeun') return a.inviteUrl || a.inviteCode ? { label, value: [a.inviteUrl && '초대 링크: ' + a.inviteUrl, a.inviteCode && '초대 코드: ' + a.inviteCode].filter(Boolean).join(' / ') } : null;
       const id = (a.id || '').trim();
       const pw = (a.pw || '').trim();
       const url = (a.url || '').trim();
@@ -168,7 +173,7 @@ function SummaryContent() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h2 className="text-base font-semibold text-[#374151]">제출 완료</h2>
+          <h2 className="text-base font-semibold text-[#374151]">{pageId.startsWith('demo-') ? '미전송된 테스트 내역' : '제출 완료'}</h2>
           <div className="w-10" />
         </div>
       </header>
@@ -181,34 +186,46 @@ function SummaryContent() {
             </svg>
           </div>
           <h2 className="text-xl font-bold text-[#374151] mb-1">
-            {clinicName} 정보가 저장되었습니다
+            {pageId.startsWith('demo-') ? `${clinicName} 정보는 노션에 저장되지 않았습니다` : `${clinicName} 정보가 저장되었습니다`}
           </h2>
           <p className="text-sm text-[#6B7280]">
-            팀별 업무가 자동으로 생성되었습니다
+            {pageId.startsWith('demo-') ? '이 브라우저에만 남아 있는 테스트 내역입니다. 노션 연결 설정 후 다시 제출해 주세요.' : '노션 거래처에 저장되었습니다'}
           </p>
         </div>
 
+        {submissionWarning && <p role="alert" className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{submissionWarning}</p>}
         {data && (
           <div className="space-y-4">
             <SummarySection title="기본 정보">
               <InfoRow label="원장명" value={step1.doctorName as string} />
-              <InfoRow label="개원예정일" value={step1.openDate as string} />
+              <InfoRow label="개원예정일" value={step1.openDatePending ? '미정 · 추후 확인' : step1.openDate as string} />
               {region.city && <InfoRow label="지역" value={`${region.city} ${region.district || ''}`} />}
               <InfoRow label="주소" value={step1.address as string} />
             </SummarySection>
 
+            {Array.isArray(step1.doctors) && <SummarySection title="의료진 약력">
+              {(step1.doctors as { name: string; education?: string; career?: string }[]).map((doctor, i) => <div key={i} className="space-y-1"><p className="text-sm font-medium">{doctor.name || (i === 0 ? step1.doctorName as string : `의료진 ${i + 1}`)}</p><InfoRow label="학력" value={doctor.education ?? (i === 0 ? step4.education as string : '')} /><InfoRow label="경력" value={doctor.career ?? (i === 0 ? step4.career as string : '')} /></div>)}
+            </SummarySection>}
+
             <SummarySection title="진료 정보">
               <InfoRow label="진료과목" value={((step2.dentalSubjects as string[]) || []).join(', ')} />
-              <InfoRow label="주력진료" value={((step2.topSubjects as string[]) || []).join(', ')} />
+              <InfoRow label="주력진료" value={((step2.topSubjects as string[]) || []).map((item) => item === '기타' && String(step2.topSubjectsOther || '').trim() ? `기타 (${String(step2.topSubjectsOther).trim()})` : item).join(', ')} />
               <InfoRow label="공휴일" value={(step2.holidayClose as boolean) ? '휴진' : '진료'} />
             </SummarySection>
 
             <SummarySection title="시설/장비">
               <InfoRow label="체어 수" value={step3.chairs ? `${step3.chairs}대` : ''} />
-              <InfoRow label="장비" value={((step3.equipment as string[]) || []).join(', ')} />
+              <InfoRow label="장비" value={formatEquipment((step3.equipment as string[]) || [], step3.equipmentModels as Record<string, string> | undefined)} />
               <InfoRow label="시설" value={((step3.facilities as string[]) || []).join(', ')} />
               <InfoRow label="주차" value={parking.detail ? `${parking.available} (${parking.detail})` : parking.available} />
-              <InfoRow label="인테리어" value={step3.interiorStyle as string} />
+              <InfoRow label="기공소" value={step3.hasLabRoom ? '보유' : '미보유'} />
+              {Boolean(step3.hasLabRoom) && <>
+                <InfoRow label="기공소 장비" value={((step3.labEquipment as string[]) || []).join(', ')} />
+                <InfoRow label="기공소 위치" value={step3.labLocation as string} />
+                <InfoRow label="기공소 운영 형태" value={step3.labOperation as string} />
+                <InfoRow label="상주 기공사 여부" value={step3.labTechnician as string} />
+                <InfoRow label="기공소 특징" value={step3.labFeatures as string} />
+              </>}
             </SummarySection>
 
             <SummarySection title="브랜딩 & 철학">
@@ -216,6 +233,9 @@ function SummaryContent() {
               <InfoRow label="슬로건" value={step4.slogan as string} />
               <InfoRow label="브랜드 비전" value={step4.brandVision as string} />
               <InfoRow label="브랜드 톤" value={step4.brandTone as string} />
+              <InfoRow label="병원의 강점" value={step4.clinicPromo as string} />
+              <InfoRow label="의료진의 강점" value={step4.doctorPromo as string} />
+              <InfoRow label="이전에 입력한 추가 특징" value={step4.treatmentPromo as string} />
               <InfoRow label="진료 철학" value={step4.philosophy as string} />
               <InfoRow label="입지·타겟" value={step4.locationTarget as string} />
               {/* 원장 약력·키워드/디자인 방향: stepWeb → step4(브랜딩)로 이동. 구버전 저장본은 stepWeb 폴백 */}
@@ -227,20 +247,20 @@ function SummaryContent() {
               ].filter(Boolean).join(' / ')} />
               <InfoRow label="메인 키워드" value={(step4.mainKeywords ?? stepWeb.mainKeywords) as string} />
               <InfoRow label="디자인 중점" value={(step4.designFocus ?? stepWeb.designFocus) as string} />
-              <InfoRow label="메인 강조" value={(step4.mainEmphasis ?? stepWeb.mainEmphasis) as string} />
               <InfoRow label="사진 방향" value={(step4.photoDirection ?? stepWeb.photoDirection) as string} />
             </SummarySection>
 
             <SummarySection title="마케팅 방향">
-              <InfoRow label="예산" value={step5.budgetRange as string} />
               <InfoRow label="목표" value={((step5.marketingGoals as string[]) || []).join(', ')} />
               <InfoRow label="채널" value={((step5.desiredChannels as string[]) || []).join(', ')} />
             </SummarySection>
 
-            {(scope.web || stepWeb.desiredDomain || (stepWeb.features as string[])?.length) ? (
+            {(scope.web || stepWeb.desiredDomain) ? (
               <SummarySection title="홈페이지/웹">
                 <InfoRow label="도메인" value={stepWeb.desiredDomain as string} />
-                <InfoRow label="필요 기능" value={((stepWeb.features as string[]) || []).join(', ')} />
+                <InfoRow label="SSL 인증서(https) 설치 여부" value={stepWeb.ssl as string} />
+                <InfoRow label="피드백 전달 방식" value={stepWeb.feedbackChannel as string} />
+                <InfoRow label="홈페이지 레퍼런스" value={stepWeb.referenceSites as string} />
                 <InfoRow label="리뉴얼" value={stepWeb.renewalType as string} />
                 <InfoRow label="오픈 일정" value={stepWeb.homepageDeadline as string} />
               </SummarySection>

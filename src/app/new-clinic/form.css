@@ -1,0 +1,152 @@
+.new-clinic-form button.rounded-full:not(.w-12) {
+  height: auto;
+  min-height: 30px;
+  padding: 3px 10px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* Keep the weekly schedule as compact, aligned rows in a single panel. */
+.new-clinic-form .clinic-hours > div {
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: white;
+}
+
+.new-clinic-form .clinic-hours > div > div {
+  margin: 0;
+  padding: 8px 12px;
+  gap: 12px;
+  border: 0;
+  border-bottom: 1px solid #f0f1f3;
+  border-radius: 0;
+  min-height: 56px;
+}
+
+.new-clinic-form .clinic-hours > div > div:last-child {
+  border-bottom: 0;
+}
+
+.new-clinic-form .clinic-hours button.rounded-full {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 8px;
+}
+
+.new-clinic-form .operations-form select {
+  height: 40px;
+  min-width: 0;
+  background-color: white;
+}
+
+@media (max-width: 480px) {
+  .new-clinic-form .clinic-hours > div > div {
+    padding-inline: 8px;
+    gap: 6px;
+  }
+  .new-clinic-form .clinic-hours select {
+    padding-left: 6px;
+    padding-right: 18px;
+    background-position: right 3px center;
+    background-size: 12px;
+  }
+  .new-clinic-form .clinic-hours > div > div > div {
+    gap: 4px;
+  }
+}
+
+.new-clinic-form .operations-form > div + div {
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.new-clinic-form input::placeholder,
+.new-clinic-form textarea::placeholder {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.new-clinic-form select,
+.new-clinic-form input[type="date"] {
+  font-size: 14px;
+}
+
+/* Keep native select behavior while giving every clinic dropdown the same inset. */
+.new-clinic-form select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  background-size: 1rem;
+}
+
+.new-clinic-form select:disabled {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+@media (forced-colors: active) {
+  .new-clinic-form select,
+  .new-clinic-form select:disabled {
+    appearance: auto;
+    background-image: none;
+  }
+}
+
+
+/* Shared readable type scale; entered text and placeholders use the same size. */
+.new-clinic-form {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.new-clinic-form .text-xs {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.new-clinic-form .text-sm {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.new-clinic-form label.font-semibold,
+.new-clinic-form button[aria-expanded] .font-semibold {
+  font-size: 15px;
+  line-height: 1.5;
+}
+.new-clinic-form input:not([type="checkbox"]):not([type="radio"]),
+.new-clinic-form textarea,
+.new-clinic-form select {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.new-clinic-form input::placeholder,
+.new-clinic-form textarea::placeholder {
+  font-size: inherit;
+}
+
+
+.new-clinic-form .text-xs { font-size: 13px; }
+.new-clinic-form textarea { padding: 8px 12px; }
+.new-clinic-form input:not([type="checkbox"]):not([type="radio"]) { height: 40px; padding-inline: 12px; }
+.new-clinic-form .account-guide > summary {
+  position: relative;
+  list-style: none;
+  padding-right: 42px;
+  min-height: 32px;
+}
+.new-clinic-form .account-guide > summary::-webkit-details-marker {
+  display: none;
+}
+.new-clinic-form .account-guide {
+  padding: 0;
+}
+.new-clinic-form .account-guide > summary {
+  min-height: 22px;
+  width: fit-content;
+  max-width: 100%;
+  padding-right: 0;
+}

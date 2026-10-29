@@ -11,13 +11,17 @@ import {
 } from '@/lib/schema';
 
 describe('step1Schema', () => {
+  it('개원 일정은 명시적으로 미정을 선택한 경우에만 비울 수 있다', () => {
+    const data = { clinicName: '테스트치과', doctorName: '김원장', phone: '02-1234-5678', address: '테헤란로 123 3층', openDate: '', region: { city: '서울특별시', district: '강남구' } };
+    expect(step1Schema.safeParse(data).success).toBe(false);
+    expect(step1Schema.safeParse({ ...data, openDatePending: true }).success).toBe(true);
+  });
   it('유효한 데이터 통과', () => {
     const result = step1Schema.safeParse({
       clinicName: '해피스마일치과',
-      doctorName: '김행복',
+      doctorName: '김행복', phone: '02-1234-5678', address: '테헤란로 123 3층',
       openDate: '2026-05-01',
       region: { city: '서울특별시', district: '강남구', dong: '역삼동' },
-      address: '역삼동 123-4',
     });
     expect(result.success).toBe(true);
   });
@@ -25,7 +29,7 @@ describe('step1Schema', () => {
   it('치과명 누락 시 실패', () => {
     const result = step1Schema.safeParse({
       clinicName: '',
-      doctorName: '김행복',
+      doctorName: '김행복', phone: '02-1234-5678', address: '테헤란로 123 3층',
       openDate: '2026-05-01',
       region: { city: '서울특별시', district: '강남구' },
     });
@@ -35,7 +39,7 @@ describe('step1Schema', () => {
   it('원장명 누락 시 실패', () => {
     const result = step1Schema.safeParse({
       clinicName: '해피치과',
-      doctorName: '',
+      doctorName: '', phone: '02-1234-5678', address: '테헤란로 123 3층',
       openDate: '2026-05-01',
       region: { city: '서울특별시', district: '강남구' },
     });
@@ -45,7 +49,7 @@ describe('step1Schema', () => {
   it('동은 선택사항', () => {
     const result = step1Schema.safeParse({
       clinicName: '해피치과',
-      doctorName: '김행복',
+      doctorName: '김행복', phone: '02-1234-5678', address: '테헤란로 123 3층',
       openDate: '2026-05-01',
       region: { city: '서울특별시', district: '강남구' },
     });
@@ -103,7 +107,7 @@ describe('step3Schema', () => {
     }).success).toBe(false);
 
     expect(step3Schema.safeParse({
-      chairs: 5,
+      chairs: 5, hasLabRoom: false, labRoomAnswered: true,
       equipment: ['CT(CBCT)'],
       facilities: ['수술실'],
       parking: { available: '가능' },
@@ -123,7 +127,7 @@ describe('step3Schema', () => {
 describe('step4Schema', () => {
   it('모든 필드 선택사항 (빈 객체 통과)', () => {
     const result = step4Schema.safeParse({
-      hasProfilePhoto: false,
+      education: '테스트대 졸업', career: '테스트병원 근무', hasProfilePhoto: false,
     });
     expect(result.success).toBe(true);
   });
@@ -155,7 +159,7 @@ describe('fullFormSchema', () => {
     const data = {
       step1: {
         clinicName: '해피치과',
-        doctorName: '김행복',
+        doctorName: '김행복', phone: '02-1234-5678', address: '테헤란로 123 3층',
         openDate: '2026-05-01',
         region: { city: '서울특별시', district: '강남구' },
       },
@@ -168,12 +172,12 @@ describe('fullFormSchema', () => {
         lunchTime: { start: '12:00', end: '13:00' },
       },
       step3: {
-        chairs: 3,
-        equipment: [],
-        facilities: [],
+        chairs: 3, hasLabRoom: false, labRoomAnswered: true,
+        equipment: ['없음'],
+        facilities: ['없음'],
         parking: { available: '가능' },
       },
-      step4: { hasProfilePhoto: false },
+      step4: { education: '테스트대 졸업', career: '테스트병원 근무', hasProfilePhoto: false },
       step5: {
         referralSource: [],
         marketingGoals: [],
@@ -192,7 +196,7 @@ describe('contractChangeSchema', () => {
   it('유효한 계약변경 통과', () => {
     const result = contractChangeSchema.safeParse({
       clinicName: '해피치과',
-      doctorName: '김행복',
+      doctorName: '김행복', phone: '02-1234-5678', address: '테헤란로 123 3층',
       currentServices: ['카페바이럴'],
       addServices: ['블로그작성(임상)'],
       removeServices: [],
@@ -204,7 +208,7 @@ describe('contractChangeSchema', () => {
   it('사유 누락 시 실패', () => {
     const result = contractChangeSchema.safeParse({
       clinicName: '해피치과',
-      doctorName: '김행복',
+      doctorName: '김행복', phone: '02-1234-5678', address: '테헤란로 123 3층',
       currentServices: ['카페바이럴'],
       addServices: [],
       removeServices: [],
@@ -216,7 +220,7 @@ describe('contractChangeSchema', () => {
   it('현재 상품 빈 배열 시 실패', () => {
     const result = contractChangeSchema.safeParse({
       clinicName: '해피치과',
-      doctorName: '김행복',
+      doctorName: '김행복', phone: '02-1234-5678', address: '테헤란로 123 3층',
       currentServices: [],
       addServices: [],
       removeServices: [],

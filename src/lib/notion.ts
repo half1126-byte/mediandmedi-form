@@ -1,3 +1,6 @@
+import { sanitizeRetiredFormFields } from './retired-form-fields';
+import { formatEquipment } from './equipment';
+import { formatLunch, type LunchSettings } from './lunch';
 import { Client, isNotionClientError } from '@notionhq/client';
 import { SERVICES } from '@/data/services';
 import { clinicNamesMatch, normalizeClinicName } from './normalize';
@@ -57,7 +60,6 @@ export interface SubmitResult {
 }
 
 const NEW_TASK_DATABASE_ID = '97e9a82d-b9c4-8349-9bea-01e15d30e007';
-const TASK_CHECKLIST_DATABASE_ID = 'dd2371df-6b67-4572-8bc5-3d01765cde06';
 const PEOPLE_DATA_SOURCE_ID = envTrim('NOTION_PEOPLE_DATA_SOURCE_ID') || '3599a82d-b9c4-8078-89a8-000bfce48529';
 const OPENING_ASSIGNEE_NAME = '강재오';
 
@@ -110,8 +112,27 @@ async function openingAssignee(): Promise<{
 }
 
 /** 웹앱 제출과 Notion 웹훅이 공유하는 신규개원 이벤트 처리기. */
-export async function ensureOpeningSetup(pageId: string): Promise<{ created: number; existing: number }> {
+const openingRuns = new Map<string, Promise<{ created: number; existing: number }>>();
+export function ensureOpeningSetup(pageId: string): Promise<{ created: number; existing: number }> {
+  const running = openingRuns.get(pageId);
+  if (running) return running;
+  const run = runOpeningSetup(pageId).finally(() => openingRuns.delete(pageId));
+  openingRuns.set(pageId, run);
+  return run;
+}
+async function taskBlocks(taskId: string): Promise<any[]> {
+  const blocks: any[] = [];
+  let cursor: string | undefined;
+  do {
+    const response = await withRetry(() => notion.blocks.children.list({ block_id: taskId, start_cursor: cursor, page_size: 100 }));
+    blocks.push(...response.results);
+    cursor = response.has_more ? response.next_cursor || undefined : undefined;
+  } while (cursor);
+  return blocks;
+}
+async function runOpeningSetup(pageId: string): Promise<{ created: number; existing: number }> {
   const clientPage = await withRetry(() => notion.pages.retrieve({ page_id: pageId })) as any;
+  if (clientPage.archived || clientPage.in_trash) throw new Error('휴지통에 있는 거래처에는 업무를 생성할 수 없습니다.');
   const clientProperties = clientPage.properties || {};
   const requested = clientProperties['신규 업무 생성']?.checkbox === true;
   const generationState = clientProperties['업무 생성 상태']?.select?.name;
@@ -122,13 +143,12 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
   }
   const assignee = await openingAssignee();
   const taskSourceId = await resolveDataSourceId(NEW_TASK_DATABASE_ID);
-  const checklistSourceId = await resolveDataSourceId(TASK_CHECKLIST_DATABASE_ID);
   const taskTitle = await titlePropertyName(taskSourceId);
-  const checklistTitle = await titlePropertyName(checklistSourceId);
   const query = await withRetry(() => notion.dataSources.query({ data_source_id: taskSourceId, filter: { and: [
     { property: '관련거래처', relation: { contains: pageId } },
     { property: '대분류', select: { equals: '개원 세팅' } },
   ] }, page_size: 100 } as any));
+  if ((query as any).has_more) throw new Error('개원 세팅 업무가 100개를 초과합니다. 중복 여부를 먼저 확인해 주세요.');
   const byName = new Map<string, any[]>();
   for (const page of (query as any).results || []) {
     const name = plainTitle(page, taskTitle);
@@ -139,20 +159,14 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
   }
 
   const createdPages: string[] = [];
-  const createdChecklistPages: string[] = [];
   let existing = 0;
   try {
     for (const [name, items] of OPENING_TASKS) {
       let task = byName.get(name)?.[0];
       if (task) {
         existing += 1;
-        await safePageUpdate(task.id, {
-          '담당팀': { select: { name: '마케팅팀' } },
-          '담당자': { people: [{ id: assignee.accountId }] },
-          '담당 직원': { relation: [{ id: assignee.peoplePageId }] },
-        });
       } else {
-        task = await withRetry(() => notion.pages.create({
+        task = await notion.pages.create({
         parent: { database_id: NEW_TASK_DATABASE_ID },
         properties: {
           [taskTitle]: { title: [{ text: { content: name } }] }, '관련거래처': { relation: [{ id: pageId }] },
@@ -162,26 +176,14 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
           '담당 직원': { relation: [{ id: assignee.peoplePageId }] },
         } as any,
         children: [{ object: 'block', type: 'callout', callout: { icon: { type: 'emoji', emoji: '🎯' }, rich_text: [{ type: 'text', text: { content: `${name} 업무를 완료하고 결과 증빙을 저장합니다.` } }] } }] as any,
-        }));
+        });
         createdPages.push(task.id);
       }
 
-      const checklistQuery = await withRetry(() => notion.dataSources.query({
-        data_source_id: checklistSourceId,
-        filter: { property: '관련 업무', relation: { contains: task.id } },
-        page_size: 100,
-      } as any));
-      const existingChecklistNames = new Set(((checklistQuery as any).results || []).map((page: any) => plainTitle(page, checklistTitle)));
-      let order = 1;
-      for (const item of items) {
-        if (existingChecklistNames.has(item)) { order += 1; continue; }
-        const checklistPage = await withRetry(() => notion.pages.create({ parent: { database_id: TASK_CHECKLIST_DATABASE_ID }, properties: {
-          [checklistTitle]: { title: [{ text: { content: item } }] }, '완료': { checkbox: false },
-          '관련 업무': { relation: [{ id: task.id }] }, '업무 키': { rich_text: [{ text: { content: task.id } }] },
-          '순서': { number: order++ }, '필수': { checkbox: true },
-        } as any }));
-        createdChecklistPages.push(checklistPage.id);
-      }
+      const blocks = await taskBlocks(task.id);
+      const present = new Set(blocks.filter((b) => b.type === 'to_do').map((b) => b.to_do.rich_text.map((t: any) => t.plain_text || t.text?.content || '').join('')));
+      const missingItems = items.filter((item) => !present.has(item));
+      if (missingItems.length) await notion.blocks.children.append({ block_id: task.id, children: missingItems.map((item) => ({ object: 'block', type: 'to_do', to_do: { checked: false, rich_text: [{ type: 'text', text: { content: item } }] } })) });
     }
     const verify = await withRetry(() => notion.dataSources.query({ data_source_id: taskSourceId, filter: { and: [
       { property: '관련거래처', relation: { contains: pageId } }, { property: '대분류', select: { equals: '개원 세팅' } },
@@ -191,6 +193,9 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
     const finalNames = new Set(results.map((page: any) => plainTitle(page, taskTitle)).filter((name: string) => standardNames.has(name as typeof OPENING_TASKS[number][0])));
     const missing = OPENING_TASKS.map(([name]) => name).filter((name) => !finalNames.has(name));
     if (missing.length) throw new Error(`표준 업무 생성 누락: ${missing.join(', ')}`);
+    for (const name of standardNames) {
+      if (results.filter((page: any) => plainTitle(page, taskTitle) === name).length !== 1) throw new Error('동일 업무명 중복: ' + name);
+    }
     const currentRelations = (clientProperties['(신)업무DB']?.relation || []).map((item: any) => item.id);
     const standardTaskIds = results
       .filter((page: any) => standardNames.has(plainTitle(page, taskTitle) as typeof OPENING_TASKS[number][0]))
@@ -203,8 +208,7 @@ export async function ensureOpeningSetup(pageId: string): Promise<{ created: num
     });
     return { created: createdPages.length, existing };
   } catch (error) {
-    for (const id of createdChecklistPages.reverse()) { try { await notion.pages.update({ page_id: id, archived: true }); } catch { /* 원래 오류 보존 */ } }
-    for (const id of createdPages.reverse()) { try { await notion.pages.update({ page_id: id, archived: true }); } catch { /* 원래 오류 보존 */ } }
+    // Keep completed work so a retry can fill only the missing tasks.
     throw error;
   }
 }
@@ -222,21 +226,8 @@ export async function syncOpeningTaskCompletion(taskId: string): Promise<{
     throw new Error('개원 세팅 업무가 아닙니다.');
   }
 
-  const checklistSourceId = await resolveDataSourceId(TASK_CHECKLIST_DATABASE_ID);
-  const checklistPages: any[] = [];
-  let cursor: string | undefined;
-  do {
-    const response = await withRetry(() => notion.dataSources.query({
-      data_source_id: checklistSourceId,
-      filter: { property: '관련 업무', relation: { contains: taskId } },
-      page_size: 100,
-      ...(cursor ? { start_cursor: cursor } : {}),
-    } as any)) as any;
-    checklistPages.push(...(response.results || []));
-    cursor = response.has_more ? response.next_cursor : undefined;
-  } while (cursor);
-
-  const completed = checklistPages.filter((page) => page.properties?.['완료']?.checkbox === true).length;
+  const checklistPages = (await taskBlocks(taskId)).filter((block) => block.type === 'to_do');
+  const completed = checklistPages.filter((block) => block.to_do.checked === true).length;
   const allCompleted = checklistPages.length > 0 && completed === checklistPages.length;
   const alreadyCompleted = properties['업무상태']?.status?.name === '완료';
   if (allCompleted && !alreadyCompleted) {
@@ -263,6 +254,7 @@ const LEGACY_CLINICS_DB_ID = '3539a82d-b9c4-8174-ada9-c2269dea9515';
 export async function createMainRecord(
   data: Record<string, unknown>
 ): Promise<string> {
+  data = sanitizeRetiredFormFields(data);
   const dbId = envTrim('NOTION_MAIN_DB_ID');
   if (!dbId) throw new Error('NOTION_MAIN_DB_ID not configured');
 
@@ -305,16 +297,22 @@ const ACCOUNT_DATABASE_ID = envTrim('NOTION_ACCOUNT_DB_ID') || '3c29a82d-b9c4-80
 const ACCOUNT_LABELS: [string, string][] = [
   ['naver', '네이버'], ['google', '구글'], ['kakao', '카카오'], ['instagram', '인스타그램'],
   ['youtube', '유튜브'], ['danggeun', '당근'], ['blog', '운영 블로그'], ['dentalAd', '의료심의'],
-  ['domain', '도메인'], ['hosting', '호스팅'], ['ftp', 'FTP'], ['admin', '홈페이지 관리자'],
+  ['hosting', '호스팅'], ['ftp', 'FTP'], ['admin', '홈페이지 관리자'],
 ];
 
-interface FilledAccount { name: string; order: number; id: string; pw: string; url: string }
+interface FilledAccount { name: string; order: number; id: string; pw: string; url: string; inviteCode?: string }
 
 // 아이디·비밀번호·URL 중 하나라도 입력된 플랫폼만 (폼 표시 순서대로)
 function filledAccounts(data: Record<string, unknown>): FilledAccount[] {
-  const acc = (data.accounts || {}) as Record<string, { id?: string; pw?: string; url?: string }>;
+  const acc = (data.accounts || {}) as Record<string, { id?: string; pw?: string; url?: string; inviteUrl?: string; inviteCode?: string; status?: string }>;
   return ACCOUNT_LABELS.flatMap(([key, name], i) => {
     const a = acc[key] || {};
+    if (a.status === 'create') return [];
+    if (key === 'danggeun') {
+      const url = (a.inviteUrl || '').trim();
+      const inviteCode = (a.inviteCode || '').trim();
+      return url || inviteCode ? [{ name, order: i + 1, id: '', pw: '', url, inviteCode }] : [];
+    }
     const id = (a.id || '').trim();
     const pw = (a.pw || '').trim();
     const url = (a.url || '').trim();
@@ -329,7 +327,7 @@ function accountRowProps(clinicPageId: string, a: FilledAccount): Record<string,
     '아이디': text(a.id),
     '비밀번호': text(a.pw),
     'URL': { url: a.url || null },
-    '비고': text(`신규개원 폼 제출 (${today()})`),
+    '비고': text(`신규개원 폼 제출 (${today()})${a.inviteCode ? `\n운영자 초대 코드: ${a.inviteCode}` : ''}`),
     '정렬순서': { number: a.order },
     '거래처DB': { relation: [{ id: clinicPageId }] },
   };
@@ -355,9 +353,10 @@ async function saveAccounts(clinicPageId: string, data: Record<string, unknown>)
   const textOf = (page: any, name: string) =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (page?.properties?.[name]?.rich_text || []).map((t: any) => t.plain_text || t.text?.content || '').join('');
-  const keyOf = (a: Pick<FilledAccount, 'name' | 'id' | 'pw' | 'url'>) => [a.name, a.id, a.pw, a.url].join('\u0000');
+  const keyOf = (a: Pick<FilledAccount, 'name' | 'id' | 'pw' | 'url' | 'inviteCode'>) => [a.name, a.id, a.pw, a.url, a.inviteCode || ''].join('\u0000');
   const existing = new Set((res.results || []).map((page) => keyOf({
     name: plainTitle(page, '이름'),
+    inviteCode: textOf(page, '비고').match(/운영자 초대 코드: ([^\n]+)/)?.[1] || '',
     id: textOf(page, '아이디'),
     pw: textOf(page, '비밀번호'),
     url: page?.properties?.['URL']?.url || '',
@@ -1048,7 +1047,7 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const props: any = {
     '거래처명': { title: [{ text: { content: (s1.clinicName as string) || '' } }] },
-    '상태': { status: { name: '계약전' } },
+    '상태': { status: { name: '계약중' } },
     '업종': { select: { name: '치과' } },
     '관계유형': { select: { name: '클라이언트' } },
     '폼 제출일': { date: { start: today() } },
@@ -1079,7 +1078,7 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     props['진료과목'] = { multi_select: dentalSubjects.map((s) => ({ name: s })) };
   }
 
-  const topSubjects = (s2.topSubjects as string[]) || [];
+  const topSubjects = ((s2.topSubjects as string[]) || []).map((item) => item === '기타' && String(s2.topSubjectsOther || '').trim() ? `기타 (${String(s2.topSubjectsOther).trim()})` : item);
   if (topSubjects.length > 0) {
     props['주력진료'] = { multi_select: topSubjects.map((s) => ({ name: s })) };
   }
@@ -1102,10 +1101,10 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
 
   // 아래 매핑은 filterPropsBySchema가 실스키마와 대조해 "존재하는 속성만" 전송한다.
   // → 거래처DB에서 컬럼을 삭제하면 자동 제외되고, 복원하면 코드 수정 없이 다시 채워진다.
-  const schedule = (s2.schedule || {}) as Record<string, { enabled: boolean; start: string; end: string }>;
+  const schedule = (s2.schedule || {}) as Record<string, { enabled: boolean; start: string; end: string; night?: boolean }>;
   const scheduleLine = Object.entries(schedule)
     .filter(([, v]) => v.enabled)
-    .map(([day, v]) => `${day} ${v.start}~${v.end}`)
+    .map(([day, v]) => `${day} ${v.start}~${v.end}${v.night ? " (야간)" : ""}`)
     .join(', ');
   if (scheduleLine) {
     props['진료시간'] = { rich_text: [{ text: { content: scheduleLine } }] };
@@ -1128,8 +1127,10 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
     props['브랜드 컬러'] = { rich_text: [{ text: { content: s4.brandColor as string } }] };
   }
   const promoParts: string[] = [];
-  if (s4.doctorPromo) promoParts.push(`의료진: ${s4.doctorPromo}`);
-  if (s4.clinicPromo) promoParts.push(`병원: ${s4.clinicPromo}`);
+  if (s4.clinicPromo) promoParts.push(`병원의 강점: ${s4.clinicPromo}`);
+  if (s4.doctorPromo) promoParts.push(`의료진의 강점: ${s4.doctorPromo}`);
+  if (s4.treatmentPromo) promoParts.push(`이전에 입력한 추가 특징: ${s4.treatmentPromo}`);
+  if (s4.philosophy) promoParts.push(`진료 철학: ${s4.philosophy}`);
   if (promoParts.length > 0) {
     props['홍보 포인트'] = { rich_text: [{ text: { content: promoParts.join(' / ').substring(0, 1900) } }] };
   }
@@ -1140,9 +1141,6 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
   }
   if (s5.referralName) {
     props['소개자명'] = { rich_text: [{ text: { content: s5.referralName as string } }] };
-  }
-  if (s5.budgetRange) {
-    props['예산범위'] = { select: { name: s5.budgetRange as string } };
   }
   if (s5.didInfo) {
     props['DID 정보'] = { rich_text: [{ text: { content: s5.didInfo as string } }] };
@@ -1161,11 +1159,11 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
   }
   const marketingGoals = (s5.marketingGoals as string[]) || [];
   if (marketingGoals.length > 0) {
-    props['마케팅 목표'] = { rich_text: [{ text: { content: marketingGoals.join(', ') } }] };
+    props['마케팅 목표'] = { rich_text: [{ text: { content: marketingGoals.map((goal) => goal === '기타' && typeof s5.marketingGoalsOther === 'string' && s5.marketingGoalsOther.trim() ? `기타: ${s5.marketingGoalsOther.trim()}` : goal).join(', ') } }] };
   }
 
-  // 거래시작일: step6.contractStartDate 우선, 없으면 openDate
-  const contractStart = (s6.contractStartDate as string) || (s1.openDate as string);
+  // 명시적으로 입력한 계약 시작일만 저장한다.
+  const contractStart = s6.contractStartDate as string;
   if (contractStart) {
     props['거래시작일'] = { date: { start: contractStart } };
   }
@@ -1178,7 +1176,7 @@ function buildMainProperties(data: Record<string, unknown>): Record<string, unkn
 
   // 계약 서비스(팀): 작업 범위(scope) + 선택한 계약 서비스의 팀 합집합.
   // deriveContractTeams를 단일 출처로 사용(개원세팅 범위 게이팅과 동일 로직 — 드리프트 방지).
-  const contractTeams = deriveContractTeams(data);
+  const contractTeams = deriveContractTeams({ step6: s6 });
   if (contractTeams.length > 0) {
     props['계약 서비스'] = { multi_select: contractTeams.map((t) => ({ name: t })) };
   }
@@ -1238,157 +1236,182 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
     blocks.push(bullet(`이번 작업 범위: ${scopeLabels.join(', ')}`));
   }
 
+  // 개원 일정
+  const datesArr: string[] = [];
+  if (s1.openDatePending) datesArr.push('개원예정일: 미정');
+  else if (s1.openDate) datesArr.push(`개원예정일: ${s1.openDate}`);
+  if (s1.softOpenDate) datesArr.push(`가오픈 예정일: ${s1.softOpenDate}`);
+  if (s1.interiorCompleteDate) datesArr.push(`인테리어 완료 예정일: ${s1.interiorCompleteDate}`);
+  if (s1.photoDate) datesArr.push(`사진 촬영 가능 날짜: ${s1.photoDate}`);
+  if (datesArr.length > 0) {
+    blocks.push(heading('개원 일정'));
+    datesArr.forEach((t) => blocks.push(bullet(t)));
+  }
+
   // 의료진
   const doctors = resolveDoctors(s1.doctors as Doctor[] | undefined, s1.doctorName as string | undefined);
   if (doctors.length > 0) {
     blocks.push(heading('의료진'));
     doctors.forEach((d) => {
-      blocks.push(bullet(`${d.name || '미입력'} · ${d.title}${d.specialty ? ` · ${d.specialty}` : ''}`));
+      blocks.push(sectionLabel(`${d.name || '미입력'} · ${d.title}${d.specialty ? ` · ${d.specialty}` : ''}`));
+      if (d.education) blocks.push(bullet(`학력: ${d.education}`));
+      if (d.career) blocks.push(bullet(`경력 / 전문의 자격: ${d.career}`));
+      if (d.awards) blocks.push(bullet(`수상 / 논문 / 방송 출연 이력: ${d.awards}`));
+      if (d.associations) blocks.push(bullet(`학회 / 협회 활동: ${d.associations}`));
     });
   }
-
-  // 주요 일정·연락
-  const datesArr: string[] = [];
-  if (s1.softOpenDate) datesArr.push(`가오픈 ${s1.softOpenDate}`);
-  if (s1.interiorCompleteDate) datesArr.push(`인테리어 완료 ${s1.interiorCompleteDate}`);
-  if (s1.photoDate) datesArr.push(`촬영 가능 ${s1.photoDate}`);
-  if (s1.fax) datesArr.push(`팩스 ${s1.fax}`);
-  if (datesArr.length > 0) {
-    blocks.push(heading('주요 일정·연락'));
-    datesArr.forEach((t) => blocks.push(bullet(t)));
-  }
-
-  // 진료
-  blocks.push(heading('진료'));
-  if (s2.customSubjects) blocks.push(bullet(`직접 입력 과목: ${s2.customSubjects}`));
-  if ((s2.topSubjects as string[])?.length) {
-    blocks.push(bullet(`주력진료: ${(s2.topSubjects as string[]).join(', ')}`));
-  }
-  const implant = (s2.implantMaterials as Record<string, string[]>) || {};
-  const implantSummary = Object.entries(implant)
-    .map(([b, ps]) => (ps.length ? `${b}(${ps.join('/')})` : b))
-    .join(', ');
-  if (implantSummary) blocks.push(bullet(`임플란트 재료: ${implantSummary}`));
-  if ((s2.alignerOptions as string[])?.length || s2.alignerOther) {
-    const aligners = [...((s2.alignerOptions as string[]) || []), s2.alignerOther as string].filter(Boolean);
-    blocks.push(bullet(`투명교정: ${aligners.join(', ')}`));
-  }
-  if ((s2.pediatricOrthoOptions as string[])?.length) {
-    blocks.push(bullet(`소아교정: ${(s2.pediatricOrthoOptions as string[]).join(', ')}`));
-  }
-  const schedule = (s2.schedule || {}) as Record<string, { enabled: boolean; start: string; end: string }>;
-  const scheduleLine = Object.entries(schedule)
-    .filter(([, v]) => v.enabled)
-    .map(([day, v]) => `${day} ${v.start}~${v.end}`)
-    .join(', ');
-  if (scheduleLine) blocks.push(bullet(`진료시간: ${scheduleLine}`));
-  const lunch = (s2.lunchTime || {}) as { start?: string; end?: string };
-  if (lunch.start && lunch.end) blocks.push(bullet(`점심시간: ${lunch.start}~${lunch.end}`));
-  if (typeof s2.holidayClose === 'boolean') blocks.push(bullet(`공휴일: ${s2.holidayClose ? '휴진' : '진료'}`));
-  if (s2.nightWeekend) blocks.push(bullet(`야간/주말: ${s2.nightWeekend}`));
-
-  // 시설·장비
-  blocks.push(heading('시설·장비'));
-  if (s3.chairs) blocks.push(bullet(`체어 ${s3.chairs}대`));
-  if ((s3.equipment as string[])?.length) blocks.push(bullet(`장비: ${(s3.equipment as string[]).join(', ')}`));
-  if (s3.equipmentDetail) blocks.push(bullet(`장비 상세: ${s3.equipmentDetail}`));
-  if ((s3.facilities as string[])?.length) blocks.push(bullet(`시설: ${(s3.facilities as string[]).join(', ')}`));
-  const parking = (s3.parking as Record<string, string>) || {};
-  if (parking.available) blocks.push(bullet(`주차: ${parking.available}${parking.detail ? ` (${parking.detail})` : ''}`));
-  if (s3.hasLabRoom) blocks.push(bullet(`기공소: 보유${(s3.labEquipment as string[])?.length ? ` (${(s3.labEquipment as string[]).join(', ')})` : ''}`));
-
-  // 브랜딩
-  blocks.push(heading('브랜딩'));
-  if (s4.oneLiner) blocks.push(bullet(`한줄소개: ${s4.oneLiner}`));
-  if (s4.slogan) blocks.push(bullet(`슬로건: ${s4.slogan}`));
-  if (s4.brandVision) blocks.push(bullet(`브랜드 비전: ${s4.brandVision}`));
-  if (s4.brandTone) blocks.push(bullet(`브랜드 톤앤매너: ${s4.brandTone}`));
-  if (s4.doctorPromo) blocks.push(bullet(`의료진 포인트: ${s4.doctorPromo}`));
-  if (s4.clinicPromo) blocks.push(bullet(`병원 포인트: ${s4.clinicPromo}`));
-  if (s4.treatmentPromo) blocks.push(bullet(`주요 진료 포인트: ${s4.treatmentPromo}`));
-  if (s4.philosophy) blocks.push(bullet(`진료 철학: ${s4.philosophy}`));
-  if (s4.locationTarget) blocks.push(bullet(`입지·타겟: ${s4.locationTarget}`));
-  if (s4.interiorStyle) blocks.push(bullet(`인테리어 컨셉: ${s4.interiorStyle}`));
-  const colorTones = (s4.brandColorTones as string[])?.length
-    ? (s4.brandColorTones as string[])
-    : ((sd.colorPreference as string[]) || []); // 구버전 저장본 폴백
-  if (colorTones.length) blocks.push(bullet(`브랜드 컬러 계열: ${colorTones.join(', ')}`));
-  if (s4.brandColor) blocks.push(bullet(`브랜드 컬러: ${s4.brandColor}`));
-  // 키워드·디자인 방향: stepWeb → step4(브랜딩)로 이동 (구버전 저장본은 sw에서 폴백)
-  const mainKeywords = (s4.mainKeywords ?? sw.mainKeywords) as string | undefined;
-  if (mainKeywords) blocks.push(bullet(`메인 키워드: ${mainKeywords}`));
-  const designFocus = (s4.designFocus ?? sw.designFocus) as string | undefined;
-  if (designFocus) blocks.push(bullet(`디자인 중점: ${designFocus}`));
-  const mainEmphasis = (s4.mainEmphasis ?? sw.mainEmphasis) as string | undefined;
-  if (mainEmphasis) blocks.push(bullet(`메인 강조: ${mainEmphasis}`));
-  const photoDirection = (s4.photoDirection ?? sw.photoDirection) as string | undefined;
-  if (photoDirection) blocks.push(bullet(`사진 방향: ${photoDirection}`));
-  // 벤치마킹·참고 사이트: 브랜딩 1곳으로 통합. 옛 웹 '참고 사이트'(referenceSites)도 여기로 폴백, 구버전은 s5.
-  const benchmark = (s4.benchmarkClinics as string) || (s5.benchmarkClinics as string) || (sw.referenceSites as string);
-  if (benchmark) blocks.push(bullet(`벤치마킹·참고 사이트: ${benchmark}`));
-  if (s4.driveLink) blocks.push(bullet(`자료 첨부(드라이브): ${s4.driveLink}`));
-  if (s4.hasProfilePhoto) blocks.push(bullet('프로필 사진 보유'));
-  if (s4.hasLogo) blocks.push(bullet('로고 파일 보유'));
 
   // 의료진 약력 (상세) — stepWeb → step4(브랜딩)로 이동 (구버전 저장본은 sw에서 폴백)
   const education = (s4.education ?? sw.education) as string | undefined;
   const career = (s4.career ?? sw.career) as string | undefined;
   const associations = (s4.associations ?? sw.associations) as string | undefined;
   const awards = (s4.awards ?? sw.awards) as string | undefined;
-  if (education || career || associations || awards) {
+  if (!doctors.some(d => d.education || d.career || d.associations || d.awards) && (education || career || associations || awards)) {
     blocks.push(heading('의료진 약력'));
     if (education) blocks.push(bullet(`학력: ${education}`));
-    if (career) blocks.push(bullet(`경력: ${career}`));
-    if (associations) blocks.push(bullet(`학회·협회: ${associations}`));
-    if (awards) blocks.push(bullet(`수상·논문·방송: ${awards}`));
+    if (career) blocks.push(bullet(`경력 / 전문의 자격: ${career}`));
+    if (associations) blocks.push(bullet(`학회 / 협회 활동: ${associations}`));
+    if (awards) blocks.push(bullet(`수상 / 논문 / 방송 출연 이력: ${awards}`));
   }
+
+  // 진료
+  blocks.push(heading('주력 진료·강점'));
+  if ((s2.dentalSubjects as string[])?.length) blocks.push(bullet(`진행하는 진료: ${(s2.dentalSubjects as string[]).join(', ')}`));
+  const implant = (s2.implantMaterials as Record<string, string[]>) || {};
+  const implantItems = Object.entries(implant).map(([brand, products]) =>
+    brand === '기타' && s2.implantOther ? `기타 (${s2.implantOther})` : `${brand}${products.length ? ` (${products.join(', ')})` : ''}`);
+  if (s2.implantOther && !('기타' in implant)) implantItems.push(`기타 (${s2.implantOther})`);
+  if (implantItems.length) blocks.push(bullet(`임플란트 재료: ${implantItems.join(', ')}`));
+  if ((s2.alignerOptions as string[])?.length || s2.alignerOther) {
+    blocks.push(bullet(`투명교정: ${selectedWithOther(s2.alignerOptions as string[], s2.alignerOther)}`));
+  }
+  if ((s2.pediatricOrthoOptions as string[])?.length || s2.pediatricOrthoOther) {
+    blocks.push(bullet(`소아교정: ${selectedWithOther(s2.pediatricOrthoOptions as string[], s2.pediatricOrthoOther)}`));
+  }
+  if (s2.customSubjects) blocks.push(bullet(`직접 입력 과목: ${s2.customSubjects}`));
+  if ((s2.topSubjects as string[])?.length) {
+    blocks.push(bullet(`주력 진료: ${(s2.topSubjects as string[]).map((item) => item === '기타' && String(s2.topSubjectsOther || '').trim() ? `기타 (${String(s2.topSubjectsOther).trim()})` : item).join(', ')}`));
+  }
+  if (s4.clinicPromo) blocks.push(bullet(`병원의 강점: ${s4.clinicPromo}`));
+  if (s4.doctorPromo) blocks.push(bullet(`의료진의 강점: ${s4.doctorPromo}`));
+  if (s4.treatmentPromo) blocks.push(bullet(`이전에 입력한 추가 특징: ${s4.treatmentPromo}`));
+  if (s4.philosophy) blocks.push(bullet(`진료 철학: ${s4.philosophy}`));
+  if (s4.locationTarget) blocks.push(bullet(`주로 알리고 싶은 환자층: ${s4.locationTarget}`));
+  blocks.push(heading('진료시간'));
+  const schedule = (s2.schedule || {}) as Record<string, { enabled: boolean; start: string; end: string; night?: boolean }>;
+  const scheduleLines = Object.entries(schedule)
+    .filter(([, v]) => v.enabled)
+    .map(([day, v]) => `${day} ${v.start}~${v.end}${v.night ? " (야간)" : ""}`);
+  if (scheduleLines.length) blocks.push(bullet(`진료시간:\n${scheduleLines.join('\n')}`));
+  const closedDays = Object.entries(schedule).filter(([, value]) => !value.enabled).map(([day]) => day);
+  if (closedDays.length) blocks.push(bullet(`휴진 요일: ${closedDays.join(', ')}`));
+
+  if (s2.lunchTime) blocks.push(bullet(`점심시간: ${formatLunch(s2 as unknown as LunchSettings)}`));
+  if (typeof s2.holidayClose === 'boolean') blocks.push(bullet(`공휴일: ${s2.holidayClose ? '휴진' : '진료'}`));
+  if (s2.nightWeekend) blocks.push(bullet(`진료시간 특이사항: ${s2.nightWeekend}`));
+
+  // 시설·장비
+  blocks.push(heading('시설·장비'));
+  if (s3.chairs) blocks.push(bullet(`체어 수: ${s3.chairs}대`));
+  if ((s3.equipment as string[])?.length) {
+    blocks.push(sectionLabel('보유 장비'));
+    const equipment = [...new Set(s3.equipment as string[])];
+    const ordered = [...equipment.filter((name) => name !== '기타 장비'), ...equipment.filter((name) => name === '기타 장비')];
+    ordered.forEach((name) => blocks.push(bullet(formatEquipment([name], s3.equipmentModels as Record<string, string> | undefined))));
+  }
+  if (s3.equipmentDetail) blocks.push(bullet(`장비 상세: ${s3.equipmentDetail}`));
+  const parking = (s3.parking as Record<string, string>) || {};
+  if ((s3.facilities as string[])?.length || parking.available) blocks.push(sectionLabel('시설·주차'));
+  if ((s3.facilities as string[])?.length) blocks.push(bullet(`시설: ${(s3.facilities as string[]).join(', ')}`));
+  if (parking.available) blocks.push(bullet(`주차: ${parking.available}${parking.detail ? ` (${parking.detail})` : ''}`));
+  if (s3.hasLabRoom === false) blocks.push(bullet('기공소 보유 여부: 미보유'));
+  if (s3.hasLabRoom) {
+    blocks.push(sectionLabel('기공소'));
+    blocks.push(bullet('기공소 보유 여부: 보유'));
+    if (s3.labLocation) blocks.push(bullet(`기공소 위치: ${s3.labLocation}`));
+    if (s3.labOperation) blocks.push(bullet(`운영 형태: ${s3.labOperation}`));
+    if (s3.labTechnician) blocks.push(bullet(`상주 기공사 여부: ${s3.labTechnician}`));
+    if (s3.labFeatures) blocks.push(bullet(`기공소 특징: ${s3.labFeatures}`));
+    if ((s3.labEquipment as string[])?.length) blocks.push(bullet(`기공소 장비: ${(s3.labEquipment as string[]).join(', ')}`));
+  }
+
+  // 브랜딩
+  blocks.push(heading('이미지·자료'));
+  if (s4.brandTone) blocks.push(bullet(`원하는 병원 이미지: ${s4.brandTone}`));
+  const designFocus = (s4.designFocus ?? sw.designFocus) as string | undefined;
+  if (designFocus) blocks.push(bullet(`원하는 병원 이미지 (기타): ${designFocus}`));
+  const colorTones = (s4.brandColorTones as string[])?.length
+    ? (s4.brandColorTones as string[])
+    : ((sd.colorPreference as string[]) || []); // 구버전 저장본 폴백
+  if (colorTones.length) blocks.push(bullet(`선호 색상: ${colorTones.join(', ')}`));
+  if (s4.brandColor) blocks.push(bullet(`구체적인 색상: ${s4.brandColor}`));
+  if (!sc.logo && sd.avoidColor) blocks.push(bullet(`피하고 싶은 색상: ${sd.avoidColor}`));
+  // 키워드·디자인 방향: stepWeb → step4(브랜딩)로 이동 (구버전 저장본은 sw에서 폴백)
+  const mainKeywords = (s4.mainKeywords ?? sw.mainKeywords) as string | undefined;
+  if (mainKeywords) blocks.push(bullet(`메인 키워드: ${mainKeywords}`));
+  const photoDirection = (s4.photoDirection ?? sw.photoDirection) as string | undefined;
+  if (photoDirection) blocks.push(bullet(`사진 방향: ${photoDirection}`));
+  const introduction = [...new Set([s4.oneLiner, s4.slogan].filter(Boolean))].join(', ');
+  if (introduction) blocks.push(bullet(`소개 문구·슬로건: ${introduction}`));
+  if (s4.brandVision) blocks.push(bullet(`브랜드 비전: ${s4.brandVision}`));
+  const materials = [...new Set([...(sw.photoTypes as string[] || []), ...(s4.hasLogo ? ['로고'] : []), ...(s4.hasProfilePhoto ? ['원장 프로필'] : [])])];
+  if (materials.length) blocks.push(bullet(`보유 자료: ${materials.join(', ')}`));
+  if (s4.materialDelivery) blocks.push(bullet(`자료 전달 방식: ${s4.materialDelivery}`));
+  if (s4.driveLink) blocks.push(bullet(`자료 공유 링크: ${s4.driveLink}`));
 
   // 마케팅
-  blocks.push(heading('마케팅'));
-  if ((s5.referralSource as string[])?.length) {
-    blocks.push(bullet(`유입경로: ${(s5.referralSource as string[]).join(', ')}`));
-  }
-  if (s5.referralName) blocks.push(bullet(`소개자: ${s5.referralName}`));
-  if (s5.previousMarketing) blocks.push(bullet(`이전 마케팅: ${s5.previousMarketing}`));
-  if (s5.budgetRange) blocks.push(bullet(`예산: ${s5.budgetRange}`));
+  if (sc.marketing || sc.viral) blocks.push(heading('마케팅 추가 질문')); 
   if ((s5.marketingGoals as string[])?.length) {
-    blocks.push(bullet(`목표: ${(s5.marketingGoals as string[]).join(', ')}`));
+    blocks.push(bullet(`마케팅 목표: ${(s5.marketingGoals as string[]).map((goal) => goal === '기타' && typeof s5.marketingGoalsOther === 'string' && s5.marketingGoalsOther.trim() ? `기타: ${s5.marketingGoalsOther.trim()}` : goal).join(', ')}`));
   }
   if ((s5.desiredChannels as string[])?.length) {
-    blocks.push(bullet(`원하는 채널: ${(s5.desiredChannels as string[]).join(', ')}`));
+    blocks.push(bullet(`원하는 마케팅 채널: ${(s5.desiredChannels as string[]).map((channel) => channel === '기타' && typeof s5.desiredChannelsOther === 'string' && s5.desiredChannelsOther.trim() ? `기타: ${s5.desiredChannelsOther.trim()}` : channel).join(', ')}`));
   }
-  if (s5.openingEvent) blocks.push(bullet(`개원이벤트: ${s5.openingEvent}`));
-  if (s5.didInfo) blocks.push(bullet(`DID: ${s5.didInfo}`));
-  if (s5.reviewGift) blocks.push(bullet(`리뷰 증정선물: ${s5.reviewGift}`));
-  if (s5.channelGift) blocks.push(bullet(`채널 증정선물: ${s5.channelGift}`));
-  if (s5.additionalRequest) blocks.push(bullet(`추가 요청: ${s5.additionalRequest}`));
+  if (s5.didInfo) blocks.push(bullet(`대기실 모니터 (DID): ${s5.didInfo}`));
+  if (s5.openingEvent) blocks.push(bullet(`개원 이벤트 계획: ${s5.openingEvent}`));
+  if (s5.reviewGift) blocks.push(bullet(`네이버 리뷰 선물: ${s5.reviewGift}`));
+  if (s5.channelGift) blocks.push(bullet(`카카오톡 채널 선물: ${s5.channelGift}`));
 
+  if (Object.values((data.accounts || {}) as Record<string, { status?: string }>).some(a => a.status)) blocks.push(sectionLabel('추가 계정정보'));
+  const setupAccounts = (data.accounts || {}) as Record<string, { status?: string }>;
+  for (const [key, label] of [['naver', '네이버'], ['google', '구글'], ['kakao', '카카오'], ['dentalAd', '대한치과협회 의료광고심의'], ['instagram', '인스타그램'], ['youtube', '유튜브'], ['danggeun', '당근'], ['blog', '운영 블로그']]) {
+    if (setupAccounts[key]?.status === 'create') blocks.push(bullet(`${label}: 아직 준비하지 못했어요`));
+    if (setupAccounts[key]?.status === 'provided') blocks.push(bullet(`${label}: 계정정보 입력 완료`));
+  }
+
+  if ((s5.referralSource as string[])?.length) {
+    blocks.push(bullet(`우리를 어떻게 알게 되셨나요?: ${(s5.referralSource as string[]).join(', ')}`));
+  }
+  if (s5.referralName) blocks.push(bullet(`소개해 주신 분: ${s5.referralName}`));
+  if (s5.previousMarketing) blocks.push(bullet(`이전 마케팅 경험: ${s5.previousMarketing}`));
   // 홈페이지/웹
   const webItems: string[] = [];
   const webOnemore = (label: string, v: unknown) => {
     if (v && String(v).trim()) webItems.push(`${label}: ${v}`);
   };
-  webOnemore('지하철', sw.subway);
-  webOnemore('버스', sw.bus);
-  webOnemore('위치 어필', sw.locationNote);
-  webOnemore('인스타그램', sw.instagramUrl);
-  webOnemore('블로그', sw.blogUrl);
-  webOnemore('유튜브', sw.youtubeUrl);
-  webOnemore('카카오톡 채널', sw.kakaoChannel);
-  webOnemore('네이버 예약', sw.naverBooking);
-  webOnemore('도메인', sw.desiredDomain);
-  webOnemore('SSL', sw.ssl);
-  if ((sw.features as string[])?.length) webItems.push(`필요 기능: ${(sw.features as string[]).join(', ')}`);
-  webOnemore('CMS', sw.cmsNeed);
-  webOnemore('리뉴얼', sw.renewalType);
+  // 로컬 폼 순서: 일정·유지보수 → 관리 방식 → 오시는 길 → 온라인 채널 → 레퍼런스.
+  webOnemore('원하는 오픈 목표 일정', sw.homepageDeadline);
+  webOnemore('오픈 후 유지보수 계약 희망 여부', sw.maintenance);
+  webOnemore('홈페이지 직접 수정·관리 예정 여부', sw.cmsNeed);
+  webOnemore('기존 홈페이지 유무', sw.renewalType);
   webOnemore('기존 홈페이지 URL', sw.oldSiteUrl);
-  webOnemore('오픈 목표 일정', sw.homepageDeadline);
-  webOnemore('유지보수', sw.maintenance);
-  if ((sw.menuStructure as string[])?.length) webItems.push(`원하는 메뉴: ${(sw.menuStructure as string[]).join(', ')}`);
-  webOnemore('꼭 들어갈 페이지', sw.mustHavePages);
-  if ((sw.photoTypes as string[])?.length) webItems.push(`제공 사진 종류: ${(sw.photoTypes as string[]).join(', ')}`);
-  webOnemore('내부 검수 담당자', sw.reviewer);
-  webOnemore('피드백 방식', sw.feedbackChannel);
+  webOnemore('피드백 전달 방식', sw.feedbackChannel);
+  webOnemore('도메인', sw.desiredDomain);
+  webOnemore('SSL 인증서(https) 설치 여부', sw.ssl);
+  webOnemore('지하철 노선', sw.subway);
+  webOnemore('버스 노선', sw.bus);
+  webOnemore('위치 특이사항 / 어필 사항', sw.locationNote);
+  webOnemore('인스타그램 URL', sw.instagramUrl);
+  webOnemore('블로그 URL', sw.blogUrl);
+  webOnemore('유튜브 채널 URL', sw.youtubeUrl);
+  webOnemore('카카오톡 채널', sw.kakaoChannel);
+  webOnemore('네이버 예약 URL', sw.naverBooking);
+  const webAccounts = (data.accounts || {}) as Record<string, { id?: string; pw?: string; url?: string }>;
+  for (const [key, label] of [['hosting', '호스팅'], ['ftp', 'FTP'], ['admin', '관리자']]) {
+    if (webAccounts[key]?.id || webAccounts[key]?.pw) webOnemore(label, '계정정보 입력 완료 (계정 DB에서 확인)');
+  }
+  webOnemore('관리자 페이지 URL', webAccounts.admin?.url);
+  webOnemore('홈페이지 레퍼런스', [...new Set([sw.referenceSites, s4.benchmarkClinics, s5.benchmarkClinics].filter((value) => typeof value === 'string' && value.trim()))].join('\n'));
   if (webItems.length > 0) {
     blocks.push(heading('홈페이지/웹'));
     webItems.forEach((t) => blocks.push(bullet(t)));
@@ -1401,40 +1424,47 @@ function buildMainPageChildren(data: Record<string, unknown>): Array<Record<stri
   };
   designOne('로고 타입', sd.logoType);
   designOne('로고 표기', sd.logoNotation);
-  designOne('영문 표기', sd.englishSpelling);
-  designOne('로고 모티브', sd.logoMotif);
-  designOne('피하는 컬러', sd.avoidColor);
-  designOne('영상 메시지', sd.videoMessage);
+  designOne('영문 표기 스펠링', sd.englishSpelling);
+  designOne('로고 모티브 / 시각 요소', sd.logoMotif);
+  if (sc.logo) designOne('피하고 싶은 컬러', sd.avoidColor);
+  designOne('영상 핵심 메시지', sd.videoMessage);
   designOne('영상 레퍼런스', sd.videoReference);
-  if ((sd.videoChannels as string[])?.length) designItems.push(`영상 채널: ${(sd.videoChannels as string[]).join(', ')}`);
-  if ((sd.videoItems as string[])?.length) designItems.push(`영상 제작 항목: ${(sd.videoItems as string[]).join(', ')}`);
-  designOne('영상 BGM', sd.videoBgm);
+  if ((sd.videoChannels as string[])?.length) designItems.push(`활용 채널: ${(sd.videoChannels as string[]).join(', ')}`);
+  if ((sd.videoItems as string[])?.length) designItems.push(`제작 항목: ${(sd.videoItems as string[]).join(', ')}`);
   if (designItems.length > 0) {
     blocks.push(heading('디자인/브랜딩'));
     designItems.forEach((t) => blocks.push(bullet(t)));
   }
 
   // 계약
-  blocks.push(heading('계약'));
+  const contractItems: string[] = [];
   const services = (s6.services as { serviceId: string; quantity?: number }[]) || [];
   if (services.length > 0) {
     const text = services.map((s) => {
       const svc = SERVICES.find((sv) => sv.id === s.serviceId);
       return `${svc?.name || s.serviceId}${s.quantity ? ` ${s.quantity}${svc?.unit || ''}` : ''}`;
     }).join(', ');
-    blocks.push(bullet(`서비스: ${text}`));
+    contractItems.push(`서비스: ${text}`);
   }
-  if (s6.isStarterPackage) blocks.push(bullet('초기개원 패키지 적용'));
-  if (s6.contractStartDate) blocks.push(bullet(`계약시작: ${s6.contractStartDate}`));
-  if (s6.monthlyFee) blocks.push(bullet(`월 계약금: ${s6.monthlyFee}`));
-  if (s6.specialNotes) blocks.push(bullet(`특이사항: ${s6.specialNotes}`));
+  if (s6.isStarterPackage) contractItems.push('초기개원 패키지 적용');
+  for (const [key, label] of [['contractStartDate', '계약시작'], ['monthlyFee', '월 계약금'], ['specialNotes', '특이사항']]) {
+    const value = s6[key];
+    if (typeof value === 'string' && value.trim()) contractItems.push(`${label}: ${value.trim()}`);
+  }
+  if (contractItems.length > 0) {
+    blocks.push(heading('계약'));
+    contractItems.forEach((item) => blocks.push(bullet(item)));
+  }
 
   // 계정 아이디·비밀번호는 본문에 평문으로 쓰지 않고 계정DB에 저장한다(saveAccounts). 본문엔 플랫폼명만 안내.
   const accountNames = filledAccounts(data).map((a) => a.name);
   if (accountNames.length > 0) {
     blocks.push(heading('🔐 계정정보'));
-    blocks.push(bullet(`계정DB에 저장: ${accountNames.join(', ')} — 아이디·비밀번호는 상단 '계정 DB' 연결에서 확인`));
+    blocks.push(sectionLabel("아이디·비밀번호는 상단 '계정 DB' 연결에서 확인"));
+    blocks.push(bullet(`계정DB에 저장: ${accountNames.join(', ')}`));
   }
+
+  if (s5.additionalRequest) blocks.push(bullet(`추가 요청사항: ${s5.additionalRequest}`));
 
   // 첨부 자료
   const files = collectFiles(data);
@@ -1456,6 +1486,17 @@ function heading(text: string) {
       rich_text: [{ type: 'text', text: { content: text } }],
     },
   };
+}
+
+function selectedWithOther(options: string[] = [], other: unknown) {
+  const detail = typeof other === 'string' ? other.trim() : '';
+  const items = [...new Set(options)].map((item) => item === '기타' && detail ? `기타 (${detail})` : item);
+  if (detail && !options.includes('기타')) items.push(`기타 (${detail})`);
+  return items.join(', ');
+}
+
+function sectionLabel(text: string) {
+  return { object: 'block', type: 'paragraph', paragraph: { rich_text: [{ type: 'text', text: { content: text }, annotations: { bold: true } }] } };
 }
 
 function bullet(text: string) {

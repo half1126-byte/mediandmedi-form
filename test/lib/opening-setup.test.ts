@@ -1,115 +1,44 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-// Notion API mock — 실제 노션 쓰기 0
-vi.mock('@/lib/notion', () => ({
-  createOpeningSetupTask: vi.fn().mockResolvedValue({ success: true }),
-  hasOpeningSetupTasks: vi.fn().mockResolvedValue(false),
-}));
-
-import { generateOpeningSetup, selectOpeningTasks } from '@/lib/opening-setup';
-import { createOpeningSetupTask, hasOpeningSetupTasks } from '@/lib/notion';
-import { OPENING_SETUP_TASKS } from '@/data/opening-setup';
-
-const ALL_TEAMS = ['마케팅팀', '바이럴팀', '디자인팀', '웹팀'];
-
+import { beforeEach, it, expect, vi } from 'vitest';
+const m = vi.hoisted(() => ({ create: vi.fn(), retrieve: vi.fn(), update: vi.fn(), query: vi.fn(), db: vi.fn(), ds: vi.fn(), list: vi.fn(), append: vi.fn() }));
+vi.mock('@notionhq/client', () => ({ Client: class { pages = { create: m.create, retrieve: m.retrieve, update: m.update }; databases = { retrieve: m.db }; dataSources = { retrieve: m.ds, query: m.query }; blocks = { children: { list: m.list, append: m.append } }; }, isNotionClientError: () => false }));
+import { ensureOpeningSetup } from '@/lib/notion';
+let tasks: any[];
+let blocks: Record<string, any[]>;
 beforeEach(() => {
-  vi.mocked(hasOpeningSetupTasks).mockReset().mockResolvedValue(false);
-  vi.mocked(createOpeningSetupTask).mockReset().mockResolvedValue({ success: true });
+  vi.clearAllMocks(); tasks = []; blocks = {};
+  m.retrieve.mockResolvedValue({ properties: { '신규 업무 생성': { checkbox: true } } });
+  m.db.mockResolvedValue({ data_sources: [{ id: 'tasks' }] });
+  m.ds.mockResolvedValue({ properties: { 업무명: { type: 'title' } } });
+  m.query.mockImplementation(async ({ data_source_id }) => data_source_id === 'tasks' ? { results: tasks } : { results: [{ id: 'employee', properties: { 사람명: { title: [{ plain_text: '강재오' }] }, 재직상태: { select: { name: '재직' } }, 소속팀: { select: { name: '마케팅팀' } }, 사람: { people: [{ id: 'user' }] } } }] });
+  m.create.mockImplementation(async ({ properties }) => { const p = { id: 'task-' + tasks.length, properties }; tasks.push(p); blocks[p.id] = []; return p; });
+  m.list.mockImplementation(async ({ block_id }) => ({ results: blocks[block_id] || [], has_more: false }));
+  m.append.mockImplementation(async ({ block_id, children }) => { blocks[block_id].push(...children); return {}; });
+  m.update.mockResolvedValue({});
 });
-
-describe('generateOpeningSetup', () => {
-  it('전체 계약 → 42건 생성 + 페이로드 검증', async () => {
-    const results = await generateOpeningSetup('clinic-1', ALL_TEAMS);
-
-    expect(results).toHaveLength(42);
-    expect(vi.mocked(createOpeningSetupTask)).toHaveBeenCalledTimes(42);
-
-    const first = vi.mocked(createOpeningSetupTask).mock.calls[0][0];
-    expect(first.단계).toBe('① 시작');
-    expect(first.담당팀).toBe('마케팅팀');
-    expect(first.dOffset).toBe(-44);
-    expect(first.clinicPageId).toBe('clinic-1');
-  });
-
-  it('마케팅만 계약 → 마케팅팀 19건만 (웹/디자인/바이럴/영상 0)', async () => {
-    const results = await generateOpeningSetup('clinic-1', ['마케팅팀']);
-
-    expect(results).toHaveLength(19);
-    expect(new Set(results.map((r) => r.담당팀))).toEqual(new Set(['마케팅팀']));
-    expect(
-      results.some((r) => ['웹팀', '디자인팀', '바이럴팀', '영상팀'].includes(r.담당팀))
-    ).toBe(false);
-  });
-
-  it('웹팀 계약 추가 → 웹팀 업무 포함', async () => {
-    const results = await generateOpeningSetup('clinic-1', ['마케팅팀', '웹팀']);
-    expect(results.some((r) => r.담당팀 === '웹팀')).toBe(true);
-    expect(results.some((r) => r.담당팀 === '디자인팀')).toBe(false);
-  });
-
-  it('멱등성: 이미 생성됨 → 0건 생성, skipped 결과', async () => {
-    vi.mocked(hasOpeningSetupTasks).mockResolvedValueOnce(true);
-
-    const results = await generateOpeningSetup('clinic-1', ALL_TEAMS);
-
-    expect(results).toHaveLength(1);
-    expect(results[0].skipped).toBe(true);
-    expect(vi.mocked(createOpeningSetupTask)).not.toHaveBeenCalled();
-  });
-
-  it('부분 실패 처리 — 루프 지속', async () => {
-    vi.mocked(createOpeningSetupTask)
-      .mockResolvedValueOnce({ success: true })
-      .mockResolvedValue({ success: false, error: 'API 에러' });
-
-    const results = await generateOpeningSetup('clinic-1', ['마케팅팀']);
-
-    expect(results).toHaveLength(19);
-    expect(results[0].success).toBe(true);
-    expect(results[1].success).toBe(false);
-    expect(results[1].error).toBe('API 에러');
-  });
+it('creates twelve tasks with body checklists and preserves them on retry', async () => {
+  expect(await ensureOpeningSetup('client')).toEqual({ created: 12, existing: 0 });
+  expect(m.create).toHaveBeenCalledTimes(12);
+  expect(m.create.mock.calls[0][0].properties['담당자']).toEqual({ people: [{ id: 'user' }] });
+  expect(Object.values(blocks).every(items => items.length >= 5)).toBe(true);
+  expect(await ensureOpeningSetup('client')).toEqual({ created: 0, existing: 12 });
+  expect(m.create).toHaveBeenCalledTimes(12);
+  expect(m.append).toHaveBeenCalledTimes(12);
 });
-
-describe('selectOpeningTasks 범위 게이팅', () => {
-  it('옵션(No.28 영상)은 디자인팀 계약 시에만', () => {
-    expect(selectOpeningTasks(['마케팅팀']).some((t) => t.no === 28)).toBe(false);
-    expect(selectOpeningTasks(['디자인팀']).some((t) => t.no === 28)).toBe(true);
-  });
-
-  it('영상팀 업무는 디자인 계약 버킷으로 게이팅', () => {
-    expect(selectOpeningTasks(['디자인팀']).some((t) => t.담당팀 === '영상팀')).toBe(true);
-    expect(selectOpeningTasks(['웹팀']).some((t) => t.담당팀 === '영상팀')).toBe(false);
-  });
+it('coalesces concurrent requests for the same client', async () => {
+  await Promise.all([ensureOpeningSetup('client'), ensureOpeningSetup('client')]);
+  expect(m.create).toHaveBeenCalledTimes(12);
 });
-
-describe('OPENING_SETUP_TASKS 데이터 무결성', () => {
-  const PHASES = new Set([
-    '① 시작', '② 제작', '③ 심의', '③-B 콘텐츠',
-    '④ 연결', '⑤ 점검', '⑥ 운영',
-  ]);
-  const TEAMS = new Set(['마케팅팀', '디자인팀', '웹팀', '바이럴팀', '영상팀']);
-
-  it('42건, 국면·담당팀 유효, dOffset 숫자', () => {
-    expect(OPENING_SETUP_TASKS).toHaveLength(42);
-    for (const t of OPENING_SETUP_TASKS) {
-      expect(PHASES.has(t.단계)).toBe(true);
-      expect(TEAMS.has(t.담당팀)).toBe(true);
-      expect(typeof t.dOffset).toBe('number');
-      expect(t.업무명.length).toBeGreaterThan(0);
-    }
-  });
-
-  it('No.28만 optional', () => {
-    expect(OPENING_SETUP_TASKS.filter((t) => t.optional).map((t) => t.no)).toEqual([28]);
-  });
-
-  it('no 1..42 유니크', () => {
-    expect(new Set(OPENING_SETUP_TASKS.map((t) => t.no)).size).toBe(42);
-  });
-
-  it('직접 19 / 핸드오프 23', () => {
-    expect(OPENING_SETUP_TASKS.filter((t) => !t.handoff)).toHaveLength(19);
-    expect(OPENING_SETUP_TASKS.filter((t) => t.handoff)).toHaveLength(23);
-  });
+it('retains partial work and fills the missing tasks on retry', async () => {
+  const create = m.create.getMockImplementation()!;
+  m.create.mockImplementation(async (...args) => { if (tasks.length === 4) throw Error('network'); return create(...args); });
+  await expect(ensureOpeningSetup('client')).rejects.toThrow('network');
+  expect(tasks).toHaveLength(4);
+  expect(m.update).not.toHaveBeenCalled();
+  m.create.mockImplementation(create);
+  expect(await ensureOpeningSetup('client')).toEqual({ created: 8, existing: 4 });
+});
+it('rejects trashed clients without creating tasks', async () => {
+  m.retrieve.mockResolvedValue({ in_trash: true });
+  await expect(ensureOpeningSetup('client')).rejects.toThrow('휴지통');
+  expect(m.create).not.toHaveBeenCalled();
 });
