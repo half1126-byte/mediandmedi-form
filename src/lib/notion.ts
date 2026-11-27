@@ -4,7 +4,6 @@ import { formatLunch, type LunchSettings } from './lunch';
 import { Client, isNotionClientError } from '@notionhq/client';
 import { SERVICES } from '@/data/services';
 import { clinicNamesMatch, normalizeClinicName } from './normalize';
-import { resolveNamedActiveTeamMember } from './notion/people';
 import { resolveDoctors, type Doctor } from './doctors';
 
 // 환경변수의 공백/개행 제거 — Vercel 등에 복붙으로 값을 넣을 때 끝에 개행이 섞이면
@@ -60,8 +59,6 @@ export interface SubmitResult {
 }
 
 const NEW_TASK_DATABASE_ID = '97e9a82d-b9c4-8349-9bea-01e15d30e007';
-const PEOPLE_DATA_SOURCE_ID = envTrim('NOTION_PEOPLE_DATA_SOURCE_ID') || '3599a82d-b9c4-8078-89a8-000bfce48529';
-const OPENING_ASSIGNEE_NAME = '강재오';
 
 async function resolveDataSourceId(databaseId: string): Promise<string> {
   const database = await withRetry(() => notion.databases.retrieve({ database_id: databaseId })) as {
@@ -99,18 +96,6 @@ async function titlePropertyName(dataSourceId: string): Promise<string> {
   return found[0];
 }
 
-async function openingAssignee(): Promise<{
-  accountId: string;
-  peoplePageId: string;
-}> {
-  const response = await withRetry(() => notion.dataSources.query({
-    data_source_id: PEOPLE_DATA_SOURCE_ID,
-    filter: { property: '사람명', title: { equals: OPENING_ASSIGNEE_NAME } },
-    page_size: 10,
-  } as any)) as any;
-  return resolveNamedActiveTeamMember(response.results || [], OPENING_ASSIGNEE_NAME, '마케팅팀');
-}
-
 /** 웹앱 제출과 Notion 웹훅이 공유하는 신규개원 이벤트 처리기. */
 const openingRuns = new Map<string, Promise<{ created: number; existing: number }>>();
 export function ensureOpeningSetup(pageId: string): Promise<{ created: number; existing: number }> {
@@ -141,7 +126,6 @@ async function runOpeningSetup(pageId: string): Promise<{ created: number; exist
   if (!requested && generationState !== '생성완료') {
     throw new Error('신규 업무 생성이 체크되지 않은 거래처입니다.');
   }
-  const assignee = await openingAssignee();
   const taskSourceId = await resolveDataSourceId(NEW_TASK_DATABASE_ID);
   const taskTitle = await titlePropertyName(taskSourceId);
   const query = await withRetry(() => notion.dataSources.query({ data_source_id: taskSourceId, filter: { and: [
@@ -172,8 +156,9 @@ async function runOpeningSetup(pageId: string): Promise<{ created: number; exist
           [taskTitle]: { title: [{ text: { content: name } }] }, '관련거래처': { relation: [{ id: pageId }] },
           '거래처 단계': { select: { name: '신규개원' } }, '대분류': { select: { name: '개원 세팅' } },
           '업무상태': { status: { name: '요청접수' } }, '우선순위': { select: { name: '보통' } },
-          '담당팀': { select: { name: '마케팅팀' } }, '담당자': { people: [{ id: assignee.accountId }] },
-          '담당 직원': { relation: [{ id: assignee.peoplePageId }] },
+          // 신규 업무는 미배정으로 접수하고, 담당자는 이후 내부에서 지정한다.
+          '담당팀': { select: { name: '마케팅팀' } }, '담당자': { people: [] },
+          '담당 직원': { relation: [] },
         } as any,
         children: [{ object: 'block', type: 'callout', callout: { icon: { type: 'emoji', emoji: '🎯' }, rich_text: [{ type: 'text', text: { content: `${name} 업무를 완료하고 결과 증빙을 저장합니다.` } }] } }] as any,
         });
