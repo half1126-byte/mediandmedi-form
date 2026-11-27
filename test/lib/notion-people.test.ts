@@ -63,7 +63,7 @@ describe('resolveNamedActiveTeamMember', () => {
     },
   };
 
-  it('assigns every opening task to the one active marketing employee 강재오', () => {
+  it('resolves a named active marketing employee to their account and PeopleDB row', () => {
     expect(resolveNamedActiveTeamMember([kangJaeo], '강재오', '마케팅팀')).toEqual({
       accountId: 'notion-account-kang-jaeo',
       peoplePageId: 'people-row-kang-jaeo',
